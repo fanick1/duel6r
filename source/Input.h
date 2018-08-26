@@ -72,7 +72,7 @@ namespace Duel6 {
             for(auto & gameController: gameControllers) {
                 if(!gameController.isOpen() && gameController.getGUID() == GUID) {
                     gameController.reset(instance);
-                    console.printLine(Format("reattaching {0}") << gameController.getName());
+                    console.printLine(Format("Reattaching Joy {0}") << gameController.getName());
                     return;
                 }
             }
@@ -84,7 +84,7 @@ namespace Duel6 {
             console.printLine(Format("Joy detached {0}") << instanceID);
             for(auto & gameController: gameControllers) {
                 if(gameController.getInstanceID() == instanceID) {
-                        console.printLine(Format("closing joy {0}") << instanceID);
+                        console.printLine(Format("Closing Joy {0}") << instanceID);
                         gameController.close();
                         return;
                 }

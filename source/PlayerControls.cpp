@@ -31,6 +31,16 @@
 namespace Duel6 {
     std::vector<std::unique_ptr<PlayerControls>> PlayerControlsManager::controls;
 
+    Uint8 countSetBits(Uint32 n)
+    {
+        Uint8 count = (n & 1);
+        while (n >>= 1)
+        {
+            count += (n & 1);
+        }
+        return count;
+    }
+
     bool KeyboardButton::isPressed() const {
         return input.isPressed(keyCode);
     }
@@ -71,7 +81,47 @@ namespace Duel6 {
         auto controls = std::make_unique<PlayerControls>(name, left, right, up, down, shoot, pick, status);
         return controls;
     }
+    void PlayerControls::snapshot() { // called during event processing
+        Uint8 oldPressedStatus = pressedStatus;
+        pressedStatus = EMPTY;
+        if (left  ->isPressed()) pressedStatus |= bLeft;
+        if (right ->isPressed()) pressedStatus |= bRight;
+        if (up    ->isPressed()) pressedStatus |= bUp;
+        if (down  ->isPressed()) pressedStatus |= bDown;
+        if (shoot ->isPressed()) pressedStatus |= bShoot;
+        if (pick  ->isPressed()) pressedStatus |= bPick;
+        if (status->isPressed()) pressedStatus |= bStatus;
 
+        auto count = countSetBits(pressedStatus);
+        auto oldCount = countSetBits(oldPressedStatus);
+
+        if (oldPressedStatus > 0) {
+            if (oldPressedStatus == pressedStatus) { // keypress
+                lastReleasedStatus = EMPTY;
+                doublePressedStatus = EMPTY;
+            } else if (count < oldCount) { // keyup
+                lastReleasedStatus = oldPressedStatus xor pressedStatus;
+            }
+        } else {
+            if(count > 0){ // keydown
+                if (lastReleasedStatus == pressedStatus){
+                    doublePressedStatus = pressedStatus;
+                } else {
+                    doublePressedStatus = EMPTY;
+                }
+            } else { // key not pressed
+
+            }
+        }
+        if(countSetBits(pressedStatus) > 0) {
+            lastReleasedStatus = EMPTY;
+        } else {
+            lastReleasedStatus = oldPressedStatus;
+        }
+
+
+
+    }
     PlayerControlsManager::PlayerControlsManager(const Input &input)
             : input(input) {
         controls.push_back(
@@ -119,4 +169,5 @@ namespace Duel6 {
     Size PlayerControlsManager::getNumAvailable() const {
         return controls.size();
     }
+
 }

@@ -40,6 +40,12 @@ namespace Duel6 {
         virtual ~Control() {}
 
         virtual bool isPressed() const = 0;
+
+        virtual bool isDoublePressed() const {return false;}//= 0;
+    private:
+        bool pressed = false;
+        bool doublePressed = false;
+        void setState(bool pressed, bool doublePressed);
     };
 
     class KeyboardButton
@@ -95,6 +101,18 @@ namespace Duel6 {
 
     class PlayerControls {
     private:
+        static constexpr Uint8 EMPTY   = 0b0000000;
+        static constexpr Uint8 bLeft   = 0b0000001;
+        static constexpr Uint8 bRight  = 0b0000010;
+        static constexpr Uint8 bUp     = 0b0000100;
+        static constexpr Uint8 bDown   = 0b0001000;
+        static constexpr Uint8 bShoot  = 0b0010000;
+        static constexpr Uint8 bPick   = 0b0100000;
+        static constexpr Uint8 bStatus = 0b1000000;
+        Uint8 doublePressedStatus = EMPTY;
+        Uint8 pressedStatus = EMPTY;
+        Uint8 lastReleasedStatus = EMPTY;
+
         std::string description;
         std::unique_ptr<Control> left;
         std::unique_ptr<Control> right;
@@ -109,7 +127,7 @@ namespace Duel6 {
                        Control *shoot, Control *pick, Control *status)
                 : description(description), left(left), right(right), up(up), down(down), shoot(shoot), pick(pick),
                   status(status) {}
-
+        void snapshot();
         const std::string &getDescription() const {
             return description;
         }
@@ -165,6 +183,11 @@ namespace Duel6 {
 
         Size getNumAvailable() const;
 
+        void snapshot() const {
+           for(auto & pc : controls){
+               pc->snapshot();
+           }
+        }
         const PlayerControls &get(Size index) const {
             return *controls[index];
         }

@@ -24,7 +24,6 @@
 * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 #include "VideoException.h"
 #include "InfoMessageQueue.h"
 #include "Game.h"
@@ -172,18 +171,23 @@ namespace Duel6 {
             }
         }
     }
-
+    void Application::snapshotControlInputs(){
+        controlsManager.snapshot();
+    }
     void Application::syncUpdateAndRender(Context &context) {
         static Uint32 curTime = 0;
         static Float64 accumulatedTime = 0.0f;
         Uint32 lastTime = curTime;
 
-        context.render();
         video.screenUpdate(console, font);
 
         curTime = SDL_GetTicks();
         Float64 elapsedTime = (curTime - lastTime) * 0.001f;
         accumulatedTime += elapsedTime;
+
+        if(accumulatedTime > updateTime){
+            context.render();
+        }
 
         while (accumulatedTime > updateTime) {
             context.update(Float32(updateTime));
@@ -247,7 +251,7 @@ namespace Duel6 {
             Context &context = Context::getCurrent();
             processEvents(context);
             syncUpdateAndRender(context);
-
+            snapshotControlInputs();
             if (context.isClosed()) {
                 Context::pop();
             }

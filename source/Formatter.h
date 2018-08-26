@@ -107,6 +107,21 @@ namespace Duel6 {
             return ret.str();
         }
     };
+
+//    template<Size N>
+//    class Formatter<unsigned char [N]> {
+//    private:
+//        using Type = unsigned char[N];
+//
+//    public:
+//        std::string format(const Type &val) {
+//            std::stringstream ret;
+//            for(size_t i = 0 ; i < N ; i++){
+//                ret << "0x" << std::hex << val;
+//            }
+//            return ret.str();
+//        }
+//    };
 }
 
 #endif

@@ -87,12 +87,12 @@ namespace Duel6 {
         // Set graphics mode
         view = ViewParameters(0.1f, 100.0f, 45.0f);
 
-#ifdef D6_DEBUG
+//#ifdef D6_DEBUG
         // Running fullscren makes switching to debugger problematic with SDL (focus is captured)
-        screen = ScreenParameters(1280, 900, 32, 0, false);
-#else
-        screen = ScreenParameters(currentVideoMode.w, currentVideoMode.h, 32, 0, true);
-#endif
+       screen = ScreenParameters(1280, 900, 32, 0, false);
+//#else
+ //       screen = ScreenParameters(currentVideoMode.w, currentVideoMode.h, 32, 0, true);
+//#endif
 
         window = createWindow(name, icon, screen, console);
         glContext = createContext(screen, console);
@@ -100,14 +100,15 @@ namespace Duel6 {
 
         setMode(Mode::Orthogonal);
 
-        SDL_ShowCursor(SDL_DISABLE);
+        SDL_ShowCursor(SDL_ENABLE);
+
     }
 
     SDL_Window *Video::createWindow(const std::string &name, const std::string &icon, const ScreenParameters &params,
                                     Console &console) {
         Uint32 flags = 0;
 
-        flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_INPUT_GRABBED;
+        flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN /*| SDL_WINDOW_INPUT_GRABBED*/;
         if (params.isFullScreen()) {
             flags |= SDL_WINDOW_FULLSCREEN;
         }

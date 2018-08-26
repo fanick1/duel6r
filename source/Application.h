@@ -79,6 +79,7 @@ namespace Duel6 {
         void joyDeviceAddedEvent(Context & context, const JoyDeviceAddedEvent & event);
         void joyDeviceRemovedEvent(Context & context, const JoyDeviceRemovedEvent & event);
         void syncUpdateAndRender(Context &context);
+        void snapshotControlInputs();
     };
 }
 

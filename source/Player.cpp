@@ -49,6 +49,7 @@ namespace Duel6 {
     static Int16 d6LAnim[16] = {13, 10, 14, 10, 15, 10, 16, 10, 17, 10, 18, 10, 19, 10, -1, 0};
     static Int16 d6NAnim[4] = {25, 100, -1, 0};
     static Int16 d6PAnim[] = {0, 10, 20, 10, 21, 10, 22, 10, 23, 10, 24, 10, 23, 10, 22, 10, 21, 10, 0, 10, -1, 0};
+    static Int16 d6DashAnim[] = {0, 1, 20, 5, 21, 4, 22, 3, 23, 5, 22, 5, 21, 5, -1, 0};
 
     //TODO: This still needs further fine-tuning for good jumping experience
     static const float GRAVITATIONAL_ACCELERATION = -11.0f;
@@ -179,7 +180,7 @@ namespace Duel6 {
             }
 
         }
-        if (hasFlag(FlagDoubleJump) && getBonus() == BonusType::FAST_MOVEMENT) {
+        if (hasFlag(FlagDoubleJump) /*&& getBonus() == BonusType::FAST_MOVEMENT*/) {
             if (this->velocity.y > 0.0) {
                 acceleration.y += JUMP_ACCELERATION;
             }
