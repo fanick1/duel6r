@@ -39,7 +39,10 @@
 #include "math/Math.h"
 #include "Video.h"
 #include "PlayerEventListener.h"
-
+#include "ecs/kktecs.h"
+#include "ecs/component/Color.h"
+#include "ecs/component/Position.h"
+#include "ecs/component/Particle.h"
 namespace Duel6 {
     static Int16 noAnim[4] = {0, 50, 0, -1};
     static Int16 d6SAnim[22] = {0, 200, 1, 30, 0, 30, 2, 30, 0, 90, 3, 15, 4, 15, 3, 15, 4, 15, 3, 30, -1, 0};
@@ -49,7 +52,7 @@ namespace Duel6 {
     static Int16 d6LAnim[16] = {13, 10, 14, 10, 15, 10, 16, 10, 17, 10, 18, 10, 19, 10, -1, 0};
     static Int16 d6NAnim[4] = {25, 100, -1, 0};
     static Int16 d6PAnim[] = {0, 10, 20, 10, 21, 10, 22, 10, 23, 10, 24, 10, 23, 10, 22, 10, 21, 10, 0, 10, -1, 0};
-
+    static Int16 d6DashAnim[] = {0, 1, 20, 5, 21, 4, 22, 3, 23, 5, 22, 5, 21, 5, -1, 0};
     //TODO: This still needs further fine-tuning for good jumping experience
     static const float GRAVITATIONAL_ACCELERATION = -11.0f;
     static const float JUMP_FACTOR = -0.7f;
@@ -65,8 +68,8 @@ namespace Duel6 {
     static const float HORIZONTAL_DELTA = 0.25f * DELTA;
     static const float DELTA_HEIGHT = 0.94f;
 
-    Player::Player(Person &person, const PlayerSkin &skin, const PlayerSounds &sounds, const PlayerControls &controls)
-            : person(person), skin(skin), sounds(sounds), controls(controls), bodyAlpha(1.0f) {
+    Player::Player(Person &person, const PlayerSkin &skin, const PlayerSounds &sounds, const PlayerControls &controls, KktFckr & kktFckr)
+            : person(person), skin(skin), sounds(sounds), controls(controls), bodyAlpha(1.0f), kktFckr(kktFckr) {
         camera.rotate(180.0, 0.0, 0.0);
     }
 
@@ -209,6 +212,16 @@ namespace Duel6 {
     void Player::pick() {
         if (isOnGround() && !isMoving() && !isOnElevator()) {
             world->getBonusList().checkWeapon(*this);
+        }
+    }
+
+    void Player::dash() {
+        setFlag(FlagDash);
+        velocity.y = 0.2f;
+        if (orientation == Orientation::Right) {
+            velocity.x = 2 * D6_PLAYER_MAX_SPEED;
+        } else {
+            velocity.x = 2 * -D6_PLAYER_MAX_SPEED;
         }
     }
 
@@ -388,7 +401,9 @@ namespace Duel6 {
         if (isOnElevator()) {
             position += elevator->getAcceleratedVelocity() * elapsedTime;
         }
-
+        if (isDashing() && sprite->getAnimation() == d6DashAnim && sprite->isFinished()) {
+            unsetFlag(FlagDash);
+        }
         if (isPickingGun() && sprite->getAnimation() == d6PAnim && sprite->isFinished()) {
             unsetFlag(FlagPick);
         }
@@ -497,6 +512,7 @@ namespace Duel6 {
         }
 
         if (!isGhost() && controls.getShoot().isPressed()) {
+            dash();
             shoot();
         }
 
@@ -566,6 +582,8 @@ namespace Duel6 {
             }
         } else if (isPickingGun()) {
             animation = d6PAnim;
+        } else if (isDashing()) {
+            animation = d6DashAnim;
         } else if (isKneeling()) {
             animation = d6DAnim;
         } else if (isOnElevator()) {
@@ -802,6 +820,23 @@ namespace Duel6 {
             Water feetWater = world.getLevel().getWaterType(Int32(centerX), Int32(feetY));
             if (feetWater != Water::NONE && water.feetInWater == Water::NONE) {
                 feetWater.onEnter(*this, Vector(centerX, bottomY), world);
+                int particleCount = 3  * - velocity.y ;
+                for(auto i = 0; i < particleCount; i++){
+                    auto color = std::make_shared<ColorComponent>();
+                    auto particle = std::make_shared<ParticleComponent>();
+                    particle -> size = 0.5 * (rand() % 10);
+                    auto position = std::make_shared<PositionComponent>();
+                    particle -> remainingLife = 0.3 + particleCount / (1 + (rand() % 10));
+                    constexpr float spread = 3.0f;
+                    position -> accX = spread - ((rand() % particleCount) * (spread * 2.0f / particleCount));
+                    position -> velocityX = spread - ((rand() % particleCount) * (spread * 2.0f / particleCount));
+                    position -> accY = - (rand() % particleCount) * velocity.y;
+                    position -> velocityY = - velocity.y;
+
+                    position -> x = centerX - 0.25 + 0.05 * (rand() % particleCount) * 1 / particleCount;
+                    position -> y = feetY + 0.05 * (rand() % particleCount) * 1 / particleCount;
+                    auto x = kktFckr.createEntity(color, particle, position);
+                }
             }
             water.feetInWater = feetWater;
         }
@@ -852,7 +887,7 @@ namespace Duel6 {
 
     void Player::die() {
         setFlag(FlagDead | FlagLying);
-        unsetFlag(FlagMoveUp | FlagMoveDown | FlagMoveLeft | FlagMoveRight | FlagKnee | FlagPick);
+        unsetFlag(FlagMoveUp | FlagMoveDown | FlagMoveLeft | FlagMoveRight | FlagKnee | FlagPick | FlagDash);
         sprite->setPosition(getSpritePosition()).setLooping(AnimationLooping::OnceAndStop);
         gunSprite->setDraw(false);
 

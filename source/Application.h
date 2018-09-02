@@ -38,6 +38,11 @@
 namespace Duel6 {
     class Application {
     private:
+        enum class ButtonState {
+        PRESSED,
+        RELEASED
+    };
+    private:
         Font font;
         Console console;
         TextureManager textureManager;
@@ -50,6 +55,7 @@ namespace Duel6 {
         std::unique_ptr<GameResources> gameResources;
         std::unique_ptr<Game> game;
         bool requestClose;
+        ButtonState LMB; // keeps state of the mouse button - for drag & drop
 
     public:
         Application();

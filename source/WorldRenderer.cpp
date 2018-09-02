@@ -30,6 +30,9 @@
 #include "Game.h"
 #include "GameMode.h"
 #include "Explosion.h"
+#include "ecs/component/Color.h"
+#include "ecs/component/Particle.h"
+#include "ecs/component/Position.h"
 
 namespace Duel6 {
     void WorldRenderer::setView(const PlayerView &view) const {
@@ -418,6 +421,30 @@ namespace Duel6 {
         world.getSpriteList().render();
         world.getBonusList().render();
         invulRings(game.getPlayers());
+        for( auto & entity : kktFckr.getEntitiesWithComponents<PositionComponent, ParticleComponent, ColorComponent>()){
+            std::shared_ptr<PositionComponent> pos;
+            std::shared_ptr<ParticleComponent> particle;
+            std::shared_ptr<ColorComponent> color;
+            kktFckr.get(entity, pos, particle, color);
+
+            switch(particle->type){
+                case ParticleComponent::Type::SPLASH :{
+                    globRenderer->point(Vector(pos->x, pos->y), particle->size, Color(color->r, color->g, color->b));
+                    break;
+                }
+                case ParticleComponent::Type::SNOW :{
+                    globRenderer->point(Vector(pos->x, pos->y), particle->size, Color(color->r, color->g, color->b));
+                    break;
+                }
+                case ParticleComponent::Type::RAIN:{
+                    auto rain = particle->data.rain;
+                    globRenderer->line(Vector(rain.prevX, rain.prevY), Vector(pos->x, pos->y), particle->size, Color(color->r, color->g, color->b));
+                    break;
+                }
+            }
+
+
+        }
         water(world.getLevelRenderData().getWater());
         youAreHere();
 

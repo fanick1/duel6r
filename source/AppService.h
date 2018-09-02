@@ -28,15 +28,21 @@
 #ifndef DUEL6_APPSERVICE_H
 #define DUEL6_APPSERVICE_H
 
+#include <memory>
 #include "console/console.h"
 #include "Sound.h"
 #include "Input.h"
 #include "TextureManager.h"
 #include "Video.h"
-
+#include "ecs/kktecs.h"
+#include "ecs/system/Particle.h"
+#include "ecs/system/Gravity.h"
 namespace Duel6 {
     class AppService {
     private:
+        KktFckr kktFckr;
+        std::shared_ptr<ParticleSystem> particleSystem;
+        std::shared_ptr<GravitySystem> gravitySystem;
         Font &font;
         Console &console;
         TextureManager &textureManager;
@@ -47,9 +53,25 @@ namespace Duel6 {
     public:
         AppService(Font &font, Console &console, TextureManager &textureManager, Video &video, Input &input,
                    Sound &sound)
-                : font(font), console(console), textureManager(textureManager), video(video), input(input),
+                : kktFckr(), particleSystem(kktFckr.registerSystem<ParticleSystem>()), gravitySystem(kktFckr.registerSystem<GravitySystem>()),
+                  font(font), console(console), textureManager(textureManager), video(video), input(input),
                   sound(sound) {}
 
+        KktFckr &getKktFckr(){
+            return kktFckr;
+        }
+        const ParticleSystem & getParticleSystem(){
+            return *particleSystem;
+        }
+        const GravitySystem & getGravitySystem(){
+            return *gravitySystem;
+        }
+//        std::shared_ptr<ParticleSystem> getParticleSystem(){
+//            return particleSystem;
+//        }
+//        std::shared_ptr<GravitySystem> getGravitySystem(){
+//            return gravitySystem;
+//        }
         Font &getFont() {
             return font;
         }

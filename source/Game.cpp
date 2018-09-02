@@ -30,7 +30,11 @@
 #include "Game.h"
 #include "Menu.h"
 #include "GameMode.h"
-
+#include <memory>
+#include "ecs/component/Position.h"
+#include "ecs/component/Particle.h"
+#include "ecs/component/Color.h"
+#include <memory>
 namespace Duel6 {
     Game::Game(AppService &appService, GameResources &resources, GameSettings &settings)
             : appService(appService), resources(resources), settings(settings), worldRenderer(appService, *this),
@@ -47,8 +51,44 @@ namespace Duel6 {
     void Game::render() const {
         worldRenderer.render();
     }
+    void Game::addWeatherParticles() {
+        bool isRaining = true;
+        if(isRaining){
+            auto & ecs = appService.getKktFckr();
+            auto screenWidth = appService.getVideo().getScreen().getClientWidth();
+            auto screenHeight = appService.getVideo().getScreen().getClientHeight();
+            int particleCount = 5;
+                            for(auto i = 0; i < particleCount; i++){
+                                auto color = std::make_shared<ColorComponent>();
+                                color -> r = 130;
+                                color -> g = 130;
+                                color -> b = 255;
+                                auto particle = std::make_shared<ParticleComponent>();
+                                particle -> size = 0.5 * (rand() % 10);
+                                auto position = std::make_shared<PositionComponent>();
+                                particle -> remainingLife = 5;
+                                position -> accX = - 1;
+                                position -> velocityX = 0;
+                              //  position -> accY = - 1;
+                                position -> velocityY = - 1;
 
+                                position -> x = rand() % screenWidth;
+                                position -> y = 23 + rand() % 3;
+
+
+                                particle ->type = ParticleComponent::Type::RAIN;
+                                auto & data = particle -> data.rain;
+                                data.prevX = position -> x;
+                                data.prevY = position -> y;
+
+
+                                auto x = ecs.createEntity(color, particle, position);
+                            }
+        }
+    }
     void Game::update(Float32 elapsedTime) {
+        appService.getKktFckr().updateAll(elapsedTime);
+        addWeatherParticles();
         if (getRound().isOver()) {
             if (!getRound().isLast()) {
                 nextRound();
@@ -106,7 +146,8 @@ namespace Duel6 {
             console.printLine(Format("...Generating player for person: {0}") << playerDef.getPerson().getName());
             skins.push_back(PlayerSkin(D6_TEXTURE_MAN_PATH, playerDef.getColors(), textureManager));
             players.push_back(
-                    Player(playerDef.getPerson(), skins.back(), playerDef.getSounds(), playerDef.getControls()));
+                    Player(playerDef.getPerson(), skins.back(), playerDef.getSounds(), playerDef.getControls(), appService.getKktFckr())
+                    );
             playerIndex++;
         }
 

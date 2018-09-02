@@ -38,19 +38,20 @@
 #include "FaceList.h"
 #include "ShotList.h"
 #include "Ranking.h"
-
+#include "ecs/kktecs.h"
 namespace Duel6 {
     class Game;
 
     class WorldRenderer {
     private:
+        KktFckr & kktFckr;
         const Font &font;
         const Video &video;
         const Game &game;
 
     public:
         WorldRenderer(AppService &appService, const Game &game)
-                : font(appService.getFont()), video(appService.getVideo()), game(game) {}
+                : kktFckr(appService.getKktFckr()), font(appService.getFont()), video(appService.getVideo()), game(game) {}
 
         void render() const;
 

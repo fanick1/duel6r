@@ -32,6 +32,7 @@
 #include "ConsoleCommands.h"
 #include "Application.h"
 #include "FontException.h"
+#include "SysEvent.h"
 
 namespace Duel6 {
     namespace {
@@ -108,6 +109,7 @@ namespace Duel6 {
     }
 
     void Application::mouseButtonEvent(Context &context, const MouseButtonEvent &event) {
+        event.getButton() == SysEvent::MouseButton::LEFT;
         context.mouseButtonEvent(event);
     }
 

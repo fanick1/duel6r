@@ -193,6 +193,8 @@ namespace Duel6 {
             this->menu = menu;
         }
 
+        void addWeatherParticles();
+
     private:
         void beforeStart(Context *prevContext) override;
 

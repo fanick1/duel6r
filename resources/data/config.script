@@ -1,5 +1,5 @@
-volume      128   // Volume - maximum = 128
-music       on    // Hudba v menu - on/off
+volume      64   // Volume - maximum = 128
+music       off    // Hudba v menu - on/off
 
 // Pokud chcete hru v anglictine odkomentujte nasledujici radek
 //lang        lang/english.lang

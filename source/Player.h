@@ -46,7 +46,7 @@
 #include "Rectangle.h"
 #include "Defines.h"
 #include "Level.h"
-
+#include "ecs/kktecs.h"
 namespace Duel6 {
     // Forward declarations
     class Elevator;
@@ -248,6 +248,7 @@ namespace Duel6 {
             FlagKnee = 0x04,
             FlagLying = 0x08,
             FlagMoveDown = 0x10,
+            FlagDash = 0x20,
             FlagMoveLeft = 0x40,
             FlagMoveRight = 0x80,
             FlagMoveUp = 0x100,
@@ -297,9 +298,9 @@ namespace Duel6 {
         Float32 bodyAlpha;
         clock_t roundStartTime;
         PlayerIndicators indicators;
-
+        KktFckr & kktFckr;
     public:
-        Player(Person &person, const PlayerSkin &skin, const PlayerSounds &sounds, const PlayerControls &controls);
+        Player(Person &person, const PlayerSkin &skin, const PlayerSounds &sounds, const PlayerControls &controls, KktFckr & kktFckr);
 
         ~Player();
 
@@ -529,7 +530,9 @@ namespace Duel6 {
         bool isMoving() const {
             return (velocity.x != 0.0f);
         }
-
+        bool isDashing() const {
+            return hasFlag(FlagDash);
+        }
         bool hasPowerfulShots() const {
             return (getBonus() == BonusType::POWERFUL_SHOTS);
         }
@@ -579,6 +582,8 @@ namespace Duel6 {
         void fall();
 
         void pick();
+
+        void dash();
 
         void shoot();
 
