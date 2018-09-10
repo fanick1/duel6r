@@ -30,6 +30,8 @@
 
 #if defined(D6_RENDERER_GL1)
 #include "renderer/GL1Renderer.h"
+#elif defined(D6_RENDERER_GL4)
+#include "renderer/GL4Renderer.h"
 #elif defined(D6_RENDERER_GLES2)
 #include "renderer/GLES2Renderer.h"
 #endif
@@ -180,6 +182,8 @@ namespace Duel6 {
     Renderer *Video::createRenderer() {
 #if defined(D6_RENDERER_GL1)
         Renderer *renderer = new GL1Renderer();
+#elif defined(D6_RENDERER_GL4)
+        Renderer *renderer = new GL4Renderer();
 #elif defined(D6_RENDERER_GLES2)
         Renderer* renderer = new GLES2Renderer();
 #endif

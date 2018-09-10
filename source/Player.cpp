@@ -821,20 +821,23 @@ namespace Duel6 {
             if (feetWater != Water::NONE && water.feetInWater == Water::NONE) {
                 feetWater.onEnter(*this, Vector(centerX, bottomY), world);
                 int particleCount = 3  * - velocity.y ;
+                ColorComponent color;
+                ParticleComponent particle;
+                PositionComponent position;
                 for(auto i = 0; i < particleCount; i++){
-                    auto color = std::make_shared<ColorComponent>();
-                    auto particle = std::make_shared<ParticleComponent>();
-                    particle -> size = 0.5 * (rand() % 10);
-                    auto position = std::make_shared<PositionComponent>();
-                    particle -> remainingLife = 0.3 + particleCount / (1 + (rand() % 10));
+                 //   auto color = std::make_shared<ColorComponent>();
+                 //   auto particle = std::make_shared<ParticleComponent>();
+                    particle . size = 0.5 * (rand() % 10);
+                 //   auto position = std::make_shared<PositionComponent>();
+                    particle . remainingLife = 0.3 + particleCount / (1 + (rand() % 10));
                     constexpr float spread = 3.0f;
-                    position -> accX = spread - ((rand() % particleCount) * (spread * 2.0f / particleCount));
-                    position -> velocityX = spread - ((rand() % particleCount) * (spread * 2.0f / particleCount));
-                    position -> accY = - (rand() % particleCount) * velocity.y;
-                    position -> velocityY = - velocity.y;
+                    position . accX = spread - ((rand() % particleCount) * (spread * 2.0f / particleCount));
+                    position . velocityX = spread - ((rand() % particleCount) * (spread * 2.0f / particleCount));
+                    position . accY = - (rand() % particleCount) * velocity.y;
+                    position . velocityY = - velocity.y;
 
-                    position -> x = centerX - 0.25 + 0.05 * (rand() % particleCount) * 1 / particleCount;
-                    position -> y = feetY + 0.05 * (rand() % particleCount) * 1 / particleCount;
+                    position . x = centerX - 0.25 + 0.05 * (rand() % particleCount) * 1 / particleCount;
+                    position . y = feetY + 0.05 * (rand() % particleCount) * 1 / particleCount;
                     auto x = kktFckr.createEntity(color, particle, position);
                 }
             }

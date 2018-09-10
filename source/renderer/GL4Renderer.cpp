@@ -114,7 +114,8 @@ namespace Duel6 {
         glAttachShader(textureTriangleProgram, tfs);
         glAttachShader(textureTriangleProgram, tvs);
         glLinkProgram(textureTriangleProgram);
-
+        var_textureUnit =  glGetUniformLocation(textureTriangleProgram, "textureUnit");
+        var_mvp =  glGetUniformLocation(textureTriangleProgram, "mvp");
         glActiveTexture(GL_TEXTURE0);
     }
 
@@ -162,7 +163,7 @@ namespace Duel6 {
     }
 
     void GL4Renderer::freeTexture(Texture::Id texture) {
-        GLuint id = textureId;
+        GLuint id = texture;
         glDeleteTextures(1, &id);
     }
 
@@ -259,9 +260,9 @@ namespace Duel6 {
         glUseProgram(textureTriangleProgram);
 
         glBindTexture(GL_TEXTURE_2D, material.getTexture().getId());
-        glUniform1i(glGetUniformLocation(textureTriangleProgram, "textureUnit"), 0);
+        glUniform1i(var_textureUnit, 0);
 
-        glUniformMatrix4fv(glGetUniformLocation(textureTriangleProgram, "mvp"), 1, GL_FALSE, mvpMatrix.getStorage());
+        glUniformMatrix4fv(var_mvp, 1, GL_FALSE, mvpMatrix.getStorage());
 
         Float32 points[] = {p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z, t1.x, t1.y, t2.x, t2.y, t3.x, t3.y};
         glBufferSubData(GL_ARRAY_BUFFER, 0, 15 * sizeof(Float32), points);

@@ -48,6 +48,8 @@ namespace Duel6 {
         GLuint colorTriangleProgram;
         GLuint textureTriangleProgram;
 
+        GLint var_textureUnit;
+        GLint var_mvp;
     public:
         GL4Renderer();
 

@@ -20,6 +20,8 @@
 /** KktComponentBaseShit =============================================================**/
 class KktComponentBaseShit {
     public:
+        KktComponentBaseShit(){};
+        KktComponentBaseShit(const KktComponentBaseShit & c){};
         static int component_type_counter;
         virtual ~KktComponentBaseShit(){}
 };
@@ -30,6 +32,10 @@ template<class C>
 class KktComponent: public KktComponentBaseShit {
 
     public:
+        KktComponent(){}
+        KktComponent(KktComponent & c){
+
+        };
         typedef C Type;
         static C T(){
             C * c;
@@ -98,10 +104,10 @@ public:
     unsigned int entityCount = 0;
     unsigned int startIndex = 0; // index to bookKeeping;
     std::shared_ptr<KktSystemBaseShit> systemPileOfShit[KKT_MAX_SYSTEM_COUNT];
-    std::vector<std::shared_ptr<KktEntity> > pileOfEntities;
+    std::vector<KktEntity> pileOfEntities;
     std::vector<EntityBookKeepingRecord> bookKeeping;
     std::stack<size_t> freeSlots;
-    std::vector<std::shared_ptr<KktComponentBaseShit> > pilesOfComponents[KKT_MAX_COMPONENT_COUNT];  // e.g. 32 vectors, 1 per component
+    std::vector<std::unique_ptr<KktComponentBaseShit> > pilesOfComponents[KKT_MAX_COMPONENT_COUNT];  // e.g. 32 vectors, 1 per component
 
 
     template<class ... Components>
@@ -109,15 +115,20 @@ public:
     {
         return std::vector<int> ({(Components::ComponentId())...});
     }
+//
+//    template<class ... Components>
+//    std::vector<KktEntity*> getEntitiesWithComponents() {
+//        return getEntitiesWithComponents(getComponentIds<Components...>());
+//    }
 
     template<class ... Components>
-    std::vector<std::shared_ptr<KktEntity> > getEntitiesWithComponents() const{
-        return getEntitiesWithComponents(getComponentIds<Components...>());
+    std::vector<KktEntity*> getEntitiesWithComponents() {
+        return getEntitiesWithComponents({(Components::ComponentId())...});
     }
 
-    std::vector<std::shared_ptr<KktEntity> > getEntitiesWithComponents(const std::vector<int> & componentIds) const;
+    std::vector<KktEntity*> getEntitiesWithComponents(const std::vector<int> & componentIds);
     void destroyEntity( unsigned int index);
-    std::shared_ptr<KktEntity> createEntity() ;
+    KktFckr::KktEntity & createEntity() ;
     // Example usage
     //                 auto p = std::make_shared<PositionComponent>();
     //                 auto c = std::make_shared<ColorComponent>();
@@ -126,40 +137,52 @@ public:
     // also works:     auto [p,c] = fckr.get<PositionComponent, ColorComponent>(entity);
 
 
-    void get(std::shared_ptr<KktEntity> & entity){
+    void get(KktEntity & entity){
 
     }
 
     template<class Component,  class ... Components>
-    void get(std::shared_ptr<KktEntity> & entity, std::shared_ptr<Component> & component, std::shared_ptr<Components> & ... components){
+    void get(KktEntity & entity, Component ** component, Components ** ... components){
         get(entity, components...);
+       // Component* x = (Component*)pilesOfComponents[Component::ComponentId()][entity.id].get();
+        *component = (Component*)pilesOfComponents[Component::ComponentId()][entity.id].get();
 
-        component = std::dynamic_pointer_cast<Component>(pilesOfComponents[component->ComponentId()][entity->id]);
-
     }
-    template<class Component>
-    std::tuple<std::shared_ptr<Component>> get(std::shared_ptr<KktEntity> & entity){
-        return std::make_tuple(std::dynamic_pointer_cast<Component>(pilesOfComponents[Component::ComponentId()][entity->id]));
-    }
-
-    template<class Component, class ...Components>
-    std::tuple<std::shared_ptr<Component>, std::shared_ptr<Components...>> get(std::shared_ptr<KktEntity> & entity){
-        return std::tuple_cat(std::make_tuple(std::dynamic_pointer_cast<Component>(pilesOfComponents[Component::ComponentId()][entity->id])), get<Components...>(entity));
-    }
-    template<class Component>
-    std::tuple<std::shared_ptr<Component>> get(std::shared_ptr<KktEntity> & entity, const Component & C){
-        return std::make_tuple(std::dynamic_pointer_cast<Component>(pilesOfComponents[Component::ComponentId()][entity->id]));
-    }
-
-    template<class Component, class ...Components>
-    std::tuple<std::shared_ptr<Component>, std::shared_ptr<Components...>> get(std::shared_ptr<KktEntity> & entity, const Component & C, const Components& ... CC){
-        return std::tuple_cat(std::make_tuple(std::dynamic_pointer_cast<Component>(pilesOfComponents[Component::ComponentId()][entity->id])), get<Components...>(entity));
-    }
+//    template<class Component>
+//    std::tuple<Component*> get(KktEntity & entity){
+//        return std::make_tuple((Component*)(pilesOfComponents[Component::ComponentId()][entity.id].get()));
+//    }
+//
+//    template<class Component, class ...Components>
+//    std::tuple<std::shared_ptr<Component>, std::shared_ptr<Components...>> get(KktEntity & entity){
+//        return std::tuple_cat(std::make_tuple(std::dynamic_pointer_cast<Component>(pilesOfComponents[Component::ComponentId()][entity.id])), get<Components...>(entity));
+//    }
+//    template<class Component>
+//    std::tuple<std::shared_ptr<Component>> get(KktEntity & entity, const Component & C){
+//        return std::make_tuple(std::dynamic_pointer_cast<Component>(pilesOfComponents[Component::ComponentId()][entity.id]));
+//    }
+//
+//    template<class Component, class ...Components>
+//    std::tuple<Component*, Components*...> get(KktEntity & entity, const Component ** C, const Components** ... CC){
+//        return std::tuple_cat(std::make_tuple((Component*)(pilesOfComponents[Component::ComponentId()][entity.id]->get())), get<Components...>(entity));
+//    }
+//    template< class ... Component>
+//    void set(KktEntity & entity, std::shared_ptr<Component> & ... components){
+//        auto x = {(entity.components[components->ComponentId()] = true)...};
+//        auto y = {(pilesOfComponents[components->ComponentId()][entity.id] = components)...};
+//        // TODO
+//    }
     template< class ... Component>
-    void set(std::shared_ptr<KktEntity> & entity, std::shared_ptr<Component> & ... components){
-        auto x = {(entity->components[components->ComponentId()] = true)...};
-        auto y = {(pilesOfComponents[components->ComponentId()][entity->id] = components)...};
+    void set(KktEntity & entity, Component & ... components){
+        auto x = {(entity.components[Component::ComponentId()] = true)...};
+        auto y = {setComp(entity, components)...};
+//        auto & y = {(pilesOfComponents[Component::ComponentId()][entity.id].reset(new Component(components)))...};
         // TODO
+    }
+    template< class Component>
+    int setComp(KktEntity & entity, Component & component){
+        (pilesOfComponents[Component::ComponentId()][entity.id].reset(new Component(component)));
+        return 0;
     }
     // removes components
     template< class ... Component>
@@ -168,14 +191,20 @@ public:
         auto y = {(pilesOfComponents[components->ComponentId()][entity->id] = std::make_shared<KktComponentBaseShit>())...};
         // TODO
     }
-
     template<class ... Components>
-    std::shared_ptr<KktEntity> createEntity(std::shared_ptr<Components> & ... components){
-        auto e = createEntity();
-        set<Components...>(e, components...);
+    KktFckr::KktEntity & createEntity(Components & ... components){
+        auto & e = createEntity();
+        set<Components...>(e, (components)...);
 
         return e;
     }
+//    template<class ... Components>
+//    KktFckr::KktEntity & createEntity(std::shared_ptr<Components> & ... components){
+//        auto & e = createEntity();
+//        set<Components...>(e, components...);
+//
+//        return e;
+//    }
 
     /** registerSystem **/
     template< class T, typename ... Args>

@@ -4,24 +4,24 @@
 #include "../kktecs.h"
 class ParticleComponent : public KktComponent<ParticleComponent>{
 public:
-    typedef enum class Type {
+     enum class Type {
         SPLASH,
         SNOW,
         RAIN
     };
 
-    typedef struct Splash {
+     struct Splash {
 
     };
-    typedef struct Snow {
+     struct Snow {
 
     };
-    typedef struct Rain {
+     struct Rain {
         float prevX;
         float prevY;
     };
 
-    typedef union Data {
+     union Data {
         Splash splash;
         Snow snow;
         Rain rain;

@@ -41,7 +41,7 @@ endif(MSVC)
 
 # gnu compiler or clang
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -ggdb3 -O0 -pg -Wall -std=c++17")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -ggdb3 -O3 -pg -Wall -std=c++17")
 	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++17")
 	if(D6R_PLATFORM STREQUAL "x86")
 
@@ -60,7 +60,7 @@ endif(MINGW)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DD6_DEBUG")
 
 # Renderer switch
-set(D6R_RENDERER "gl1")
+set(D6R_RENDERER "es2")
 
 #########################################################################
 #
@@ -79,6 +79,13 @@ if(D6R_RENDERER STREQUAL "gl1")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_RENDERER_GL1")
 	set(D6R_SOURCES ${D6R_SOURCES} source/renderer/GL1Renderer.h source/renderer/GL1Renderer.cpp)
 endif(D6R_RENDERER STREQUAL "gl1")
+
+if(D6R_RENDERER STREQUAL "gl4")
+    set(D6R_WITH_GLEW ON)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_GLEW")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_RENDERER_GL4")
+    set(D6R_SOURCES ${D6R_SOURCES} source/renderer/GL4Renderer.h source/renderer/GL4Renderer.cpp)
+endif(D6R_RENDERER STREQUAL "gl4")
 
 if(D6R_RENDERER STREQUAL "es2")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_RENDERER_GLES2")

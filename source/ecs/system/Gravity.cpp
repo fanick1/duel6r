@@ -4,9 +4,13 @@
 #include "../component/Position.h"
 
 void GravitySystem::update(float timeDelta, KktFckr & fckr) {
-    for (auto entity : fckr.getEntitiesWithComponents<PositionComponent>()) {
-        auto [p] = fckr.get<PositionComponent>(entity);
-        p->accY = GRAVITATIONAL_ACCELERATION * timeDelta;
+    PositionComponent * p;
+    constexpr float l = 4;
+    constexpr float l2 = 2;
+    auto acc = GRAVITATIONAL_ACCELERATION * timeDelta;
+    for (auto & entity : fckr.getEntitiesWithComponents<PositionComponent>()) {
+        fckr.get<PositionComponent>(*entity, &p);
+        p->accY = acc;
 
 //
 //        if (p->accX > 0) {
@@ -24,8 +28,7 @@ void GravitySystem::update(float timeDelta, KktFckr & fckr) {
 
         p->velocityY += p->accY;
         p->velocityX += p->accX;
-        constexpr float l = 4;
-        constexpr float l2 = 2;
+
         if (p->velocityX < 0.0f) {
             p->velocityX = std::min(p->velocityX + l2 * timeDelta, 0.0f);
         }

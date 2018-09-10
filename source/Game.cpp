@@ -57,32 +57,35 @@ namespace Duel6 {
             auto & ecs = appService.getKktFckr();
             auto screenWidth = appService.getVideo().getScreen().getClientWidth();
             auto screenHeight = appService.getVideo().getScreen().getClientHeight();
-            int particleCount = 5;
+            int particleCount = 20;
+            ColorComponent color;
+            ParticleComponent particle;
+            PositionComponent position;
                             for(auto i = 0; i < particleCount; i++){
-                                auto color = std::make_shared<ColorComponent>();
-                                color -> r = 130;
-                                color -> g = 130;
-                                color -> b = 255;
-                                auto particle = std::make_shared<ParticleComponent>();
-                                particle -> size = 0.5 * (rand() % 10);
-                                auto position = std::make_shared<PositionComponent>();
-                                particle -> remainingLife = 5;
-                                position -> accX = - 1;
-                                position -> velocityX = 0;
+                                //auto color = std::make_shared<ColorComponent>();
+                                color.r = 200;
+                                color .g = 200;
+                                color.b = 255;
+                               // auto particle = std::make_shared<ParticleComponent>();
+                                particle . size = 1 + 0.5 * (rand() % 10);
+                                //auto position = std::make_shared<PositionComponent>();
+                                particle . remainingLife = 2;
+                                position . accX = - 1;
+                                position . velocityX = 0;
                               //  position -> accY = - 1;
-                                position -> velocityY = - 1;
+                                position . velocityY = - 1;
 
-                                position -> x = rand() % screenWidth;
-                                position -> y = 23 + rand() % 3;
-
-
-                                particle ->type = ParticleComponent::Type::RAIN;
-                                auto & data = particle -> data.rain;
-                                data.prevX = position -> x;
-                                data.prevY = position -> y;
+                                position .x = rand() % screenWidth;
+                                position . y = 23 + rand() % 3;
 
 
-                                auto x = ecs.createEntity(color, particle, position);
+                                particle .type = ParticleComponent::Type::RAIN;
+                                auto & data = particle .data.rain;
+                                data.prevX = position . x;
+                                data.prevY = position . y;
+
+
+                                auto & x = ecs.createEntity(color, particle, position);
                             }
         }
     }

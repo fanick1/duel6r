@@ -12,24 +12,22 @@ int KktComponentBaseShit::component_type_counter = 0;
 int KktSystemBaseShit::system_type_counter = 0;
 
 
-std::vector<std::shared_ptr<KktFckr::KktEntity> > KktFckr::getEntitiesWithComponents(const std::vector<int> & componentIds) const{
+std::vector<KktFckr::KktEntity*> KktFckr::getEntitiesWithComponents(const std::vector<int> & componentIds) {
      KktEntity::mask_t mask;
      for(int c : componentIds){
          mask[c] = true;
      }
 
-     std::vector<std::shared_ptr<KktEntity> > result;
-     result.reserve(128);
+     std::vector<KktEntity*> result;
+     result.reserve(512);
      size_t index = startIndex;
      bool debug = false;
-     if(debug == false && bookKeeping.size() == 3){
-         debug = true;
-     }
+
      while(index < bookKeeping.size() && bookKeeping[index].valid){
          const auto & record = bookKeeping[index];
-         const auto & entity = pileOfEntities[index];
-         if((entity->components & mask) == mask){
-             result.push_back(entity);
+         KktEntity & entity = pileOfEntities[index];
+         if((entity.components & mask) == mask){
+             result.push_back(&entity);
          }
          if(index == record.next){
              break;
@@ -64,23 +62,26 @@ std::vector<std::shared_ptr<KktFckr::KktEntity> > KktFckr::getEntitiesWithCompon
          }
      }
  }
- std::shared_ptr<KktFckr::KktEntity> KktFckr::createEntity() {
-     std::shared_ptr<KktEntity> entity;
+ //std::shared_ptr<KktFckr::KktEntity>
+ KktFckr::KktEntity & KktFckr::createEntity() {
      if(freeSlots.empty()){
-         entity = std::shared_ptr<KktEntity>(new KktEntity(entityCount++, *this));
-         pileOfEntities.push_back(entity);
+        // entity = std::shared_ptr<KktEntity>(new KktEntity(entityCount++, *this));
+         KktEntity & entity =  pileOfEntities.emplace_back(KktEntity(entityCount++, *this));
+//         KktEntity & entity = pileOfEntities.back();
+
          if(bookKeeping.size() == 0){
              startIndex = 0;
              bookKeeping.push_back({0,0, true});
          } else {
-             auto index = entity->id;
+             auto index = entity.id;
              auto prev = index - 1;
              bookKeeping[prev].next = index;
              bookKeeping.push_back({prev, index, true});
          }
          for(auto & componentPile : pilesOfComponents){
-             componentPile.push_back(std::shared_ptr<KktComponentBaseShit>(new KktComponentBaseShit()));
+             componentPile.push_back(std::make_unique<KktComponentBaseShit>());
          }
+         return entity;
      } else {
          auto index = freeSlots.top();
          freeSlots.pop();
@@ -100,12 +101,13 @@ std::vector<std::shared_ptr<KktFckr::KktEntity> > KktFckr::getEntitiesWithCompon
              }
          }
          valid = true || valid; // to avoid 'unused variable warning'
-         entity = pileOfEntities[index];
+         auto & entity = pileOfEntities[index];
          for(auto & componentPile : pilesOfComponents){
-             componentPile[index] = std::make_shared<KktComponentBaseShit>();
-             entity->components.reset();
+             componentPile[index] = std::make_unique<KktComponentBaseShit>();
+             entity.components.reset();
          }
+         return entity;
      }
 
-     return entity;
+
  }
