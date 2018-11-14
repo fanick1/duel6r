@@ -35,12 +35,15 @@
 #include "json/JsonValue.h"
 
 namespace Duel6 {
+    class PersonProfile;
+
     class Person {
     private:
         std::string name;
         Int32 shots;
         Int32 hits;
         Int32 kills;
+        Int32 deaths;
         Int32 assistances;
         Int32 wins;
         Int32 penalties;
@@ -49,15 +52,17 @@ namespace Duel6 {
         Int32 totalGameTime;
         Int32 totalDamage;
         Int32 assistedDamage;
+        PersonProfile *profile;
 
     public:
         Person()
-                : shots(0), hits(0), kills(0), assistances(0), wins(0), penalties(0), games(0), timeAlive(0), totalGameTime(0),
-                  totalDamage(0), assistedDamage(0) {}
+                : shots(0), hits(0), kills(0), deaths(0), assistances(0), wins(0), penalties(0), games(0), timeAlive(0), totalGameTime(0),
+                  totalDamage(0), assistedDamage(0), profile(nullptr) {}
 
-        explicit Person(const std::string &name)
+        explicit Person(const std::string &name, PersonProfile *profile)
                 : Person() {
             this->name = name;
+            this->profile = profile;
         }
 
         const std::string &getName() const {
@@ -74,6 +79,10 @@ namespace Duel6 {
 
         Int32 getKills() const {
             return kills;
+        }
+
+        Int32 getDeaths() const {
+            return deaths;
         }
 
         Int32 getAssistances() const {
@@ -134,7 +143,10 @@ namespace Duel6 {
             this->kills += kills;
             return *this;
         }
-
+        Person &addDeaths(Int32 deaths) {
+            this->deaths += deaths;
+            return *this;
+        }
         Person &addAssistances(Int32 assistances) {
             this->assistances += assistances;
             return *this;
@@ -142,6 +154,7 @@ namespace Duel6 {
 
         Person &addPenalties(Int32 penalties) {
             this->penalties += penalties;
+
             return *this;
         }
 
@@ -169,6 +182,15 @@ namespace Duel6 {
 
         void addAssistedDamage(Int32 damageCaused) {
             this->assistedDamage += damageCaused;
+        }
+
+        PersonProfile *getProfile() const {
+            return profile;
+        }
+
+        Person &setProfile(PersonProfile *profile) {
+            this->profile = profile;
+            return *this;
         }
 
         bool hasHigherScoreThan(const Person &person) const {

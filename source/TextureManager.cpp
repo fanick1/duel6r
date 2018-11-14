@@ -45,8 +45,7 @@ namespace Duel6 {
 
     const TextureList TextureManager::loadList(const std::string &path, TextureFilter filtering, bool clamp,
                                            const SubstitutionTable &substitutionTable) {
-        std::vector<std::string> textureFiles;
-        File::listDirectory(path, textureFileExtension, textureFiles);
+        std::vector<std::string> textureFiles = File::listDirectory(path, textureFileExtension);
         std::sort(textureFiles.begin(), textureFiles.end());
 
         TextureList list;
@@ -64,8 +63,7 @@ namespace Duel6 {
     }
 
     const TextureDictionary TextureManager::loadDict(const std::string &path, TextureFilter filtering, bool clamp) {
-        std::vector<std::string> textureFiles;
-        File::listDirectory(path, textureFileExtension, textureFiles);
+        std::vector<std::string> textureFiles = File::listDirectory(path, textureFileExtension);
 
         TextureDictionary dict;
         for (std::string &file : textureFiles) {

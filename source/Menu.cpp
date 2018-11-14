@@ -57,7 +57,7 @@ namespace Duel6 {
 
         Json::Parser parser;
         Json::Value json = parser.parse(filePath);
-        persons.fromJson(json.get("persons"));
+        persons.fromJson(json.get("persons"), personProfiles);
 
         for (const Person &person : persons.list()) {
             personListBox->addItem(person.getName());
@@ -499,7 +499,7 @@ namespace Duel6 {
         const std::string &personName = textbox->getText();
 
         if (!personName.empty() && !persons.contains(personName)) {
-            persons.add(Person(personName));
+            persons.add(Person(personName, nullptr));
             personListBox->addItem(personName);
             rebuildTable();
             textbox->flush();
@@ -617,18 +617,23 @@ namespace Duel6 {
     void Menu::loadPersonProfiles(const std::string &path) {
         appService.getConsole().printLine("\n===Person profile initialization===");
 
-        std::vector<std::string> profileDirs;
-        File::listDirectory(path, "", profileDirs);
+        std::vector<std::string> profileDirs = File::listDirectory(path, "");
         for (auto &profileName : profileDirs) {
             std::string profilePath = Format("{0}/{1}/") << path << profileName;
-            personProfiles.insert(std::make_pair(profileName, PersonProfile(sound, profilePath)));
+            auto profile = std::make_unique<PersonProfile>(profileName, profilePath);
+            profile->loadSounds(sound);
+            profile->loadSkinColors();
+            profile->loadScripts(appService.getScriptManager());
+            personProfiles.insert(std::make_pair(profileName, std::move(profile)));
         }
+
+        appService.getConsole().printLine("");
     }
 
     PersonProfile *Menu::getPersonProfile(const std::string &name) {
         auto profile = personProfiles.find(name);
         if (profile != personProfiles.end()) {
-            return &profile->second;
+            return profile->second.get();
         }
 
         return nullptr;

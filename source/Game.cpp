@@ -41,7 +41,7 @@ namespace Duel6 {
     }
 
     void Game::beforeClose(Context *nextContext) {
-        endRound();
+        round->end();
     }
 
     void Game::render() const {
@@ -63,13 +63,15 @@ namespace Duel6 {
             close();
             return;
         }
+        if (event.getCode() == SDLK_TAB && (!getRound().hasWinner())) {
+            displayScoreTab = !displayScoreTab;
+        }
 
         if (!getRound().isLast()) {
             if (event.getCode() == SDLK_F1 && (getRound().hasWinner() || event.withShift())) {
                 nextRound();
                 return;
             }
-
             if (getRound().hasWinner() && ((D6_GAME_OVER_WAIT - getRound().getRemainingGameOverWait()) > 3.0f)) {
                 nextRound();
                 return;
@@ -126,8 +128,9 @@ namespace Duel6 {
     }
 
     void Game::nextRound() {
+        displayScoreTab = false;
         if (playedRounds != 0) {
-            endRound();
+            round->end();
             menu->savePersonData();
         }
 
@@ -139,15 +142,10 @@ namespace Duel6 {
         Console &console = appService.getConsole();
         console.printLine(Format("\n===Loading level {0}===") << levelPath);
         console.printLine(Format("...Parameters: mirror: {0}") << mirror);
-        round = std::make_unique<Round>(*this, playedRounds, players, levelPath, mirror);
 
+        round = std::make_unique<Round>(*this, playedRounds, levelPath, mirror);
         playedRounds++;
-        resources.getRoundStartSound().play();
-    }
 
-    void Game::endRound() {
-        for (Player &player : players) {
-            player.endRound();
-        }
+        round->start();
     }
 }

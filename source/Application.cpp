@@ -25,6 +25,9 @@
 * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef D6_SCRIPTING_LUA
+    #include <lua.hpp>
+#endif
 #include "VideoException.h"
 #include "InfoMessageQueue.h"
 #include "Game.h"
@@ -35,7 +38,7 @@
 
 namespace Duel6 {
     namespace {
-        static const Float64 updateTime = 1.0 / D6_UPDATE_FREQUENCY;
+        const Float64 updateTime = 1.0 / D6_UPDATE_FREQUENCY;
     }
 
     namespace {
@@ -70,9 +73,11 @@ namespace Duel6 {
     }
 
     Application::Application()
-            : console(Console::ExpandFlag), textureManager(D6_TEXTURE_EXTENSION), input(console), controlsManager(input), sound(20, console),
-              service(font, console, textureManager, video, input, controlsManager, sound),
-              menu(service), requestClose(false) {}
+            : console(Console::ExpandFlag), textureManager(D6_TEXTURE_EXTENSION),
+              input(console), controlsManager(input),sound(20, console),
+              scriptContext(console, sound, gameSettings), scriptManager(scriptContext),
+              service(font, console, textureManager, video, input, controlsManager, sound, scriptManager),
+              menu(service), game(service, gameResources, gameSettings), requestClose(false) {}
 
     Application::~Application() {
         tearDown();
@@ -94,7 +99,7 @@ namespace Duel6 {
                 console.toggle();
                 if (console.isActive()) {
                     SDL_StartTextInput();
-                } else if (context.is(*game)) {
+                } else if (context.is(game)) {
                     SDL_StopTextInput();
                 }
             }
@@ -222,6 +227,11 @@ namespace Duel6 {
         console.printLine(
                 Format("SDL_ttf version: {0}.{1}.{2}") << ttfVersion->major << ttfVersion->minor << ttfVersion->patch);
 
+#ifdef D6_SCRIPTING_LUA
+        const lua_Number *luaVersion = lua_version(nullptr);
+        console.printLine(Format("Lua version: {0}") << *luaVersion);
+#endif
+
         Console::registerBasicCommands(console);
         ConsoleCommands::registerCommands(console, service, menu, gameSettings);
 
@@ -229,16 +239,17 @@ namespace Duel6 {
         font.load(D6_FILE_TTF_FONT, console);
 
         video.initialize(APP_NAME, APP_FILE_ICON, console);
-        menu.initialize();
 
-        gameResources = std::make_unique<GameResources>(service);
-        game = std::make_unique<Game>(service, *gameResources, gameSettings);
-        menu.setGameReference(game.get());
-        game->setMenuReference(&menu);
+        gameResources.load(service);
+        menu.setGameReference(game);
+        game.setMenuReference(&menu);
 
         for (Weapon weapon : Weapon::values()) {
             gameSettings.enableWeapon(weapon, true);
         }
+
+        scriptManager.registerLoaders();
+        menu.initialize();
 
         // Execute config script and command line arguments
         console.printLine("\n===Config===");

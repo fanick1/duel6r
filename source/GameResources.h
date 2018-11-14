@@ -50,7 +50,7 @@ namespace Duel6 {
         std::unordered_map<Size, TextureList> fireTextures;
 
     public:
-        explicit GameResources(AppService &appService);
+        void load(AppService &appService);
 
         const Block::Meta &getBlockMeta() const {
             return blockMeta;

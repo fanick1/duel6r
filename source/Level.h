@@ -50,6 +50,7 @@ namespace Duel6 {
         std::vector<Uint16> levelData;
         Uint16 waterBlock;
         Int32 waterLevel;
+        bool raisingWater;
 
     public:
         Level(const std::string &path, bool mirror, const Block::Meta &blockMeta);
@@ -67,21 +68,25 @@ namespace Duel6 {
         }
 
         bool isEmpty(Int32 x, Int32 y) const {
-            return isInside(x, y) ? getBlockMeta(x, y).is(Block::EmptySpace) : false;
+            return isInside(x, y) ? getBlockMeta(x, y).is(Block::Type::EmptySpace) : false;
         }
 
         bool isWater(Int32 x, Int32 y) const {
-            return isInside(x, y) ? getBlockMeta(x, y).is(Block::Water) : false;
+            return isInside(x, y) ? getBlockMeta(x, y).is(Block::Type::Water) : false;
         }
 
         bool isWall(Int32 x, Int32 y, bool outside) const {
-            return isInside(x, y) ? getBlockMeta(x, y).is(Block::Wall) : outside;
+            return isInside(x, y) ? getBlockMeta(x, y).is(Block::Type::Wall) : outside;
         }
 
         bool isWall(Float32 x, Float32 y, bool outside) const {
             Int32 ix = (Int32) floorf(x);
             Int32 iy = (Int32) floorf(y);
             return isWall(ix, iy, outside);
+        }
+
+        bool isInside(Int32 x, Int32 y) const {
+            return (x >= 0 && x < width && y >= 0 && y < height);
         }
 
         const Block &getBlockMeta(Int32 x, Int32 y) const {
@@ -96,16 +101,16 @@ namespace Duel6 {
 
         void findTopmostNonWallPositions(StartingPositionList &startingPositions);
 
+        Int32 getWaterLevel() const;
+
+        bool isRaisingWater() const;
+
     private:
         void load(const std::string &path, bool mirror);
 
         void mirrorLevelData();
 
         bool isPossibleStartingPosition(Int32 x, Int32 y);
-
-        bool isInside(Int32 x, Int32 y) const {
-            return (x >= 0 && x < width && y >= 0 && y < height);
-        }
 
         Uint16 getBlock(Int32 x, Int32 y) const {
             return levelData[(height - y - 1) * width + x];

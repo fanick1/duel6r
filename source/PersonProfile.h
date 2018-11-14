@@ -30,15 +30,28 @@
 
 #include "PlayerSkinColors.h"
 #include "PlayerSounds.h"
+#include "Person.h"
+#include "script/ScriptManager.h"
+#include "script/PersonScriptContext.h"
 
 namespace Duel6 {
     class PersonProfile {
     private:
+        std::string profileName;
+        std::string profileRoot;
         PlayerSkinColors skinColors;
         PlayerSounds sounds;
+        Script::PersonScriptContext scriptContext;
+        Script::ScriptManager::PersonScriptList scripts;
 
     public:
-        PersonProfile(Sound &sound, const std::string &profileRoot);
+        explicit PersonProfile(const std::string &profileName, const std::string &profileRoot);
+
+        void loadSounds(Sound &sound);
+
+        void loadSkinColors();
+
+        void loadScripts(Script::ScriptManager &scriptManager);
 
         PlayerSkinColors &getSkinColors() {
             return skinColors;
@@ -51,7 +64,13 @@ namespace Duel6 {
         const PlayerSounds &getSounds() const {
             return sounds;
         }
+
+        Script::ScriptManager::PersonScriptList &getScripts() {
+            return scripts;
+        }
     };
+
+    typedef std::unordered_map<std::string, std::unique_ptr<PersonProfile>> PersonProfileList;
 }
 
 #endif

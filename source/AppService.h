@@ -34,6 +34,7 @@
 #include "TextureManager.h"
 #include "PlayerControls.h"
 #include "Video.h"
+#include "script/ScriptManager.h"
 
 namespace Duel6 {
     class AppService {
@@ -45,12 +46,13 @@ namespace Duel6 {
         Input &input;
         PlayerControlsManager &controlsManager;
         Sound &sound;
+        Script::ScriptManager &scriptManager;
 
     public:
         AppService(Font &font, Console &console, TextureManager &textureManager, Video &video, Input &input,
-                   PlayerControlsManager &controlsManager, Sound &sound)
+                PlayerControlsManager &controlsManager, Sound &sound, Script::ScriptManager &scriptManager)
                 : font(font), console(console), textureManager(textureManager), video(video), input(input),
-                  controlsManager(controlsManager), sound(sound) {}
+                  controlsManager(controlsManager), sound(sound), scriptManager(scriptManager) {}
 
         Font &getFont() {
             return font;
@@ -77,6 +79,10 @@ namespace Duel6 {
         }
         Sound &getSound() {
             return sound;
+        }
+
+        Script::ScriptManager &getScriptManager() {
+            return scriptManager;
         }
     };
 }
