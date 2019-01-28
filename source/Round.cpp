@@ -176,15 +176,19 @@ namespace Duel6 {
             }
         }
 
+        Uint32 playerId = 0;
         for (Player &player : world.getPlayers()) {
             player.updateControllerStatus();
             scriptUpdate(player);
+            game.demo->nextPlayer(playerId++, player.getControllerStateRef());
+            //DEMO RECORDER - RECORD PLAYER CONTROLS
+            //DEMO PLAYER - SET PLAYER CONTROLS
             player.update(world, game.getSettings().getScreenMode(), elapsedTime);
             if (game.getSettings().isGhostEnabled() && !player.isInGame() && !player.isGhost()) {
                 player.makeGhost();
             }
         }
-
+        game.demo->nextFrame();
         world.update(elapsedTime);
 
         if (suddenDeathMode) {

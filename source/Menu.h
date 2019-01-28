@@ -29,6 +29,7 @@
 #define DUEL6_MENU_H
 
 #include <vector>
+#include <memory>
 #include <unordered_map>
 #include "Type.h"
 #include "Context.h"
@@ -48,7 +49,7 @@
 #include "gui/TextBox.h"
 #include "gui/Spinner.h"
 #include "GameMode.h"
-
+#include "demo/Demo.h"
 namespace Duel6 {
     class Game; // Forward, TODO: Remove
 
@@ -67,6 +68,7 @@ namespace Duel6 {
         PlayerSounds defaultPlayerSounds;
         LevelList levelList;
         PersonList persons;
+        std::unique_ptr<PersonList> demoPersons;
         Gui::ListBox *personListBox;
         Gui::ListBox *playerListBox;
         Gui::ListBox *scoreListBox;
@@ -82,7 +84,7 @@ namespace Duel6 {
         Texture menuBannerTexture;
         Sound::Track menuTrack;
         bool playMusic;
-
+        std::unique_ptr<Demo> demo;
     public:
         explicit Menu(AppService &appService);
 

@@ -41,7 +41,7 @@ endif (MSVC)
 
 # gnu compiler or clang
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++17")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb3 -Wall -std=c++17")
     if (D6R_PLATFORM STREQUAL "x86")
 
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse -msse2")
@@ -74,6 +74,16 @@ set(D6R_WITH_LUA ON)     # Enable/disable lua scripting
 
 # set the list of source files
 set(D6R_SOURCES
+        source/demo/Demo.h
+        source/demo/Demo.cpp
+        source/demo/DemoFrame.h
+        source/demo/DemoFrame.cpp
+        source/demo/DemoRound.h
+        source/demo/DemoRound.cpp
+        source/demo/DemoPlayer.h
+        source/demo/DemoPlayer.cpp
+        source/demo/DemoRecorder.h
+        source/demo/DemoRecorder.cpp
         source/AnimationLooping.h
         source/Application.cpp
         source/Application.h

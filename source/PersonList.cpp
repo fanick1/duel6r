@@ -53,6 +53,7 @@ namespace Duel6 {
 
     void PersonList::fromJson(const Json::Value &json, PersonProfileList &profileList) {
         persons.clear();
+        persons.reserve(json.getLength());
         for (Size i = 0; i < json.getLength(); i++) {
             persons.push_back(Person::fromJson(json.get(i)));
 

@@ -622,6 +622,8 @@ namespace Duel6 {
 
         void die();
 
+        Uint32 & getControllerStateRef();
+
     private:
         void makeMove(const Level &level, Float32 elapsedTime);
 

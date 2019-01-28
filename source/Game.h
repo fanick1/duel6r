@@ -44,8 +44,10 @@
 #include "GameSettings.h"
 #include "GameResources.h"
 #include "Round.h"
-
+#include "demo/Demo.h"
 namespace Duel6 {
+    class Demo;
+
     class GameMode;
 
     class Menu;
@@ -101,10 +103,12 @@ namespace Duel6 {
         std::vector<Player> players;
         std::vector<PlayerSkin> skins;
         bool displayScoreTab = false;
+
     public:
+        Demo * demo;
         Game(AppService &appService, GameResources &resources, GameSettings &settings);
 
-        void start(const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
+        void start(Demo * demo, const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
                    const std::vector<Size> &backgrounds, ScreenMode screenMode, Int32 screenZoom, GameMode &gameMode);
 
         void keyEvent(const KeyPressEvent &event) override;

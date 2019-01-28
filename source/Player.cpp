@@ -800,4 +800,8 @@ namespace Duel6 {
         Int32 timeAlive = Int32((clock() - roundStartTime) / CLOCKS_PER_SEC);
         getPerson().addTimeAlive(timeAlive);
     }
+
+    Uint32 & Player::getControllerStateRef() {
+        return controllerState;
+    }
 }

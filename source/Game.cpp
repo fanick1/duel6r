@@ -93,9 +93,10 @@ namespace Duel6 {
 
     void Game::joyDeviceRemovedEvent(const JoyDeviceRemovedEvent & event) {}
 
-    void Game::start(const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
+    void Game::start(Demo * demo, const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
                      const std::vector<Size> &backgrounds, ScreenMode screenMode, Int32 screenZoom,
                      GameMode &gameMode) {
+        this->demo = demo;
         Console &console = appService.getConsole();
         console.printLine("\n=== Starting new game ===");
         console.printLine(Format("...Rounds: {0}") << settings.getMaxRounds());
@@ -107,14 +108,12 @@ namespace Duel6 {
         }
         skins.clear();
 
-        Size playerIndex = 0;
         players.reserve(playerDefinitions.size());
         for (const PlayerDefinition &playerDef : playerDefinitions) {
             console.printLine(Format("...Generating player for person: {0}") << playerDef.getPerson().getName());
             skins.push_back(PlayerSkin(playerDef.getColors(), textureManager, resources.getPlayerAnimation()));
             players.emplace_back(
                     playerDef.getPerson(), skins.back(), playerDef.getSounds(), playerDef.getControls());
-            playerIndex++;
         }
 
         this->levels = levels;

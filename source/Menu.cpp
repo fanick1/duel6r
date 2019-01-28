@@ -26,6 +26,7 @@
 */
 
 #include <stdlib.h>
+#include <memory>
 #include "Sound.h"
 #include "Video.h"
 #include "PlayerControls.h"
@@ -442,14 +443,43 @@ namespace Duel6 {
 
         GameMode &selectedMode = *gameModes[gameModeSwitch->currentItem()];
 
+        if(demo == nullptr) {
+            demo = std::make_unique<Demo>(true, false, game->getSettings().getMaxRounds());
+            //demo set selectedMode
+        } else {
+            demo->recording = false;
+            demo->playing = true;
+            demo->rewind();
+        }
+        demoPersons = std::make_unique<PersonList>();
         std::vector<Game::PlayerDefinition> playerDefinitions;
-        for (Size i = 0; i < playerListBox->size(); i++) {
-            Person &person = persons.getByName(playerListBox->getItem(i));
-            auto profile = getPersonProfile(person.getName());
-            const PlayerControls &controls = controlsManager.get(controlSwitch[i]->currentValue().first);
-            PlayerSkinColors colors = profile ? profile->getSkinColors() : PlayerSkinColors::makeRandom();
-            const PlayerSounds &sounds = profile ? profile->getSounds() : defaultPlayerSounds;
-            playerDefinitions.push_back(Game::PlayerDefinition(person, colors, sounds, controls));
+        if(demo->playing){
+
+            for (const DemoPlayerProfile & demoPlayerProfile : demo->players){
+                demoPersons->add(Person(demoPlayerProfile.name, nullptr));
+            }
+            for (const DemoPlayerProfile & demoPlayerProfile : demo->players){
+                Person &person = demoPersons->getByName(demoPlayerProfile.name);// demoPersons->get(demoPersons->getLength()-1);
+                auto profile = getPersonProfile(person.getName());
+                const PlayerControls &controls = controlsManager.get(0);
+                PlayerSkinColors colors = demoPlayerProfile.skinColors;
+                const PlayerSounds &sounds = profile ? profile->getSounds() : defaultPlayerSounds;
+                playerDefinitions.push_back(Game::PlayerDefinition(person, colors, sounds, controls));
+            }
+        } else {
+            for (Size i = 0; i < playerListBox->size(); i++) {
+                Person &person = persons.getByName(playerListBox->getItem(i));
+                auto profile = getPersonProfile(person.getName());
+                const PlayerControls &controls = controlsManager.get(controlSwitch[i]->currentValue().first);
+                PlayerSkinColors colors = profile ? profile->getSkinColors() : PlayerSkinColors::makeRandom();
+                const PlayerSounds &sounds = profile ? profile->getSounds() : defaultPlayerSounds;
+                playerDefinitions.push_back(Game::PlayerDefinition(person, colors, sounds, controls));
+            }
+            if(demo->recording){
+                for(const auto & player : playerDefinitions){
+                    demo->players.emplace_back(player.getPerson().getName(), player.getColors());
+                }
+            }
         }
         selectedMode.initializePlayers(playerDefinitions);
 
@@ -476,7 +506,9 @@ namespace Duel6 {
 
         // Start
         Context::push(*game);
-        game->start(playerDefinitions, levels, backgrounds, screenMode, screenZoom, selectedMode);
+
+
+        game->start(demo.get(), playerDefinitions, levels, backgrounds, screenMode, screenZoom, selectedMode);
     }
 
     void Menu::addPlayer(Int32 index) {
