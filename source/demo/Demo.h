@@ -23,7 +23,7 @@ namespace Duel6 {
         typedef std::list<DemoRound> DemoRoundList;
     private:
         bool finished = false;
-
+        bool ended = false;
         Uint32 maxRounds; // e.g. 30
         DemoRoundList rounds;
         DemoRoundList::iterator currentRound;
@@ -36,6 +36,7 @@ namespace Duel6 {
 
         Uint32 frameId = 0;
 
+        Uint32 initialSeed = 0;
         bool roundEnded(); // currently played level has come to an end
         void nextRound(std::unique_ptr<Level> & level);
         void roundStart(std::vector<Player> & players);
@@ -43,7 +44,9 @@ namespace Duel6 {
         void nextFrame();
         void nextPlayer(Uint32 id, Uint32 & controllerState);
         void rewind();
-
+        bool hasEnded();
+        bool isFinished();
+        void markEndOfDemo();
         DemoLevel & getLevel();
         DemoRound & getRound();
     };

@@ -15,7 +15,6 @@ namespace Duel6 {
         : maxRounds(maxRounds),
           recording(recording),
           playing(playing) {
-
     }
 
     bool Demo::roundEnded() {
@@ -26,7 +25,10 @@ namespace Duel6 {
     }
     void Demo::nextRound(std::unique_ptr<Level> & level) {
         if(recording){
-            rounds.push_back(DemoRound(this->players.size()));
+            if(beginning){
+                initialSeed = Math::getInitialSeed();
+            }
+            rounds.push_back(DemoRound(this->players.size(), initialSeed + frameId));
             if(beginning){
                 currentRound = rounds.begin();
                 beginning = false;
@@ -34,34 +36,59 @@ namespace Duel6 {
                 currentRound->markLastFrame();
                 currentRound++;
             }
-
             currentRound->nextRound(recording, playing, level);
         }
-        if(playing){
+        if(playing && !finished){
             if(beginning){
+                Math::reseed(initialSeed);
                 currentRound = rounds.begin();
                 beginning = false;
             } else {
                 currentRound++;
             }
-            currentRound->nextRound(recording, playing, level);
+            if(currentRound == rounds.end()){
+                finished = true;
+                ended = true;
+            } else {
+                currentRound->nextRound(recording, playing, level);
+            }
         }
     }
 
     void Demo::nextFrame() {
-        if(rounds.size() == 0){
-
+        if((playing || recording) && !ended) {
+            frameId ++;
+            currentRound->nextFrame(recording, playing);
+            ended = roundEnded();
         }
-        currentRound->nextFrame(recording, playing);
     }
 
     void Demo::nextPlayer(Uint32 id, Uint32 & controllerState){
-        currentRound->nextPlayer(recording, playing, id, controllerState);
+        if((playing || recording) && !ended) {
+            currentRound->nextPlayer(recording, playing, id, controllerState);
+        }
+    }
+
+    void Demo::markEndOfDemo() {
+        if(recording) {
+            currentRound->markLastFrame();
+        }
     }
 
     void Demo::rewind(){
         currentRound = rounds.begin();
         currentRound->rewind();
         beginning = true;
+        frameId = 0;
+        finished = false;
+        ended = false;
+    }
+
+    bool Demo::isFinished(){
+        return finished;
+    }
+
+    bool Demo::hasEnded(){
+        return ended;
     }
 }

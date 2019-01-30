@@ -178,7 +178,7 @@ namespace Duel6 {
         }
 
         bool isOver() const {
-            return getRound().isLast() && getRound().isOver();
+            return (getRound().isLast() && getRound().isOver()) || (demo->playing && demo->hasEnded());
         }
 
         bool isDisplayingScoreTab() const {

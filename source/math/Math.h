@@ -39,7 +39,8 @@ namespace Duel6 {
     public:
         static const Float64 Pi;
         static std::random_device randomDevice;
-        static std::default_random_engine randomEngine;
+        static std::random_device::result_type initialSeed;
+        static std::minstd_rand0 randomEngine;
 
     public:
         template<class T>
@@ -106,6 +107,10 @@ namespace Duel6 {
             Float32 diff = std::abs(left - right);
             return std::min(diff, 360.0f - diff);
         }
+
+        static std::random_device::result_type getInitialSeed();
+
+        static void reseed(std::minstd_rand0::result_type seed);
 
         static Int32 random(Int32 max);
 

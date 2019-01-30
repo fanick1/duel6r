@@ -55,6 +55,7 @@ namespace Duel6 {
         bool beginning = true;
         bool ended = false;
         bool finished = false;
+        Uint32 seed = 0;
     public:
         DemoFrameList frames;
         DemoFrame currentFrame;
@@ -69,7 +70,7 @@ namespace Duel6 {
         void markLastFrame();
         void roundStart(bool recording, bool playing, std::vector<Player> & players);
         void nextRound(bool recording, bool playing, std::unique_ptr<Level> & level);
-        DemoRound(size_t playerCount);
+        DemoRound(size_t playerCount, Uint32 seed);
         void nextFrame(bool recording, bool playing);
         void nextPlayer(bool recording, bool playing, Uint32 id, Uint32 & controllerState);
         void rewind();

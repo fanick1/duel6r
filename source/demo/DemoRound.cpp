@@ -49,8 +49,9 @@ namespace Duel6 {
         }
         return result;
     }
-    DemoRound::DemoRound(size_t playerCount)
-        : playerDataStart(playerCount),
+    DemoRound::DemoRound(size_t playerCount, Uint32 seed)
+        : seed(seed),
+          playerDataStart(playerCount),
           playerData(playerCount) {
         frames.push_back(currentFrame);
         framesIterator = frames.begin();
@@ -117,6 +118,7 @@ namespace Duel6 {
         lastFrameId = frameId;
     }
     void DemoRound::nextFrame(bool recording, bool playing) {
+        Math::reseed(seed + frameId);
         if (recording) {
             if (currentFrame.controllerState.empty()) {
                 currentFrame.frameId = frameId;
@@ -133,6 +135,7 @@ namespace Duel6 {
                     finished = true;
                 }
             }
+
         }
 
         frameId ++;
@@ -175,6 +178,9 @@ namespace Duel6 {
                 playerData[id].controllerState = controllerState;
                 return;
             }
+        }
+        if (playing && finished) {
+            controllerState = playerData[id].controllerState; // to freeze players controls for the rest of the round's replay
         }
     }
 }

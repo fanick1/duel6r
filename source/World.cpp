@@ -66,7 +66,8 @@ namespace Duel6 {
 
         // Add new bonuses
         Int32 mod = Int32(3.0f / elapsedTime);
-        if (mod != 0 && Math::random(mod) == 0) {
+        auto r1 = Math::random(1000000);
+        if (mod != 0 && r1 % (mod) == 0) {
             bonusList.addRandomBonus();
         }
 

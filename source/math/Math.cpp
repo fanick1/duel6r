@@ -31,7 +31,8 @@
 
 namespace Duel6 {
     std::random_device Math::randomDevice;
-    std::default_random_engine Math::randomEngine(randomDevice());
+    std::random_device::result_type Math::initialSeed = Math::randomDevice();
+    std::minstd_rand0 Math::randomEngine(Math::initialSeed);
     const Float64 Math::Pi = 3.14159265358979323846;
 
     Int32 Math::random(Int32 max) {
@@ -51,5 +52,14 @@ namespace Duel6 {
     Float64 Math::random(Float64 min, Float64 max) {
         std::uniform_real_distribution<Float64> uniformDistribution(min, max);
         return uniformDistribution(randomEngine);
+    }
+
+    std::random_device::result_type Math::getInitialSeed() {
+        return Math::initialSeed;
+    }
+
+    void Math::reseed(std::minstd_rand0::result_type seed) {
+        Math::randomEngine.seed(seed);
+        Math::randomEngine.discard(1000);
     }
 }

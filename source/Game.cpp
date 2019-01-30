@@ -49,9 +49,11 @@ namespace Duel6 {
     }
 
     void Game::update(Float32 elapsedTime) {
-        if (getRound().isOver() || (demo->playing && demo->roundEnded())) {
-            if (!getRound().isLast()) {
+        if (getRound().isOver() || (demo->playing && (demo->roundEnded() || demo->hasEnded()))) {
+            if (!getRound().isLast() && !(demo->playing && demo->hasEnded())) {
                 nextRound();
+            } else {
+                displayScoreTab = true;
             }
         } else {
             getRound().update(elapsedTime);
@@ -60,6 +62,9 @@ namespace Duel6 {
 
     void Game::keyEvent(const KeyPressEvent &event) {
         if (event.getCode() == SDLK_ESCAPE && (isOver() || event.withShift())) {
+            if(demo->recording) {
+                demo->markEndOfDemo();
+            }
             close();
             return;
         }
@@ -133,7 +138,9 @@ namespace Duel6 {
             round->end();
             menu->savePersonData();
         }
-
+        if(demo->playing && demo->hasEnded()){
+            return;
+        }
         bool shuffle = settings.getLevelSelectionMode() == LevelSelectionMode::Shuffle;
         Int32 level = shuffle ? playedRounds % Int32(levels.size()) : Math::random(Int32(levels.size()));
         const std::string levelPath = levels[level];
@@ -144,8 +151,10 @@ namespace Duel6 {
         console.printLine(Format("...Parameters: mirror: {0}") << mirror);
         std::unique_ptr<Level> levelData;
         if(demo->playing) {
-
             demo->nextRound(levelData);
+            if(demo->playing && demo->isFinished()){
+                return;
+            }
             DemoLevel & demoLevel = demo->getLevel();//  currentRound->level;
             levelData = std::make_unique<Level>(
                 demoLevel.width, demoLevel.height,
@@ -158,8 +167,6 @@ namespace Duel6 {
             levelData = std::make_unique<Level>(levelPath, mirror, resources.getBlockMeta());
             demo->nextRound(levelData);
         }
-
-
 
         round = std::make_unique<Round>(*this, playedRounds, std::move(levelData));
         playedRounds++;
