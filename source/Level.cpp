@@ -35,14 +35,14 @@ namespace Duel6 {
     Level::Level(const Int32 width, const Int32 height, const std::vector<Uint16> & levelData,
                  const Block::Meta &blockMeta,
                  const std::string & background,
-                 const std::vector<Elevator> & elevators)
+                 std::vector<Elevator> && elevators)
         : blockMeta(blockMeta),
           width(width),
           height(height),
           background(background),
           levelData(levelData),
           raisingWater(false),
-          elevators(elevators) {
+          elevators(std::move(elevators)) {
         waterBlock = findWaterType();
         waterLevel = findWaterLevel(waterBlock);
     }

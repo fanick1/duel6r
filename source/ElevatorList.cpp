@@ -40,6 +40,9 @@ namespace Duel6 {
 
     void ElevatorList::load(const std::vector<Elevator> & elevators) {
         this->elevators = elevators;
+        for(auto & elevator: this->elevators) {
+            elevator.start();
+        }
     }
 
     void ElevatorList::load(const std::string &path, bool mirror) {

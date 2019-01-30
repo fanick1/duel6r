@@ -96,7 +96,8 @@ namespace Duel6 {
             std::vector<DemoElevator> elevators;
             elevators.reserve(levelData->getElevators().size());
             for(const auto & elevator : levelData->getElevators()){
-                std::vector<Float32> controlPoints(elevator.getControlPoints().size() * 3);
+                std::vector<Float32> controlPoints;
+                controlPoints.reserve(elevator.getControlPoints().size() * 3);
                 for(const auto & controlPoint : elevator.getControlPoints()) {
                     controlPoints.push_back(controlPoint.getLocation().x);
                     controlPoints.push_back(controlPoint.getLocation().y);

@@ -147,13 +147,12 @@ namespace Duel6 {
 
             demo->nextRound(levelData);
             DemoLevel & demoLevel = demo->getLevel();//  currentRound->level;
-            auto elevators = demoLevel.generateElevators();
             levelData = std::make_unique<Level>(
                 demoLevel.width, demoLevel.height,
                 demoLevel.levelData,
                 resources.getBlockMeta(),
                 demoLevel.background,
-                elevators);
+                demoLevel.generateElevators());
         }
         if(demo->recording) {
             levelData = std::make_unique<Level>(levelPath, mirror, resources.getBlockMeta());
