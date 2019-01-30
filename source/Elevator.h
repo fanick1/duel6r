@@ -87,6 +87,13 @@ namespace Duel6 {
             return remainingWait > 0 ? Vector::ZERO : velocity;
         }
 
+        const std::vector<ControlPoint> & getControlPoints() const {
+            return controlPoints;
+        }
+
+        const bool isCircular() const {
+            return circular;
+        }
     private:
         void nextSection();
 

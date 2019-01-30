@@ -45,6 +45,8 @@ namespace Duel6 {
     public:
         ElevatorList(Texture texture);
 
+        void load(const std::vector<Elevator> & elevators);
+
         void load(const std::string &path, bool mirror);
 
         void add(Elevator &elevator);

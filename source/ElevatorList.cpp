@@ -38,6 +38,10 @@ namespace Duel6 {
         elevators.back().start();
     }
 
+    void ElevatorList::load(const std::vector<Elevator> & elevators) {
+        this->elevators = elevators;
+    }
+
     void ElevatorList::load(const std::string &path, bool mirror) {
         Json::Parser parser;
         Json::Value root = parser.parse(path);

@@ -49,7 +49,7 @@ namespace Duel6 {
     }
 
     void Game::update(Float32 elapsedTime) {
-        if (getRound().isOver()) {
+        if (getRound().isOver() || (demo->playing && demo->roundEnded())) {
             if (!getRound().isLast()) {
                 nextRound();
             }
@@ -142,8 +142,27 @@ namespace Duel6 {
         Console &console = appService.getConsole();
         console.printLine(Format("\n===Loading level {0}===") << levelPath);
         console.printLine(Format("...Parameters: mirror: {0}") << mirror);
+        std::unique_ptr<Level> levelData;
+        if(demo->playing) {
 
-        round = std::make_unique<Round>(*this, playedRounds, levelPath, mirror);
+            demo->nextRound(levelData);
+            DemoLevel & demoLevel = demo->getLevel();//  currentRound->level;
+            auto elevators = demoLevel.generateElevators();
+            levelData = std::make_unique<Level>(
+                demoLevel.width, demoLevel.height,
+                demoLevel.levelData,
+                resources.getBlockMeta(),
+                demoLevel.background,
+                elevators);
+        }
+        if(demo->recording) {
+            levelData = std::make_unique<Level>(levelPath, mirror, resources.getBlockMeta());
+            demo->nextRound(levelData);
+        }
+
+
+
+        round = std::make_unique<Round>(*this, playedRounds, std::move(levelData));
         playedRounds++;
 
         round->start();

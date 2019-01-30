@@ -9,6 +9,7 @@
 namespace Duel6 {
     class GameMode;
 
+    class Player;
 
     class DemoPlayerProfile {
     public:
@@ -26,21 +27,25 @@ namespace Duel6 {
         Uint32 maxRounds; // e.g. 30
         DemoRoundList rounds;
         DemoRoundList::iterator currentRound;
+        bool beginning = true;
     public:
-        bool playing = false;
         bool recording = true;
+        bool playing = false;
+
         DemoPlayerList players;
 
         Uint32 frameId = 0;
 
-        //playerList
-        //levelList
-
-
+        bool roundEnded(); // currently played level has come to an end
+        void nextRound(std::unique_ptr<Level> & level);
+        void roundStart(std::vector<Player> & players);
         Demo(bool recording, bool playing, Uint32 maxRounds);
         void nextFrame();
         void nextPlayer(Uint32 id, Uint32 & controllerState);
         void rewind();
+
+        DemoLevel & getLevel();
+        DemoRound & getRound();
     };
 }
 

@@ -373,6 +373,8 @@ namespace Duel6 {
             return collider.position;
         }
 
+        void setPosition(Int32 startBlockX, Int32 startBlockY);
+
         Vector getDimensions() const {
             return collider.dimensions;
         }
@@ -438,6 +440,10 @@ namespace Duel6 {
             return ammo;
         }
 
+        void setAmmo(Int32 ammo) {
+            this->ammo = ammo;
+        }
+
         Int32 getRoundKills() const {
             return roundKills;
         }
@@ -448,6 +454,10 @@ namespace Duel6 {
 
         Orientation getOrientation() const {
             return orientation;
+        }
+
+        void setOrientation(Orientation orientation) {
+            this->orientation = orientation;
         }
 
         Player &setAlpha(Float32 alpha) {
@@ -623,6 +633,8 @@ namespace Duel6 {
         void die();
 
         Uint32 & getControllerStateRef();
+
+        void setWeapon(Weapon weapon, Int32 bullets);
 
     private:
         void makeMove(const Level &level, Float32 elapsedTime);

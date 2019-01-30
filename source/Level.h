@@ -28,11 +28,14 @@
 #ifndef DUEL6_LEVEL_H
 #define DUEL6_LEVEL_H
 
+#include <cmath>
 #include <string>
-#include <queue>
+#include <utility>
 #include <vector>
+
 #include "Block.h"
-#include "Water.h"
+#include "Elevator.h"
+#include "Type.h"
 
 namespace Duel6 {
     class Game;
@@ -51,8 +54,13 @@ namespace Duel6 {
         Uint16 waterBlock;
         Int32 waterLevel;
         bool raisingWater;
-
+        std::vector<Elevator> elevators;
     public:
+        Level(const Int32 width, const Int32 height, const std::vector<Uint16> & levelData,
+              const Block::Meta & blockMeta,
+              const std::string & background,
+              const std::vector<Elevator> & elevators);
+
         Level(const std::string &path, bool mirror, const Block::Meta &blockMeta);
 
         Int32 getWidth() const {
@@ -63,9 +71,15 @@ namespace Duel6 {
             return height;
         }
 
+        const std::vector<Uint16> &getLevelData() const {
+            return levelData;
+        }
+
         std::string getBackground() const {
             return background;
         }
+
+        const std::vector<Elevator> &getElevators();
 
         bool isEmpty(Int32 x, Int32 y) const {
             return isInside(x, y) ? getBlockMeta(x, y).is(Block::Type::EmptySpace) : false;
@@ -104,6 +118,7 @@ namespace Duel6 {
         Int32 getWaterLevel() const;
 
         bool isRaisingWater() const;
+
 
     private:
         void load(const std::string &path, bool mirror);

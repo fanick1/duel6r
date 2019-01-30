@@ -109,6 +109,8 @@ namespace Duel6 {
 
         static void initialize(Sound &sound, TextureManager &textureManager);
 
+        static const Weapon &getByName(const std::string &name);
+
         static const Weapon &getRandomEnabled(const GameSettings &settings);
     };
 }

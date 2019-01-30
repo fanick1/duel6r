@@ -25,6 +25,7 @@
 * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <algorithm>
 #include <iterator>
 #include <stdlib.h>
 #include "Sound.h"
@@ -149,7 +150,14 @@ namespace Duel6 {
     const std::vector<Weapon> &Weapon::values() {
         return weapons;
     }
+    const Weapon &Weapon::getByName(const std::string &name) {
+        std::vector<Weapon>::iterator it = std::find_if(weapons.begin(), weapons.end(), [&, name](const Weapon & weapon){return weapon.getName() == name;});
 
+        if(it != weapons.end()) {
+            return *it;
+        }
+        return weapons[0];
+    }
     const Weapon &Weapon::getRandomEnabled(const GameSettings &settings) {
         auto &enabledWeapons = settings.getEnabledWeapons();
         Size randomIndex = Math::random(enabledWeapons.size());

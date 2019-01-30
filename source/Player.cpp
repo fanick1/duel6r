@@ -87,7 +87,7 @@ namespace Duel6 {
 
     void Player::startRound(World &world, Int32 startBlockX, Int32 startBlockY, Int32 ammo, const Weapon &weapon) {
         this->world = &world;
-        collider.initPosition(Float32(startBlockX), Float32(startBlockY) + 0.0001f);
+        setPosition(startBlockX, startBlockY);
 
         sprite = world.getSpriteList().add(d6SAnim, skin.getTexture());
         sprite->setPosition(getSpritePosition(), 0.5f);
@@ -240,6 +240,14 @@ namespace Duel6 {
         } else {
             timeToReload = getReloadInterval();
         }
+    }
+
+    void Player::setWeapon(Weapon weapon, Int32 bullets) {
+        this->weapon = weapon;
+        ammo = bullets;
+
+        world->getSpriteList().remove(gunSprite);
+        gunSprite = weapon.makeSprite(world->getSpriteList());
     }
 
     Player &Player::pickWeapon(Weapon weapon, Int32 bullets, Float32 remainingReloadTime) {
@@ -803,5 +811,9 @@ namespace Duel6 {
 
     Uint32 & Player::getControllerStateRef() {
         return controllerState;
+    }
+
+    void Player::setPosition(Int32 startBlockX, Int32 startBlockY) {
+        collider.initPosition(Float32(startBlockX), Float32(startBlockY) + 0.0001f);
     }
 }
