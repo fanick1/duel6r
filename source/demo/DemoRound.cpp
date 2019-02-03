@@ -148,6 +148,7 @@ namespace Duel6 {
         if (frameId == 0) {
             if (recording) {
                 playerDataStart[id].controllerState = controllerState;
+                playerData[id].controllerState  = controllerState;
                 //playerDataStart[id].position = position; //TODO starting data - position, ammo, weapon, orientation
             }
             if (playing) {
