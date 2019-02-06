@@ -136,6 +136,7 @@ namespace Duel6 {
         void detectControls(Size playerIndex);
 
         void play();
+        void replay();
 
         void playPlayersSound(const std::string &name);
 

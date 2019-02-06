@@ -68,7 +68,7 @@ namespace Duel6 {
 
         bool hasEnded();
         void markLastFrame();
-        void roundStart(bool recording, bool playing, std::vector<Player> & players);
+        void roundStart(bool recording, bool playing, std::vector<Player> & players, const std::string & background);
         void nextRound(bool recording, bool playing, std::unique_ptr<Level> & level);
         DemoRound(size_t playerCount, Uint32 seed);
         void nextFrame(bool recording, bool playing);

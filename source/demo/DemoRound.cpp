@@ -67,8 +67,9 @@ namespace Duel6 {
         ended = false;
     }
 
-    void DemoRound::roundStart(bool recording, bool playing, std::vector<Player> & players) {
+    void DemoRound::roundStart(bool recording, bool playing, std::vector<Player> & players, const std::string & background) {
         if (recording) {
+            level->background = background;
             for (size_t i = 0; i < players.size(); i++) {
                 playerDataStart[i].ammo = players[i].getAmmo();
                 playerDataStart[i].controllerState = players[i].getControllerStateRef();

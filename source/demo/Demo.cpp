@@ -18,10 +18,10 @@ namespace Duel6 {
     }
 
     bool Demo::roundEnded() {
-        return currentRound->hasEnded();
+        return roundEnd;
     }
-    void Demo::roundStart(std::vector<Player> & players) {
-        currentRound->roundStart(recording, playing, players);
+    void Demo::roundStart(std::vector<Player> & players, const std::string & background) {
+        currentRound->roundStart(recording, playing, players, background);
     }
     void Demo::nextRound(std::unique_ptr<Level> & level) {
         if(recording){
@@ -39,6 +39,7 @@ namespace Duel6 {
             currentRound->nextRound(recording, playing, level);
         }
         if(playing && !finished){
+            roundEnd = false;
             if(beginning){
                 Math::reseed(initialSeed);
                 currentRound = rounds.begin();
@@ -48,7 +49,7 @@ namespace Duel6 {
             }
             if(currentRound == rounds.end()){
                 finished = true;
-                ended = true;
+                roundEnd = true;
             } else {
                 currentRound->nextRound(recording, playing, level);
             }
@@ -56,15 +57,15 @@ namespace Duel6 {
     }
 
     void Demo::nextFrame() {
-        if((playing || recording) && !ended) {
+        if((playing || recording) && !roundEnd) {
             frameId ++;
             currentRound->nextFrame(recording, playing);
-            ended = roundEnded();
+            roundEnd = currentRound->hasEnded();
         }
     }
 
     void Demo::nextPlayer(Uint32 id, Uint32 & controllerState){
-        if((playing || recording) && !ended) {
+        if((playing || recording) && !roundEnd) {
             currentRound->nextPlayer(recording, playing, id, controllerState);
         }
     }
@@ -81,14 +82,14 @@ namespace Duel6 {
         beginning = true;
         frameId = 0;
         finished = false;
-        ended = false;
+        roundEnd = false;
     }
 
     bool Demo::isFinished(){
         return finished;
     }
 
-    bool Demo::hasEnded(){
-        return ended;
+    bool Demo::isBeforeStart() {
+        return beginning;
     }
 }

@@ -49,14 +49,16 @@ namespace Duel6 {
     }
 
     void Game::update(Float32 elapsedTime) {
-        if (getRound().isOver() || (demo->playing && (demo->roundEnded() || demo->hasEnded()))) {
-            if (!getRound().isLast() && !(demo->playing && demo->hasEnded())) {
+        if (getRound().isOver() || (demo->playing && demo->roundEnded())) {
+            if (!getRound().isLast() && !(demo->playing && demo->isFinished())) {
                 nextRound();
             } else {
                 displayScoreTab = true;
             }
         } else {
-            getRound().update(elapsedTime);
+            if( ! (demo->playing && demo->isFinished())) {
+                getRound().update(elapsedTime);
+            }
         }
     }
 
@@ -138,7 +140,7 @@ namespace Duel6 {
             round->end();
             menu->savePersonData();
         }
-        if(demo->playing && demo->hasEnded()){
+        if(demo->playing && demo->isFinished()){
             return;
         }
         bool shuffle = settings.getLevelSelectionMode() == LevelSelectionMode::Shuffle;

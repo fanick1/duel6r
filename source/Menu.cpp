@@ -145,7 +145,12 @@ namespace Duel6 {
         addPersonButton->onClick([this](Gui::Button &) {
             addPerson();
         });
-
+        auto replayButton = new Gui::Button(gui);
+        replayButton->setPosition(815, 0, 100, 50);
+        replayButton->setCaption("RePlay ");
+        replayButton->onClick([this](Gui::Button &) {
+            replay();
+        });
         auto playButton = new Gui::Button(gui);
         playButton->setPosition(350, 0, 150, 50);
         playButton->setCaption("Play (F1)");
@@ -412,7 +417,12 @@ namespace Duel6 {
             profile->getSounds().getRandomSample(PlayerSounds::Type::GotHit).play();
         }
     }
-
+    void Menu::replay() {
+        demo->recording = false;
+        demo->playing = true;
+        demo->rewind();
+        play();
+    }
     void Menu::play() {
         if (playerListBox->size() < 2) {
             showMessage("Can't play alone ...");
@@ -443,13 +453,9 @@ namespace Duel6 {
 
         GameMode &selectedMode = *gameModes[gameModeSwitch->currentItem()];
 
-        if(demo == nullptr) {
+        if(demo == nullptr || demo->recording || !demo->isBeforeStart()) {
             demo = std::make_unique<Demo>(true, false, game->getSettings().getMaxRounds());
             //demo set selectedMode
-        } else {
-            demo->recording = false;
-            demo->playing = true;
-            demo->rewind();
         }
         demoPersons = std::make_unique<PersonList>();
         std::vector<Game::PlayerDefinition> playerDefinitions;
