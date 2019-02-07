@@ -119,6 +119,11 @@ namespace Duel6 {
         lastFrameId = frameId;
     }
     void DemoRound::nextFrame(bool recording, bool playing) {
+        frameId ++;
+        if(frameId == lastFrameId) {
+            ended = true;
+        }
+
         Math::reseed(seed + frameId);
         if (recording) {
             if (currentFrame.controllerState.empty()) {
@@ -129,7 +134,7 @@ namespace Duel6 {
             }
         }
         if(playing && !finished) { //TOODOOO
-            if(currentFrame.frameId <= frameId && ++framesIterator != frames.end()) {
+            if(currentFrame.frameId < frameId && ++framesIterator != frames.end()) {
                 currentFrame = *framesIterator;
             } else {
                 if(framesIterator == frames.end()) {
@@ -139,10 +144,6 @@ namespace Duel6 {
 
         }
 
-        frameId ++;
-        if(frameId == lastFrameId) {
-            ended = true;
-        }
 
     }
     void DemoRound::nextPlayer(bool recording, bool playing, Uint32 id, Uint32 & controllerState) {
