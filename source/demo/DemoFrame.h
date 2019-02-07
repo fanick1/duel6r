@@ -7,6 +7,7 @@
 namespace Duel6 {
     class DemoFrame {
     public:
+        //TODO switch to list
         std::vector<Uint32> controllerState; // for each player
         Uint32 frameId = 0;
         DemoFrame();

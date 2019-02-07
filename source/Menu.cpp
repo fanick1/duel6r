@@ -454,7 +454,7 @@ namespace Duel6 {
         GameMode &selectedMode = *gameModes[gameModeSwitch->currentItem()];
 
         if(demo == nullptr || demo->recording || !demo->isBeforeStart()) {
-            demo = std::make_unique<Demo>(true, false, game->getSettings().getMaxRounds());
+            demo = std::make_unique<Demo>(true, false, game->getSettings().getMaxRounds(), game->getSettings().isGlobalAssistances(), game->getSettings().isQuickLiquid());
             //demo set selectedMode
         }
         demoPersons = std::make_unique<PersonList>();

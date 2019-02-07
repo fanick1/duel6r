@@ -1,28 +1,35 @@
 #include "Demo.h"
 namespace Duel6 {
-     DemoLevel &Demo::getLevel() {
+    DemoLevel &Demo::getLevel() {
         return *(currentRound->level);
     }
-     DemoRound &Demo::getRound() {
+
+    DemoRound &Demo::getRound() {
         return *currentRound;
-     }
+    }
+
     DemoPlayerProfile::DemoPlayerProfile(const std::string name, const PlayerSkinColors & skinColors)
         : name(name),
           skinColors(skinColors) {
 
     }
-    Demo::Demo(bool recording, bool playing, Uint32 maxRounds)
+
+    Demo::Demo(bool recording, bool playing, Uint32 maxRounds, bool globalAssistances, bool quickLiquid)
         : maxRounds(maxRounds),
           recording(recording),
-          playing(playing) {
+          playing(playing),
+          globalAssistances(globalAssistances),
+          quickLiquid(quickLiquid) {
     }
 
     bool Demo::roundEnded() {
         return roundEnd;
     }
+
     void Demo::roundStart(std::vector<Player> & players, const std::string & background) {
         currentRound->roundStart(recording, playing, players, background);
     }
+
     void Demo::nextRound(std::unique_ptr<Level> & level) {
         if(recording){
             if(beginning){
@@ -91,5 +98,13 @@ namespace Duel6 {
 
     bool Demo::isBeforeStart() {
         return beginning;
+    }
+
+    bool Demo::getQuickLiquid() {
+        return quickLiquid;
+    }
+
+    bool Demo::getGlobalAssistances() {
+        return globalAssistances;
     }
 }

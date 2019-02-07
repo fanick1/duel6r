@@ -130,7 +130,13 @@ namespace Duel6 {
         this->gameMode = &gameMode;
         settings.setScreenMode(screenMode);
         settings.setScreenZoom(screenZoom);
-        gameMode.initializeGame(*this, players, settings.isQuickLiquid(), settings.isGlobalAssistances());
+        auto quickLiquid = settings.isQuickLiquid();
+        auto globalAssistances = settings.isGlobalAssistances();
+        if(demo->playing) {
+            quickLiquid = demo->getQuickLiquid();
+            globalAssistances = demo->getGlobalAssistances();
+        }
+        gameMode.initializeGame(*this, players, quickLiquid, globalAssistances);
         nextRound();
     }
 

@@ -28,19 +28,26 @@ namespace Duel6 {
         DemoRoundList rounds;
         DemoRoundList::iterator currentRound;
         bool beginning = true;
+        bool globalAssistances = false;
+        bool quickLiquid = false;
     public:
         bool recording = true;
         bool playing = false;
+
+        Demo(bool recording, bool playing, Uint32 maxRounds, bool globalAssistances, bool quickLiquid);
 
         DemoPlayerList players;
 
         Uint32 frameId = 0;
 
         Uint32 initialSeed = 0;
+        bool getQuickLiquid();
+        bool getGlobalAssistances();
+
         bool roundEnded(); // currently played level has come to an end
         void nextRound(std::unique_ptr<Level> & level);
         void roundStart(std::vector<Player> & players, const std::string & background);
-        Demo(bool recording, bool playing, Uint32 maxRounds);
+
         void nextFrame();
         void nextPlayer(Uint32 id, Uint32 & controllerState);
         void rewind();

@@ -1,4 +1,4 @@
-#ifndef DUEL6_DEMO_ROUND_H
+    #ifndef DUEL6_DEMO_ROUND_H
 #define DUEL6_DEMO_ROUND_H
 
 #include <list>
