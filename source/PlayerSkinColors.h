@@ -76,6 +76,11 @@ namespace Duel6 {
             return color[(int) bodyPart];
         }
 
+        PlayerSkinColors &setHair(Hair value) {
+            hair = value;
+            return *this;
+        }
+
         PlayerSkinColors &setHair(int value) {
             if(value < 0 || value > 2) {
                 return *this;

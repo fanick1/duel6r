@@ -124,6 +124,10 @@ namespace Duel6 {
             return personProfiles;
         }
 
+        bool saveDemo() const;
+
+        bool loadDemo();
+
     private:
         void beforeStart(Context *prevContext) override;
 

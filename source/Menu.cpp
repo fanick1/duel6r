@@ -41,6 +41,7 @@
 #include "gamemodes/DeathMatch.h"
 #include "gamemodes/TeamDeathMatch.h"
 #include "gamemodes/Predator.h"
+#include "serialisation/FileBinaryStream.h"
 
 #define D6_ALL_CHR  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890 -=\\~!@#$%^&*()_+|[];',./<>?:{}"
 
@@ -81,6 +82,30 @@ namespace Duel6 {
                 control->addItem(controlsManager.get(j).getDescription(), j);
             }
         }
+    }
+
+    bool Menu::saveDemo() const {
+        bool result = false;
+        fbinarystream bs("last.dem", std::ios_base::out | std::ios_base::trunc);
+        if(bs.is_open()){
+            //this->demo = std::make_unique<Demo>();
+            result = bs << *demo;
+            bs.close();
+            //replay();
+        }
+
+        return result;
+    }
+
+    bool Menu::loadDemo() {
+        bool result = false;
+        fbinarystream bs("last.dem", std::ios_base::in);
+        if(bs.is_open()){
+            this->demo = std::make_unique<Demo>();
+            result = bs >> *demo;
+            bs.close();
+        }
+        return result;
     }
 
     void Menu::initialize() {
@@ -418,6 +443,9 @@ namespace Duel6 {
         }
     }
     void Menu::replay() {
+        if(!demo && !loadDemo()) {
+            return ;
+        }
         demo->recording = false;
         demo->playing = true;
         demo->rewind();

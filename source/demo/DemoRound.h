@@ -1,4 +1,4 @@
-    #ifndef DUEL6_DEMO_ROUND_H
+#ifndef DUEL6_DEMO_ROUND_H
 #define DUEL6_DEMO_ROUND_H
 
 #include <list>
@@ -15,7 +15,19 @@ namespace Duel6 {
     public:
         bool circular;
         std::vector<Float32> controlPoints;
+        DemoElevator(){}
+
+        DemoElevator(const DemoElevator &e) :
+                circular(e.circular),
+                controlPoints(e.controlPoints) {}
+
         DemoElevator(bool circular, const std::vector<Float32> & controlPoints);
+
+        template<class Stream>
+        bool serialize(Stream &s) {
+            return s & circular &&
+                   s & controlPoints;
+        }
     };
 
 
@@ -30,7 +42,15 @@ namespace Duel6 {
         DemoPlayerData() {
 
         }
-
+        template<class Stream>
+        bool serialize(Stream &s) {
+            return s & controllerState &&
+                   s & orientationLeft &&
+                   s & startBlockX &&
+                   s & startBlockY &&
+                   s & ammo &&
+                   s & weapon;
+        }
     };
 
     class DemoLevel {
@@ -42,9 +62,28 @@ namespace Duel6 {
         std::vector<DemoElevator> elevators;
 
     public:
+        DemoLevel (){}
+        DemoLevel (const DemoLevel & l):
+            width(l.width),
+            height(l.height),
+            levelData(l.levelData),
+            background(l.background),
+            elevators(l.elevators) {
+
+        }
         DemoLevel(const Int32 width, const Int32 height, const std::vector<Uint16> & levelData,
                  const std::string & background, const std::vector<DemoElevator> & elevators);
         std::vector<Elevator> generateElevators();
+
+
+        template<class Stream>
+        bool serialize(Stream &s) {
+            return s & width &&
+                   s & height &&
+                   s & levelData &&
+                   s & background &&
+                   s & elevators;
+        }
     };
 
     class DemoRound {
@@ -65,7 +104,11 @@ namespace Duel6 {
         std::unique_ptr<DemoLevel> level;
         Uint32 frameId = 0;
         Uint32 lastFrameId = 0;
-
+        DemoRound() = default;
+        DemoRound(DemoRound && demoRound);
+        DemoRound(const DemoRound & demoRound);
+        DemoRound & operator = (DemoRound && demoRound);
+        DemoRound & operator = (const DemoRound & demoRound);
         bool hasEnded();
         void markLastFrame();
         void roundStart(bool recording, bool playing, std::vector<Player> & players, const std::string & background);
@@ -74,6 +117,29 @@ namespace Duel6 {
         void nextFrame(bool recording, bool playing);
         void nextPlayer(bool recording, bool playing, Uint32 id, Uint32 & controllerState);
         void rewind();
+
+        template<class Stream>
+        bool serialize(Stream &s) {
+            bool result = true;
+            if(s.isSerializer()) {
+            result = s & seed &&
+                   s & lastFrameId &&
+                   s & playerDataStart &&
+                   s & *level &&
+                   s & frames;
+            } else {
+                level = std::make_unique<DemoLevel>();
+                result = s & seed &&
+                         s & lastFrameId &&
+                         s & playerDataStart;
+                         s & *level &&
+                         s & frames;
+
+            }
+
+            return result;
+        }
+
     };
 }
 

@@ -16,6 +16,12 @@ namespace Duel6 {
         DemoFrame & operator =(DemoFrame&&);
         DemoFrame(const DemoFrame&);
         DemoFrame & operator =(const DemoFrame&);
+
+        template<class Stream>
+        bool serialize(Stream &s) {
+            return s & controllerState &&
+                   s & frameId;
+        }
     private:
 
 

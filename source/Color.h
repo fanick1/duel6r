@@ -51,6 +51,9 @@ namespace Duel6 {
         Color()
                 : Color(0, 0, 0, 255) {}
 
+        Color(const Color & c)
+                : Color(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha()) {}
+
         explicit Color(Uint8 value)
                 : Color(value, value, value, 255) {}
 

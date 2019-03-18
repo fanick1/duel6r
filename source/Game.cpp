@@ -42,6 +42,8 @@ namespace Duel6 {
 
     void Game::beforeClose(Context *nextContext) {
         round->end();
+        bool debug =  menu->saveDemo();
+
     }
 
     void Game::render() const {

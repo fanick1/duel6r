@@ -57,7 +57,42 @@ namespace Duel6 {
         framesIterator = frames.begin();
 
     }
+    DemoRound::DemoRound(Duel6::DemoRound && demoRound):
+        seed(demoRound.seed),
+        frames(std::move(demoRound.frames)),
+        playerDataStart(std::move(demoRound.playerDataStart)),
+        playerData(playerDataStart.size()),
+        level(std::move(demoRound.level)),
+        lastFrameId(demoRound.lastFrameId) {
+    }
+    DemoRound::DemoRound(const Duel6::DemoRound &demoRound):
+        seed(demoRound.seed),
+        frames(demoRound.frames),
+        playerDataStart(demoRound.playerDataStart),
+        playerData(playerDataStart.size()),
+        level(std::make_unique<DemoLevel>(*demoRound.level)),
+        lastFrameId(demoRound.lastFrameId) {
+    }
+    DemoRound & DemoRound::operator = (DemoRound && demoRound) {
+        seed = demoRound.seed;
+        frames = std::move(demoRound.frames);
+        playerDataStart = std::move(demoRound.playerDataStart);
+        playerData.resize(playerDataStart.size());
+        level = std::move(demoRound.level);
+        lastFrameId = demoRound.lastFrameId;
+        return *this;
+    }
 
+    DemoRound & DemoRound::operator = (const DemoRound & demoRound) {
+        seed = demoRound.seed;
+        frames = demoRound.frames;
+        playerDataStart = demoRound.playerDataStart;
+        playerData.resize(playerDataStart.size());
+        level = std::make_unique<DemoLevel>(*demoRound.level);
+        lastFrameId = demoRound.lastFrameId;
+
+        return *this;
+    }
     void DemoRound::rewind() {
         frameId = 0;
         framesIterator = frames.begin();
@@ -90,6 +125,7 @@ namespace Duel6 {
             }
         }
     }
+
     bool DemoRound::hasEnded() {
         return ended;
     }
@@ -133,12 +169,12 @@ namespace Duel6 {
                 currentFrame = {frameId};
             }
         }
-        if(playing && !finished) { //TOODOOO
+        if(playing && !finished) {
             if(currentFrame.frameId < frameId && ++framesIterator != frames.end()) {
                 currentFrame = *framesIterator;
             } else {
                 if(framesIterator == frames.end()) {
-                    finished = true;
+                    finished = true; // reached last recorded frame (last input from any player), the round still continues
                 }
             }
 

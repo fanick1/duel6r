@@ -74,6 +74,13 @@ set(D6R_WITH_LUA ON)     # Enable/disable lua scripting
 
 # set the list of source files
 set(D6R_SOURCES
+
+        source/serialisation/BinaryDeserializer.h
+        source/serialisation/BinarySerializer.h
+        source/serialisation/BinaryStream.cpp
+        source/serialisation/BinaryStreamBase.h
+        source/serialisation/FileBinaryStream.h
+
         source/demo/Demo.h
         source/demo/Demo.cpp
         source/demo/DemoFrame.h
