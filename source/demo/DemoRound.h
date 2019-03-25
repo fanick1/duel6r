@@ -96,6 +96,13 @@ namespace Duel6 {
         bool finished = false;
         Uint32 seed = 0;
     public:
+        DemoRound(size_t playerCount, Uint32 seed);
+        DemoRound() = default;
+        DemoRound(DemoRound && demoRound);
+        DemoRound(const DemoRound & demoRound);
+        DemoRound & operator = (DemoRound && demoRound);
+        DemoRound & operator = (const DemoRound & demoRound);
+
         DemoFrameList frames;
         DemoFrame currentFrame;
         DemoFrameList::iterator framesIterator;
@@ -104,16 +111,12 @@ namespace Duel6 {
         std::unique_ptr<DemoLevel> level;
         Uint32 frameId = 0;
         Uint32 lastFrameId = 0;
-        DemoRound() = default;
-        DemoRound(DemoRound && demoRound);
-        DemoRound(const DemoRound & demoRound);
-        DemoRound & operator = (DemoRound && demoRound);
-        DemoRound & operator = (const DemoRound & demoRound);
+
         bool hasEnded();
         void markLastFrame();
         void roundStart(bool recording, bool playing, std::vector<Player> & players, const std::string & background);
         void nextRound(bool recording, bool playing, std::unique_ptr<Level> & level);
-        DemoRound(size_t playerCount, Uint32 seed);
+
         void nextFrame(bool recording, bool playing);
         void nextPlayer(bool recording, bool playing, Uint32 id, Uint32 & controllerState);
         void rewind();
@@ -121,21 +124,15 @@ namespace Duel6 {
         template<class Stream>
         bool serialize(Stream &s) {
             bool result = true;
-            if(s.isSerializer()) {
+            if(s.isDeserializer()){
+                level = std::make_unique<DemoLevel>();
+            }
+
             result = s & seed &&
                    s & lastFrameId &&
                    s & playerDataStart &&
                    s & *level &&
                    s & frames;
-            } else {
-                level = std::make_unique<DemoLevel>();
-                result = s & seed &&
-                         s & lastFrameId &&
-                         s & playerDataStart;
-                         s & *level &&
-                         s & frames;
-
-            }
 
             return result;
         }
