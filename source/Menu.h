@@ -49,7 +49,7 @@
 #include "gui/TextBox.h"
 #include "gui/Spinner.h"
 #include "GameMode.h"
-#include "demo/Demo.h"
+#include "replay/Replay.h"
 namespace Duel6 {
     class Game; // Forward, TODO: Remove
 
@@ -84,7 +84,7 @@ namespace Duel6 {
         Texture menuBannerTexture;
         Sound::Track menuTrack;
         bool playMusic;
-        std::unique_ptr<Demo> demo;
+        std::unique_ptr<Replay> replay;
     public:
         explicit Menu(AppService &appService);
 
@@ -124,9 +124,9 @@ namespace Duel6 {
             return personProfiles;
         }
 
-        bool saveDemo() const;
+        bool saveReplay() const;
 
-        bool loadDemo();
+        bool loadReplay();
 
     private:
         void beforeStart(Context *prevContext) override;
@@ -140,7 +140,7 @@ namespace Duel6 {
         void detectControls(Size playerIndex);
 
         void play();
-        void replay();
+        void startReplay();
 
         void playPlayersSound(const std::string &name);
 

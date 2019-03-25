@@ -1,7 +1,7 @@
 #ifndef DUEL6_DEMO_H
 #define DUEL6_DEMO_H
 
-#include "DemoRound.h"
+#include "ReplayRound.h"
 
 #include <stddef.h>
 #include <memory>
@@ -15,16 +15,16 @@
 
 namespace Duel6 {
 
-    DemoElevator::DemoElevator(bool circular, const std::vector<Float32> & controlPoints)
+    ReplayElevator::ReplayElevator(bool circular, const std::vector<Float32> & controlPoints)
         : circular(circular),
           controlPoints(controlPoints) {
 
     }
 
-    DemoLevel::DemoLevel(const Int32 width, const Int32 height,
+    ReplayLevel::ReplayLevel(const Int32 width, const Int32 height,
                          const std::vector<Uint16> & levelData,
                          const std::string & background,
-                         const std::vector<DemoElevator> & elevators)
+                         const std::vector<ReplayElevator> & elevators)
         : width(width),
           height(height),
           levelData(levelData),
@@ -32,7 +32,7 @@ namespace Duel6 {
           elevators(elevators) {
 
     }
-    std::vector<Elevator> DemoLevel::generateElevators() {
+    std::vector<Elevator> ReplayLevel::generateElevators() {
         std::vector<Elevator> result;
         result.reserve(elevators.size());
         for(const auto & demoElevator: elevators) {
@@ -49,7 +49,7 @@ namespace Duel6 {
         }
         return result;
     }
-    DemoRound::DemoRound(size_t playerCount, Uint32 seed)
+    ReplayRound::ReplayRound(size_t playerCount, Uint32 seed)
         : seed(seed),
           playerDataStart(playerCount),
           playerData(playerCount) {
@@ -57,7 +57,7 @@ namespace Duel6 {
         framesIterator = frames.begin();
 
     }
-    DemoRound::DemoRound(Duel6::DemoRound && demoRound):
+    ReplayRound::ReplayRound(Duel6::ReplayRound && demoRound):
         seed(demoRound.seed),
         frames(std::move(demoRound.frames)),
         playerDataStart(std::move(demoRound.playerDataStart)),
@@ -65,15 +65,15 @@ namespace Duel6 {
         level(std::move(demoRound.level)),
         lastFrameId(demoRound.lastFrameId) {
     }
-    DemoRound::DemoRound(const Duel6::DemoRound &demoRound):
+    ReplayRound::ReplayRound(const Duel6::ReplayRound &demoRound):
         seed(demoRound.seed),
         frames(demoRound.frames),
         playerDataStart(demoRound.playerDataStart),
         playerData(playerDataStart.size()),
-        level(std::make_unique<DemoLevel>(*demoRound.level)),
+        level(std::make_unique<ReplayLevel>(*demoRound.level)),
         lastFrameId(demoRound.lastFrameId) {
     }
-    DemoRound & DemoRound::operator = (DemoRound && demoRound) {
+    ReplayRound & ReplayRound::operator = (ReplayRound && demoRound) {
         seed = demoRound.seed;
         frames = std::move(demoRound.frames);
         playerDataStart = std::move(demoRound.playerDataStart);
@@ -83,17 +83,17 @@ namespace Duel6 {
         return *this;
     }
 
-    DemoRound & DemoRound::operator = (const DemoRound & demoRound) {
+    ReplayRound & ReplayRound::operator = (const ReplayRound & demoRound) {
         seed = demoRound.seed;
         frames = demoRound.frames;
         playerDataStart = demoRound.playerDataStart;
         playerData.resize(playerDataStart.size());
-        level = std::make_unique<DemoLevel>(*demoRound.level);
+        level = std::make_unique<ReplayLevel>(*demoRound.level);
         lastFrameId = demoRound.lastFrameId;
 
         return *this;
     }
-    void DemoRound::rewind() {
+    void ReplayRound::rewind() {
         frameId = 0;
         framesIterator = frames.begin();
         currentFrame = *framesIterator;
@@ -102,7 +102,7 @@ namespace Duel6 {
         ended = false;
     }
 
-    void DemoRound::roundStart(bool recording, bool playing, std::vector<Player> & players, const std::string & background) {
+    void ReplayRound::roundStart(bool recording, bool playing, std::vector<Player> & players, const std::string & background) {
         if (recording) {
             level->background = background;
             for (size_t i = 0; i < players.size(); i++) {
@@ -126,12 +126,12 @@ namespace Duel6 {
         }
     }
 
-    bool DemoRound::hasEnded() {
+    bool ReplayRound::hasEnded() {
         return ended;
     }
-    void DemoRound::nextRound(bool recording, bool playing, std::unique_ptr<Level> & levelData) {
+    void ReplayRound::nextRound(bool recording, bool playing, std::unique_ptr<Level> & levelData) {
         if (recording) {
-            std::vector<DemoElevator> elevators;
+            std::vector<ReplayElevator> elevators;
             elevators.reserve(levelData->getElevators().size());
             for(const auto & elevator : levelData->getElevators()){
                 std::vector<Float32> controlPoints;
@@ -144,17 +144,17 @@ namespace Duel6 {
                 elevators.emplace_back(elevator.isCircular(), controlPoints);
             }
 
-            level = std::make_unique<DemoLevel>(levelData->getWidth(), levelData->getHeight(),
+            level = std::make_unique<ReplayLevel>(levelData->getWidth(), levelData->getHeight(),
                 levelData->getLevelData(), levelData->getBackground(), elevators);
         }
         if (playing) {
             rewind();
         }
     }
-    void DemoRound::markLastFrame() {
+    void ReplayRound::markLastFrame() {
         lastFrameId = frameId;
     }
-    void DemoRound::nextFrame(bool recording, bool playing) {
+    void ReplayRound::nextFrame(bool recording, bool playing) {
         frameId ++;
         if(frameId == lastFrameId) {
             ended = true;
@@ -182,7 +182,7 @@ namespace Duel6 {
 
 
     }
-    void DemoRound::nextPlayer(bool recording, bool playing, Uint32 id, Uint32 & controllerState) {
+    void ReplayRound::nextPlayer(bool recording, bool playing, Uint32 id, Uint32 & controllerState) {
         if (frameId == 0) {
             if (recording) {
                 playerDataStart[id].controllerState = controllerState;

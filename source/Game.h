@@ -44,9 +44,9 @@
 #include "GameSettings.h"
 #include "GameResources.h"
 #include "Round.h"
-#include "demo/Demo.h"
+#include "replay/Replay.h"
 namespace Duel6 {
-    class Demo;
+    class Replay;
 
     class GameMode;
 
@@ -105,10 +105,10 @@ namespace Duel6 {
         bool displayScoreTab = false;
 
     public:
-        Demo * demo;
+        Replay * replay;
         Game(AppService &appService, GameResources &resources, GameSettings &settings);
 
-        void start(Demo * demo, const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
+        void start(Replay * replay, const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
                    const std::vector<Size> &backgrounds, ScreenMode screenMode, Int32 screenZoom, GameMode &gameMode);
 
         void keyEvent(const KeyPressEvent &event) override;
@@ -178,7 +178,7 @@ namespace Duel6 {
         }
 
         bool isOver() const {
-            return (getRound().isLast() && getRound().isOver()) || (demo->playing && demo->isFinished() && demo->roundEnded());
+            return (getRound().isLast() && getRound().isOver()) || (replay->playing && replay->isFinished() && replay->roundEnded());
         }
 
         bool isDisplayingScoreTab() const {

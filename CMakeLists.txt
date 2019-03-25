@@ -81,16 +81,12 @@ set(D6R_SOURCES
         source/serialisation/BinaryStreamBase.h
         source/serialisation/FileBinaryStream.h
 
-        source/demo/Demo.h
-        source/demo/Demo.cpp
-        source/demo/DemoFrame.h
-        source/demo/DemoFrame.cpp
-        source/demo/DemoRound.h
-        source/demo/DemoRound.cpp
-        source/demo/DemoPlayer.h
-        source/demo/DemoPlayer.cpp
-        source/demo/DemoRecorder.h
-        source/demo/DemoRecorder.cpp
+        source/replay/Replay.h
+        source/replay/Replay.cpp
+        source/replay/ReplayFrame.h
+        source/replay/ReplayFrame.cpp
+        source/replay/ReplayRound.h
+        source/replay/ReplayRound.cpp
         source/AnimationLooping.h
         source/Application.cpp
         source/Application.h

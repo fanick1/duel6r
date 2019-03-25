@@ -47,7 +47,6 @@ public:
     }
     bool operator >>(uint8_t & t) {
         read((char *) &t, 1);
-        auto debug = basestream::tellg();
         return good();
     }
 
@@ -97,14 +96,11 @@ public:
     }
 
     bool operator >>(std::string & s) {
-        std::streampos debug1 = basestream::tellg();
         uint32_t size = readSize();
-        std::streampos debug2 = basestream::tellg();
         s.reserve(size);
 
         char readBuf[size + 1] = { 0 };
         read((char *) readBuf, size);
-        std::streampos debug3 = basestream::tellg();
         s.assign(readBuf, size);
         bool debug = good();
         return debug;

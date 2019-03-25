@@ -2,8 +2,8 @@
 #define DUEL6_DEMO_H
 
 #include <list>
-#include "DemoFrame.h"
-#include "DemoRound.h"
+#include "ReplayFrame.h"
+#include "ReplayRound.h"
 #include "../File.h"
 #include "../PlayerSkinColors.h"
 
@@ -12,18 +12,18 @@ namespace Duel6 {
 
     class Player;
 
-    class DemoPlayerProfile {
+    class ReplayPlayerProfile {
     public:
         std::string name;
         PlayerSkinColors skinColors;
 
-        DemoPlayerProfile() {}
+        ReplayPlayerProfile() {}
 
-        DemoPlayerProfile(const DemoPlayerProfile &p) :
+        ReplayPlayerProfile(const ReplayPlayerProfile &p) :
                 name(p.name),
                 skinColors(p.skinColors) {}
 
-        DemoPlayerProfile(const std::string name, const PlayerSkinColors &skinColors);
+        ReplayPlayerProfile(const std::string name, const PlayerSkinColors &skinColors);
 
         template<class Stream>
         bool serialize(Stream &s) {
@@ -33,15 +33,15 @@ namespace Duel6 {
 
     };
 
-    class Demo {
-        typedef std::list<DemoPlayerProfile> DemoPlayerList;
-        typedef std::list<DemoRound> DemoRoundList;
+    class Replay {
+        typedef std::list<ReplayPlayerProfile> ReplayPlayerList;
+        typedef std::list<ReplayRound> ReplayRoundList;
     private:
         bool finished = false;
         bool roundEnd = false;
         Uint32 maxRounds; // e.g. 30
-        DemoRoundList rounds;
-        DemoRoundList::iterator currentRound;
+        ReplayRoundList rounds;
+        ReplayRoundList::iterator currentRound;
         bool beginning = true;
         bool globalAssistances = false;
         bool quickLiquid = false;
@@ -49,10 +49,10 @@ namespace Duel6 {
         bool recording = true;
         bool playing = false;
 
-        Demo(){};
-        Demo(bool recording, bool playing, Uint32 maxRounds, bool globalAssistances, bool quickLiquid);
+        Replay(){};
+        Replay(bool recording, bool playing, Uint32 maxRounds, bool globalAssistances, bool quickLiquid);
 
-        DemoPlayerList players;
+        ReplayPlayerList players;
 
         Uint32 frameId = 0;
 
@@ -79,9 +79,9 @@ namespace Duel6 {
 
         bool isBeforeStart();
 
-        DemoLevel &getLevel();
+        ReplayLevel &getLevel();
 
-        DemoRound &getRound();
+        ReplayRound &getRound();
 
         template<class Stream>
         bool serialize(Stream &s) {

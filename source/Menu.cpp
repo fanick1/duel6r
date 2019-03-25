@@ -84,25 +84,25 @@ namespace Duel6 {
         }
     }
 
-    bool Menu::saveDemo() const {
+    bool Menu::saveReplay() const {
         bool result = false;
         fbinarystream bs("last.dem", std::ios_base::out | std::ios_base::trunc);
         if(bs.is_open()){
-            //this->demo = std::make_unique<Demo>();
-            result = bs << *demo;
+            //this->replay = std::make_unique<Replay>();
+            result = bs << *replay;
             bs.close();
-            //replay();
+            //startReplay();
         }
 
         return result;
     }
 
-    bool Menu::loadDemo() {
+    bool Menu::loadReplay() {
         bool result = false;
         fbinarystream bs("last.dem", std::ios_base::in);
         if(bs.is_open()){
-            this->demo = std::make_unique<Demo>();
-            result = bs >> *demo;
+            this->replay = std::make_unique<Replay>();
+            result = bs >> *replay;
             bs.close();
         }
         return result;
@@ -174,7 +174,7 @@ namespace Duel6 {
         replayButton->setPosition(815, 0, 100, 50);
         replayButton->setCaption("RePlay ");
         replayButton->onClick([this](Gui::Button &) {
-            replay();
+            startReplay();
         });
         auto playButton = new Gui::Button(gui);
         playButton->setPosition(350, 0, 150, 50);
@@ -442,13 +442,13 @@ namespace Duel6 {
             profile->getSounds().getRandomSample(PlayerSounds::Type::GotHit).play();
         }
     }
-    void Menu::replay() {
-        if(!demo && !loadDemo()) {
+    void Menu::startReplay() {
+        if(!replay && !loadReplay()) {
             return ;
         }
-        demo->recording = false;
-        demo->playing = true;
-        demo->rewind();
+        replay->recording = false;
+        replay->playing = true;
+        replay->rewind();
         play();
     }
     void Menu::play() {
@@ -481,18 +481,18 @@ namespace Duel6 {
 
         GameMode &selectedMode = *gameModes[gameModeSwitch->currentItem()];
 
-        if(demo == nullptr || demo->recording || !demo->isBeforeStart()) {
-            demo = std::make_unique<Demo>(true, false, game->getSettings().getMaxRounds(), game->getSettings().isGlobalAssistances(), game->getSettings().isQuickLiquid());
-            //demo set selectedMode
+        if(replay == nullptr || replay->recording || !replay->isBeforeStart()) {
+            replay = std::make_unique<Replay>(true, false, game->getSettings().getMaxRounds(), game->getSettings().isGlobalAssistances(), game->getSettings().isQuickLiquid());
+            //replay set selectedMode
         }
         demoPersons = std::make_unique<PersonList>();
         std::vector<Game::PlayerDefinition> playerDefinitions;
-        if(demo->playing){
+        if(replay->playing){
 
-            for (const DemoPlayerProfile & demoPlayerProfile : demo->players){
+            for (const ReplayPlayerProfile & demoPlayerProfile : replay->players){
                 demoPersons->add(Person(demoPlayerProfile.name, nullptr));
             }
-            for (const DemoPlayerProfile & demoPlayerProfile : demo->players){
+            for (const ReplayPlayerProfile & demoPlayerProfile : replay->players){
                 Person &person = demoPersons->getByName(demoPlayerProfile.name);// demoPersons->get(demoPersons->getLength()-1);
                 auto profile = getPersonProfile(person.getName());
                 const PlayerControls &controls = controlsManager.get(0);
@@ -509,9 +509,9 @@ namespace Duel6 {
                 const PlayerSounds &sounds = profile ? profile->getSounds() : defaultPlayerSounds;
                 playerDefinitions.push_back(Game::PlayerDefinition(person, colors, sounds, controls));
             }
-            if(demo->recording){
+            if(replay->recording){
                 for(const auto & player : playerDefinitions){
-                    demo->players.emplace_back(player.getPerson().getName(), player.getColors());
+                    replay->players.emplace_back(player.getPerson().getName(), player.getColors());
                 }
             }
         }
@@ -542,7 +542,7 @@ namespace Duel6 {
         Context::push(*game);
 
 
-        game->start(demo.get(), playerDefinitions, levels, backgrounds, screenMode, screenZoom, selectedMode);
+        game->start(replay.get(), playerDefinitions, levels, backgrounds, screenMode, screenZoom, selectedMode);
     }
 
     void Menu::addPlayer(Int32 index) {

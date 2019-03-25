@@ -42,7 +42,7 @@ namespace Duel6 {
 
     void Game::beforeClose(Context *nextContext) {
         round->end();
-        bool debug =  menu->saveDemo();
+        menu->saveReplay();
 
     }
 
@@ -51,14 +51,14 @@ namespace Duel6 {
     }
 
     void Game::update(Float32 elapsedTime) {
-        if (getRound().isOver() || (demo->playing && demo->roundEnded())) {
-            if (!getRound().isLast() && !(demo->playing && demo->isFinished())) {
+        if (getRound().isOver() || (replay->playing && replay->roundEnded())) {
+            if (!getRound().isLast() && !(replay->playing && replay->isFinished())) {
                 nextRound();
             } else {
                 displayScoreTab = true;
             }
         } else {
-            if( ! (demo->playing && demo->isFinished())) {
+            if( ! (replay->playing && replay->isFinished())) {
                 getRound().update(elapsedTime);
             }
         }
@@ -66,8 +66,8 @@ namespace Duel6 {
 
     void Game::keyEvent(const KeyPressEvent &event) {
         if (event.getCode() == SDLK_ESCAPE && (isOver() || event.withShift())) {
-            if(demo->recording) {
-                demo->markEndOfDemo();
+            if(replay->recording) {
+                replay->markEndOfDemo();
             }
             close();
             return;
@@ -102,10 +102,10 @@ namespace Duel6 {
 
     void Game::joyDeviceRemovedEvent(const JoyDeviceRemovedEvent & event) {}
 
-    void Game::start(Demo * demo, const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
+    void Game::start(Replay * replay, const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
                      const std::vector<Size> &backgrounds, ScreenMode screenMode, Int32 screenZoom,
                      GameMode &gameMode) {
-        this->demo = demo;
+        this->replay = replay;
         Console &console = appService.getConsole();
         console.printLine("\n=== Starting new game ===");
         console.printLine(Format("...Rounds: {0}") << settings.getMaxRounds());
@@ -134,9 +134,9 @@ namespace Duel6 {
         settings.setScreenZoom(screenZoom);
         auto quickLiquid = settings.isQuickLiquid();
         auto globalAssistances = settings.isGlobalAssistances();
-        if(demo->playing) {
-            quickLiquid = demo->getQuickLiquid();
-            globalAssistances = demo->getGlobalAssistances();
+        if(replay->playing) {
+            quickLiquid = replay->getQuickLiquid();
+            globalAssistances = replay->getGlobalAssistances();
         }
         gameMode.initializeGame(*this, players, quickLiquid, globalAssistances);
         nextRound();
@@ -148,7 +148,7 @@ namespace Duel6 {
             round->end();
             menu->savePersonData();
         }
-        if(demo->playing && demo->isFinished()){
+        if(replay->playing && replay->isFinished()){
             return;
         }
         bool shuffle = settings.getLevelSelectionMode() == LevelSelectionMode::Shuffle;
@@ -160,12 +160,12 @@ namespace Duel6 {
         console.printLine(Format("\n===Loading level {0}===") << levelPath);
         console.printLine(Format("...Parameters: mirror: {0}") << mirror);
         std::unique_ptr<Level> levelData;
-        if(demo->playing) {
-            demo->nextRound(levelData);
-            if(demo->playing && demo->isFinished()){
+        if(replay->playing) {
+            replay->nextRound(levelData);
+            if(replay->playing && replay->isFinished()){
                 return;
             }
-            DemoLevel & demoLevel = demo->getLevel();//  currentRound->level;
+            ReplayLevel & demoLevel = replay->getLevel();//  currentRound->level;
             levelData = std::make_unique<Level>(
                 demoLevel.width, demoLevel.height,
                 demoLevel.levelData,
@@ -173,9 +173,9 @@ namespace Duel6 {
                 demoLevel.background,
                 demoLevel.generateElevators());
         }
-        if(demo->recording) {
+        if(replay->recording) {
             levelData = std::make_unique<Level>(levelPath, mirror, resources.getBlockMeta());
-            demo->nextRound(levelData);
+            replay->nextRound(levelData);
         }
 
         round = std::make_unique<Round>(*this, playedRounds, std::move(levelData));

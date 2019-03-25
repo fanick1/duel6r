@@ -42,7 +42,7 @@ namespace Duel6 {
         startTime = SDL_GetTicks();
         auto &players = world.getPlayers();
         game.getMode().initializePlayerPositions(game, players, world);
-        game.demo->roundStart(players, world.getBackground());
+        game.replay->roundStart(players, world.getBackground());
         setPlayerViews();
         game.getMode().initializeRound(game, players, world);
         scriptStart();
@@ -181,14 +181,14 @@ namespace Duel6 {
         for (Player &player : world.getPlayers()) {
             player.updateControllerStatus();
             scriptUpdate(player);
-            game.demo->nextPlayer(playerId++, player.getControllerStateRef());
+            game.replay->nextPlayer(playerId++, player.getControllerStateRef());
             player.update(world, game.getSettings().getScreenMode(), elapsedTime);
             if (game.getSettings().isGhostEnabled() && !player.isInGame() && !player.isGhost()) {
                 player.makeGhost();
             }
         }
         world.update(elapsedTime);
-        game.demo->nextFrame();
+        game.replay->nextFrame();
 
         if (suddenDeathMode) {
             waterFillWait += elapsedTime;
