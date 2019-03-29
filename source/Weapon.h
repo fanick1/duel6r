@@ -42,6 +42,8 @@ namespace Duel6 {
     class Player;
 
     class WeaponImpl {
+    private:
+        Uint8 id;
     public:
         virtual ~WeaponImpl() {}
 
@@ -58,17 +60,27 @@ namespace Duel6 {
         virtual Int32 getBonusTextureIndex() const = 0;
 
         virtual bool isChargeable() const = 0;
+
+        Uint8 getId() const {
+            return id;
+        }
+
+        void setId(Uint8 id) {
+            this->id = id;
+        }
     };
 
     class Weapon final {
     public:
         struct Hash {
             std::size_t operator()(const Weapon &val) const {
-                std::hash<WeaponImpl *> referenceHash;
-                return referenceHash(val.impl);
+                return val.impl->getId();
             }
         };
 
+        bool operator==(const Weapon &rhs) {
+            return impl->getId() == rhs.impl->getId();
+        }
     private:
         typedef std::unique_ptr<WeaponImpl> WeaponImplPtr;
 
@@ -108,6 +120,8 @@ namespace Duel6 {
         static const std::vector<Weapon> &values();
 
         static void initialize(Sound &sound, TextureManager &textureManager);
+
+        static const Weapon &getById(Uint8 id);
 
         static const Weapon &getByName(const std::string &name);
 

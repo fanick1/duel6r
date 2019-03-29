@@ -32,18 +32,20 @@
 #include "GameException.h"
 
 namespace Duel6 {
-    Level::Level(const Int32 width, const Int32 height, const std::vector<Uint16> & levelData,
+    Level::Level(const Int32 width, const Int32 height,
+                 const std::vector<Uint16> &levelData,
+                 const Uint16 waterBlock,
                  const Block::Meta &blockMeta,
-                 const std::string & background,
-                 std::vector<Elevator> && elevators)
-        : blockMeta(blockMeta),
-          width(width),
-          height(height),
-          background(background),
-          levelData(levelData),
-          raisingWater(false),
-          elevators(std::move(elevators)) {
-        waterBlock = findWaterType();
+                 const std::string &background,
+                 std::vector<Elevator> &&elevators)
+            : blockMeta(blockMeta),
+              width(width),
+              height(height),
+              background(background),
+              levelData(levelData),
+              waterBlock(waterBlock),
+              raisingWater(false),
+              elevators(std::move(elevators)) {
         waterLevel = findWaterLevel(waterBlock);
     }
 

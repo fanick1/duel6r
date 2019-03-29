@@ -87,6 +87,7 @@ namespace Duel6 {
 
     Weapon Weapon::add(WeaponImplPtr &&impl) {
         Weapon weapon(impl.get());
+        weapon.impl->setId(implementations.size());
         implementations.push_back(std::forward<WeaponImplPtr>(impl));
         weapons.push_back(weapon);
         return weapon;
@@ -149,6 +150,12 @@ namespace Duel6 {
 
     const std::vector<Weapon> &Weapon::values() {
         return weapons;
+    }
+    const Weapon &Weapon::getById(Uint8 id) {
+        if(id < weapons.size()) {
+            return weapons[id];
+        }
+        return weapons[0];
     }
     const Weapon &Weapon::getByName(const std::string &name) {
         std::vector<Weapon>::iterator it = std::find_if(weapons.begin(), weapons.end(), [&, name](const Weapon & weapon){return weapon.getName() == name;});

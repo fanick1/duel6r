@@ -12,68 +12,76 @@
 #include "../Orientation.h"
 #include "../Player.h"
 #include "../Weapon.h"
+#include "Replay.h"
 
 namespace Duel6 {
 
-    ReplayElevator::ReplayElevator(bool circular, const std::vector<Float32> & controlPoints)
-        : circular(circular),
-          controlPoints(controlPoints) {
+    ReplayElevator::ReplayElevator(bool circular, const std::vector<Float32> &controlPoints)
+            : circular(circular),
+              controlPoints(controlPoints) {
 
     }
 
     ReplayLevel::ReplayLevel(const Int32 width, const Int32 height,
-                         const std::vector<Uint16> & levelData,
-                         const std::string & background,
-                         const std::vector<ReplayElevator> & elevators)
-        : width(width),
-          height(height),
-          levelData(levelData),
-          background(background),
-          elevators(elevators) {
+                             Uint16 waterBlock,
+                             const std::vector<Uint16> &levelData,
+                             const std::string &background,
+                             const std::vector<ReplayElevator> &elevators)
+            : width(width),
+              height(height),
+              waterBlock(waterBlock),
+              levelData(levelData),
+              background(background),
+              elevators(elevators) {
 
     }
+
     std::vector<Elevator> ReplayLevel::generateElevators() {
         std::vector<Elevator> result;
         result.reserve(elevators.size());
-        for(const auto & demoElevator: elevators) {
+        for (const auto &demoElevator: elevators) {
             Elevator e(demoElevator.circular);
-            for(size_t i = 0; i < demoElevator.controlPoints.size(); i += 3) {
+            for (size_t i = 0; i < demoElevator.controlPoints.size(); i += 3) {
                 Elevator::ControlPoint c(demoElevator.controlPoints[i],
-                                    demoElevator.controlPoints[i + 1],
-                                    demoElevator.controlPoints[i + 2]);
+                                         demoElevator.controlPoints[i + 1],
+                                         demoElevator.controlPoints[i + 2]);
                 e.addControlPoint(Elevator::ControlPoint(demoElevator.controlPoints[i],
-                    demoElevator.controlPoints[i + 1],
-                    demoElevator.controlPoints[i + 2]));
+                                                         demoElevator.controlPoints[i + 1],
+                                                         demoElevator.controlPoints[i + 2]));
             }
             result.push_back(e);
         }
         return result;
     }
+
     ReplayRound::ReplayRound(size_t playerCount, Uint32 seed)
-        : seed(seed),
-          playerDataStart(playerCount),
-          playerData(playerCount) {
+            : seed(seed),
+              playerDataStart(playerCount),
+              playerData(playerCount) {
         frames.push_back(currentFrame);
         framesIterator = frames.begin();
 
     }
-    ReplayRound::ReplayRound(Duel6::ReplayRound && demoRound):
-        seed(demoRound.seed),
-        frames(std::move(demoRound.frames)),
-        playerDataStart(std::move(demoRound.playerDataStart)),
-        playerData(playerDataStart.size()),
-        level(std::move(demoRound.level)),
-        lastFrameId(demoRound.lastFrameId) {
+
+    ReplayRound::ReplayRound(Duel6::ReplayRound &&demoRound) :
+            seed(demoRound.seed),
+            frames(std::move(demoRound.frames)),
+            playerDataStart(std::move(demoRound.playerDataStart)),
+            playerData(playerDataStart.size()),
+            level(std::move(demoRound.level)),
+            lastFrameId(demoRound.lastFrameId) {
     }
-    ReplayRound::ReplayRound(const Duel6::ReplayRound &demoRound):
-        seed(demoRound.seed),
-        frames(demoRound.frames),
-        playerDataStart(demoRound.playerDataStart),
-        playerData(playerDataStart.size()),
-        level(std::make_unique<ReplayLevel>(*demoRound.level)),
-        lastFrameId(demoRound.lastFrameId) {
+
+    ReplayRound::ReplayRound(const Duel6::ReplayRound &demoRound) :
+            seed(demoRound.seed),
+            frames(demoRound.frames),
+            playerDataStart(demoRound.playerDataStart),
+            playerData(playerDataStart.size()),
+            level(std::make_unique<ReplayLevel>(*demoRound.level)),
+            lastFrameId(demoRound.lastFrameId) {
     }
-    ReplayRound & ReplayRound::operator = (ReplayRound && demoRound) {
+
+    ReplayRound &ReplayRound::operator=(ReplayRound &&demoRound) {
         seed = demoRound.seed;
         frames = std::move(demoRound.frames);
         playerDataStart = std::move(demoRound.playerDataStart);
@@ -83,7 +91,7 @@ namespace Duel6 {
         return *this;
     }
 
-    ReplayRound & ReplayRound::operator = (const ReplayRound & demoRound) {
+    ReplayRound &ReplayRound::operator=(const ReplayRound &demoRound) {
         seed = demoRound.seed;
         frames = demoRound.frames;
         playerDataStart = demoRound.playerDataStart;
@@ -93,6 +101,7 @@ namespace Duel6 {
 
         return *this;
     }
+
     void ReplayRound::rewind() {
         frameId = 0;
         framesIterator = frames.begin();
@@ -102,21 +111,21 @@ namespace Duel6 {
         ended = false;
     }
 
-    void ReplayRound::roundStart(bool recording, bool playing, std::vector<Player> & players, const std::string & background) {
-        if (recording) {
+    void ReplayRound::roundStart(ReplayState state, std::vector<Player> &players, const std::string &background) {
+        if (state == ReplayState::RECORDING) {
             level->background = background;
             for (size_t i = 0; i < players.size(); i++) {
                 playerDataStart[i].ammo = players[i].getAmmo();
                 playerDataStart[i].controllerState = players[i].getControllerStateRef();
                 playerDataStart[i].orientationLeft = players[i].getOrientation() == Orientation::Left;
-                auto & position = players[i].getPosition();
+                auto &position = players[i].getPosition();
                 playerDataStart[i].startBlockX = position.x;
                 playerDataStart[i].startBlockY = position.y;
                 playerDataStart[i].weapon = players[i].getWeapon().getName();
             }
         }
 
-        if (playing) {
+        if (state == ReplayState::REPLAYING) {
             for (size_t i = 0; i < players.size(); i++) {
                 players[i].getControllerStateRef() = playerDataStart[i].controllerState;
                 players[i].setOrientation(playerDataStart[i].orientationLeft ? Orientation::Left : Orientation::Right);
@@ -129,39 +138,39 @@ namespace Duel6 {
     bool ReplayRound::hasEnded() {
         return ended;
     }
-    void ReplayRound::nextRound(bool recording, bool playing, std::unique_ptr<Level> & levelData) {
-        if (recording) {
-            std::vector<ReplayElevator> elevators;
-            elevators.reserve(levelData->getElevators().size());
-            for(const auto & elevator : levelData->getElevators()){
-                std::vector<Float32> controlPoints;
-                controlPoints.reserve(elevator.getControlPoints().size() * 3);
-                for(const auto & controlPoint : elevator.getControlPoints()) {
-                    controlPoints.push_back(controlPoint.getLocation().x);
-                    controlPoints.push_back(controlPoint.getLocation().y);
-                    controlPoints.push_back(controlPoint.getWait());
-                }
-                elevators.emplace_back(elevator.isCircular(), controlPoints);
-            }
 
-            level = std::make_unique<ReplayLevel>(levelData->getWidth(), levelData->getHeight(),
-                levelData->getLevelData(), levelData->getBackground(), elevators);
+    void ReplayRound::recordLevel(std::unique_ptr<Level> &levelData) {
+        std::vector<ReplayElevator> elevators;
+        elevators.reserve(levelData->getElevators().size());
+        for (const auto &elevator : levelData->getElevators()) {
+            std::vector<Float32> controlPoints;
+            controlPoints.reserve(elevator.getControlPoints().size() * 3);
+            for (const auto &controlPoint : elevator.getControlPoints()) {
+                controlPoints.push_back(controlPoint.getLocation().x);
+                controlPoints.push_back(controlPoint.getLocation().y);
+                controlPoints.push_back(controlPoint.getWait());
+            }
+            elevators.emplace_back(elevator.isCircular(), controlPoints);
         }
-        if (playing) {
-            rewind();
-        }
+
+        level = std::make_unique<ReplayLevel>(levelData->getWidth(), levelData->getHeight(),
+                                              levelData->getWaterBlock(),
+                                              levelData->getLevelData(),
+                                              levelData->getBackground(), elevators);
     }
+
     void ReplayRound::markLastFrame() {
         lastFrameId = frameId;
     }
-    void ReplayRound::nextFrame(bool recording, bool playing) {
-        frameId ++;
-        if(frameId == lastFrameId) {
+
+    void ReplayRound::nextFrame(ReplayState state) {
+        frameId++;
+        if (frameId == lastFrameId) {
             ended = true;
         }
 
         Math::reseed(seed + frameId);
-        if (recording) {
+        if (state == ReplayState::RECORDING) {
             if (currentFrame.controllerState.empty()) {
                 currentFrame.frameId = frameId;
             } else {
@@ -169,36 +178,24 @@ namespace Duel6 {
                 currentFrame = {frameId};
             }
         }
-        if(playing && !finished) {
-            if(currentFrame.frameId < frameId && ++framesIterator != frames.end()) {
+        if (state == ReplayState::REPLAYING && !finished) {
+            if (currentFrame.frameId < frameId && ++framesIterator != frames.end()) {
                 currentFrame = *framesIterator;
             } else {
-                if(framesIterator == frames.end()) {
+                if (framesIterator == frames.end()) {
                     finished = true; // reached last recorded frame (last input from any player), the round still continues
                 }
             }
 
         }
-
-
     }
-    void ReplayRound::nextPlayer(bool recording, bool playing, Uint32 id, Uint32 & controllerState) {
+
+    void ReplayRound::replayPlayer(Uint32 id, Uint32 &controllerState) {
         if (frameId == 0) {
-            if (recording) {
-                playerDataStart[id].controllerState = controllerState;
-                playerData[id].controllerState  = controllerState;
-                //playerDataStart[id].position = position; //TODO starting data - position, ammo, weapon, orientation
-            }
-            if (playing) {
-                playerData[id].controllerState = playerDataStart[id].controllerState;
-            }
+            playerData[id].controllerState = playerDataStart[id].controllerState;
         }
-        if (recording && playerData[id].controllerState != controllerState) {
-            currentFrame.controllerState.push_back(id);
-            currentFrame.controllerState.push_back(controllerState);
-            playerData[id].controllerState = controllerState;
-        }
-        if (playing && !finished) {
+
+        if (!finished) {
             if (currentFrame.frameId != frameId || currentFrame.controllerState.empty()) {
                 controllerState = playerData[id].controllerState;
                 return;
@@ -218,8 +215,20 @@ namespace Duel6 {
                 return;
             }
         }
-        if (playing && finished) {
+        if (finished) {
             controllerState = playerData[id].controllerState; // to freeze players controls for the rest of the round's replay
+        }
+    }
+
+    void ReplayRound::recordPlayer(Uint32 id, Uint32 &controllerState) {
+        if (frameId == 0) {
+            playerDataStart[id].controllerState = controllerState;
+            playerData[id].controllerState = controllerState;
+        }
+        if (playerData[id].controllerState != controllerState) {
+            currentFrame.controllerState.push_back(id);
+            currentFrame.controllerState.push_back(controllerState);
+            playerData[id].controllerState = controllerState;
         }
     }
 }

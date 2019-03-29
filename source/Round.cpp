@@ -181,7 +181,7 @@ namespace Duel6 {
         for (Player &player : world.getPlayers()) {
             player.updateControllerStatus();
             scriptUpdate(player);
-            game.replay->nextPlayer(playerId++, player.getControllerStateRef());
+            game.replay->updatePlayer(playerId++, player.getControllerStateRef());
             player.update(world, game.getSettings().getScreenMode(), elapsedTime);
             if (game.getSettings().isGhostEnabled() && !player.isInGame() && !player.isGhost()) {
                 player.makeGhost();

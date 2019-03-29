@@ -87,7 +87,7 @@ namespace Duel6 {
     bool Menu::saveReplay() const {
         bool result = false;
         fbinarystream bs("last.dem", std::ios_base::out | std::ios_base::trunc);
-        if(bs.is_open()){
+        if (bs.is_open()) {
             //this->replay = std::make_unique<Replay>();
             result = bs << *replay;
             bs.close();
@@ -100,7 +100,7 @@ namespace Duel6 {
     bool Menu::loadReplay() {
         bool result = false;
         fbinarystream bs("last.dem", std::ios_base::in);
-        if(bs.is_open()){
+        if (bs.is_open()) {
             this->replay = std::make_unique<Replay>();
             result = bs >> *replay;
             bs.close();
@@ -405,7 +405,7 @@ namespace Duel6 {
 
     void Menu::detectControls(Size playerIndex) {
         render();
-        if(playerIndex >= playerListBox->size()) {
+        if (playerIndex >= playerListBox->size()) {
             return;
         }
         const std::string &name = playerListBox->getItem(playerIndex);
@@ -419,7 +419,7 @@ namespace Duel6 {
                 for (Size i = 0; i < controlsManager.getNumAvailable(); i++) {
                     const PlayerControls &pc = controlsManager.get(i);
 
-                    if ( (!pc.getLeft().isJoyPadAxis() && pc.getLeft().isPressed()) ||
+                    if ((!pc.getLeft().isJoyPadAxis() && pc.getLeft().isPressed()) ||
                         (!pc.getRight().isJoyPadAxis() && pc.getRight().isPressed()) ||
                         (!pc.getDown().isJoyPadAxis() && pc.getDown().isPressed()) ||
                         (!pc.getUp().isJoyPadAxis() && pc.getUp().isPressed()) ||
@@ -442,15 +442,15 @@ namespace Duel6 {
             profile->getSounds().getRandomSample(PlayerSounds::Type::GotHit).play();
         }
     }
+
     void Menu::startReplay() {
-        if(!replay && !loadReplay()) {
-            return ;
+        if (!replay && !loadReplay()) {
+            return;
         }
-        replay->recording = false;
-        replay->playing = true;
         replay->rewind();
         play();
     }
+
     void Menu::play() {
         if (playerListBox->size() < 2) {
             showMessage("Can't play alone ...");
@@ -481,22 +481,25 @@ namespace Duel6 {
 
         GameMode &selectedMode = *gameModes[gameModeSwitch->currentItem()];
 
-        if(replay == nullptr || replay->recording || !replay->isBeforeStart()) {
-            replay = std::make_unique<Replay>(true, false, game->getSettings().getMaxRounds(), game->getSettings().isGlobalAssistances(), game->getSettings().isQuickLiquid());
+        if (replay == nullptr || replay->isRecording() || !replay->isBeforeStart()) {
+            replay = std::make_unique<Replay>(game->getSettings().getMaxRounds(),
+                                              game->getSettings().isGlobalAssistances(),
+                                              game->getSettings().isQuickLiquid());
             //replay set selectedMode
         }
         demoPersons = std::make_unique<PersonList>();
         std::vector<Game::PlayerDefinition> playerDefinitions;
-        if(replay->playing){
+        if (replay != nullptr && replay->isReplaying()) {
 
-            for (const ReplayPlayerProfile & demoPlayerProfile : replay->players){
-                demoPersons->add(Person(demoPlayerProfile.name, nullptr));
+            for (const ReplayPlayerProfile &demoPlayerProfile : replay->players) {
+                demoPersons->add(Person(demoPlayerProfile.getName(), nullptr));
             }
-            for (const ReplayPlayerProfile & demoPlayerProfile : replay->players){
-                Person &person = demoPersons->getByName(demoPlayerProfile.name);// demoPersons->get(demoPersons->getLength()-1);
+            for (const ReplayPlayerProfile &demoPlayerProfile : replay->players) {
+                Person &person = demoPersons->getByName(
+                        demoPlayerProfile.getName());// demoPersons->get(demoPersons->getLength()-1);
                 auto profile = getPersonProfile(person.getName());
                 const PlayerControls &controls = controlsManager.get(0);
-                PlayerSkinColors colors = demoPlayerProfile.skinColors;
+                PlayerSkinColors colors = demoPlayerProfile.getSkinColors();
                 const PlayerSounds &sounds = profile ? profile->getSounds() : defaultPlayerSounds;
                 playerDefinitions.push_back(Game::PlayerDefinition(person, colors, sounds, controls));
             }
@@ -509,8 +512,8 @@ namespace Duel6 {
                 const PlayerSounds &sounds = profile ? profile->getSounds() : defaultPlayerSounds;
                 playerDefinitions.push_back(Game::PlayerDefinition(person, colors, sounds, controls));
             }
-            if(replay->recording){
-                for(const auto & player : playerDefinitions){
+            if (replay->isRecording()) {
+                for (const auto &player : playerDefinitions) {
                     replay->players.emplace_back(player.getPerson().getName(), player.getColors());
                 }
             }
@@ -664,11 +667,11 @@ namespace Duel6 {
         gui.mouseWheelEvent(event);
     }
 
-    void Menu::joyDeviceAddedEvent(const JoyDeviceAddedEvent & event) {
+    void Menu::joyDeviceAddedEvent(const JoyDeviceAddedEvent &event) {
         joyRescan();
     }
 
-    void Menu::joyDeviceRemovedEvent(const JoyDeviceRemovedEvent & event) {
+    void Menu::joyDeviceRemovedEvent(const JoyDeviceRemovedEvent &event) {
         joyRescan();
     }
 
@@ -714,32 +717,34 @@ namespace Duel6 {
 
         return nullptr;
     }
+
     int Menu::processEvents(bool single) {
         SDL_Event event;
         int result = 0;
         //TODO This logic duplicates event processing logic in Application. Should be refactored.
         while ((result = SDL_PollEvent(&event)) != 0) {
             switch (event.type) {
-                case SDL_KEYDOWN:{
+                case SDL_KEYDOWN: {
                     auto key = event.key.keysym;
                     appService.getInput().setPressed(key.sym, true);
                     break;
                 }
-                case SDL_KEYUP:{
+                case SDL_KEYUP: {
                     auto key = event.key.keysym;
                     appService.getInput().setPressed(key.sym, false);
                     break;
                 }
-                case SDL_JOYDEVICEADDED:{
+                case SDL_JOYDEVICEADDED: {
                     appService.getConsole().printLine("Device added");
 
                     auto deviceIndex = event.jdevice.which;
                     auto joy = SDL_JoystickOpen(deviceIndex);
-                    if(SDL_JoystickGetAttached(joy)){
-                       appService.getInput().joyAttached(joy);
-                       joyRescan();
+                    if (SDL_JoystickGetAttached(joy)) {
+                        appService.getInput().joyAttached(joy);
+                        joyRescan();
                     } else {
-                        appService.getConsole().printLine(Format("Joy attached, but has been detached again -> skipping."));
+                        appService.getConsole().printLine(
+                                Format("Joy attached, but has been detached again -> skipping."));
                         break;
                     }
 
@@ -753,12 +758,13 @@ namespace Duel6 {
                     break;
                 }
             }
-            if(single){
+            if (single) {
                 return result;
             }
         }
         return result;
     }
+
     void Menu::consumeInputEvents() {
         processEvents();
     }

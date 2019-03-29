@@ -7,6 +7,7 @@
 #include "../Type.h"
 #include "../Level.h"
 #include "ReplayFrame.h"
+#include "ReplayState.h"
 
 namespace Duel6 {
     class GameMode;
@@ -60,6 +61,7 @@ namespace Duel6 {
     public:
         Int32 width;
         Int32 height;
+        Uint16 waterBlock;
         std::vector<Uint16> levelData;
         std::string background;
         std::vector<ReplayElevator> elevators;
@@ -70,13 +72,16 @@ namespace Duel6 {
         ReplayLevel(const ReplayLevel &l) :
                 width(l.width),
                 height(l.height),
+                waterBlock(l.waterBlock),
                 levelData(l.levelData),
                 background(l.background),
                 elevators(l.elevators) {
 
         }
 
-        ReplayLevel(const Int32 width, const Int32 height, const std::vector<Uint16> &levelData,
+        ReplayLevel(const Int32 width, const Int32 height,
+                    Uint16 waterBlock,
+                    const std::vector<Uint16> &levelData,
                     const std::string &background, const std::vector<ReplayElevator> &elevators);
 
         std::vector<Elevator> generateElevators();
@@ -86,6 +91,7 @@ namespace Duel6 {
         bool serialize(Stream &s) {
             return s & width &&
                    s & height &&
+                   s & waterBlock &&
                    s & levelData &&
                    s & background &&
                    s & elevators;
@@ -127,13 +133,15 @@ namespace Duel6 {
 
         void markLastFrame();
 
-        void roundStart(bool recording, bool playing, std::vector<Player> &players, const std::string &background);
+        void roundStart(ReplayState state, std::vector<Player> &players, const std::string &background);
 
-        void nextRound(bool recording, bool playing, std::unique_ptr<Level> &level);
+        void recordLevel(std::unique_ptr<Level> &level);
 
-        void nextFrame(bool recording, bool playing);
+        void nextFrame(ReplayState state);
 
-        void nextPlayer(bool recording, bool playing, Uint32 id, Uint32 &controllerState);
+        void recordPlayer(Uint32 id, Uint32 &controllerState);
+
+        void replayPlayer(Uint32 id, Uint32 &controllerState);
 
         void rewind();
 

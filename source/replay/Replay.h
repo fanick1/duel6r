@@ -2,6 +2,7 @@
 #define DUEL6_DEMO_H
 
 #include <list>
+#include "ReplayState.h"
 #include "ReplayFrame.h"
 #include "ReplayRound.h"
 #include "../File.h"
@@ -12,10 +13,19 @@ namespace Duel6 {
 
     class Player;
 
+
     class ReplayPlayerProfile {
-    public:
+    private:
         std::string name;
+
         PlayerSkinColors skinColors;
+    public:
+        const std::string &getName() const;
+
+        const PlayerSkinColors &getSkinColors() const;
+
+    public:
+
 
         ReplayPlayerProfile() {}
 
@@ -45,12 +55,13 @@ namespace Duel6 {
         bool beginning = true;
         bool globalAssistances = false;
         bool quickLiquid = false;
+        ReplayState state = ReplayState::RECORDING;
     public:
-        bool recording = true;
-        bool playing = false;
 
-        Replay(){};
-        Replay(bool recording, bool playing, Uint32 maxRounds, bool globalAssistances, bool quickLiquid);
+
+        Replay() {};
+
+        Replay(Uint32 maxRounds, bool globalAssistances, bool quickLiquid);
 
         ReplayPlayerList players;
 
@@ -69,7 +80,7 @@ namespace Duel6 {
 
         void nextFrame();
 
-        void nextPlayer(Uint32 id, Uint32 &controllerState);
+        void updatePlayer(Uint32 id, Uint32 &controllerState);
 
         void rewind();
 
@@ -82,6 +93,10 @@ namespace Duel6 {
         ReplayLevel &getLevel();
 
         ReplayRound &getRound();
+
+        bool isRecording();
+
+        bool isReplaying();
 
         template<class Stream>
         bool serialize(Stream &s) {
@@ -123,7 +138,7 @@ bool serialize(Stream &s, Duel6::PlayerSkinColors::Hair &hair) {
 
     if (s.isDeserializer()) {
         Uint8 h;
-        result = s.safe_max(h, (Uint8)2); // 0,1,2
+        result = s.safe_max(h, (Uint8) 2); // 0,1,2
         if (result) {
             hair = static_cast<Duel6::PlayerSkinColors::Hair>(h);
         }
