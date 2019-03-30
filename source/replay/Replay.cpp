@@ -24,10 +24,9 @@ namespace Duel6 {
     }
 
 
-    Replay::Replay(Uint32 maxRounds, bool globalAssistances, bool quickLiquid)
-            : maxRounds(maxRounds),
-              globalAssistances(globalAssistances),
-              quickLiquid(quickLiquid) {
+    Replay::Replay(const GameSettings & gameSettings,
+            Int32 gameMode)
+            : settings(gameSettings, gameMode) {
     }
 
     bool Replay::roundEnded() {
@@ -124,11 +123,7 @@ namespace Duel6 {
         return state == ReplayState::REPLAYING;
     }
 
-    bool Replay::getQuickLiquid() {
-        return quickLiquid;
-    }
-
-    bool Replay::getGlobalAssistances() {
-        return globalAssistances;
+    void Replay::configureGameSettings(GameSettings & s, Int32 & gameMode) {
+        settings.configureGameSettings(s, gameMode);
     }
 }

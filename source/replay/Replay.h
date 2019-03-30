@@ -7,11 +7,13 @@
 #include "ReplayRound.h"
 #include "../File.h"
 #include "../PlayerSkinColors.h"
+#include "ReplaySettings.h"
 
 namespace Duel6 {
     class GameMode;
 
     class Player;
+
 
 
     class ReplayPlayerProfile {
@@ -49,19 +51,19 @@ namespace Duel6 {
     private:
         bool finished = false;
         bool roundEnd = false;
-        Uint32 maxRounds; // e.g. 30
+        ReplaySettings settings;
+
         ReplayRoundList rounds;
         ReplayRoundList::iterator currentRound;
         bool beginning = true;
-        bool globalAssistances = false;
-        bool quickLiquid = false;
+
         ReplayState state = ReplayState::RECORDING;
     public:
 
 
         Replay() {};
 
-        Replay(Uint32 maxRounds, bool globalAssistances, bool quickLiquid);
+        Replay(const GameSettings & settings, Int32 gameMode);
 
         ReplayPlayerList players;
 
@@ -69,11 +71,8 @@ namespace Duel6 {
 
         Uint32 initialSeed = 0;
 
-        bool getQuickLiquid();
-
-        bool getGlobalAssistances();
-
         bool roundEnded(); // currently played level has come to an end
+
         void nextRound(std::unique_ptr<Level> &level);
 
         void roundStart(std::vector<Player> &players, const std::string &background);
@@ -98,13 +97,13 @@ namespace Duel6 {
 
         bool isReplaying();
 
+        void configureGameSettings(GameSettings & s, Int32 & gameMode);
+
         template<class Stream>
         bool serialize(Stream &s) {
-            return s & maxRounds &&
-                   s & globalAssistances &&
-                   s & quickLiquid &&
-                   s & initialSeed &&
+            return s & settings &&
                    s & players &&
+                   s & initialSeed &&
                    s & rounds;
         }
     };

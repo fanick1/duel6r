@@ -81,6 +81,7 @@ set(D6R_SOURCES
         source/serialisation/BinaryStreamBase.h
         source/serialisation/FileBinaryStream.h
 
+        source/replay/ReplaySettings.h
         source/replay/Replay.h
         source/replay/Replay.cpp
         source/replay/ReplayFrame.h

@@ -134,10 +134,6 @@ namespace Duel6 {
         settings.setScreenZoom(screenZoom);
         auto quickLiquid = settings.isQuickLiquid();
         auto globalAssistances = settings.isGlobalAssistances();
-        if(replay->isReplaying()) {
-            quickLiquid = replay->getQuickLiquid();
-            globalAssistances = replay->getGlobalAssistances();
-        }
         gameMode.initializeGame(*this, players, quickLiquid, globalAssistances);
         nextRound();
     }

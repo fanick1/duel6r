@@ -71,16 +71,6 @@ namespace Duel6 {
     };
 
     class Weapon final {
-    public:
-        struct Hash {
-            std::size_t operator()(const Weapon &val) const {
-                return val.impl->getId();
-            }
-        };
-
-        bool operator==(const Weapon &rhs) {
-            return impl->getId() == rhs.impl->getId();
-        }
     private:
         typedef std::unique_ptr<WeaponImpl> WeaponImplPtr;
 
@@ -115,6 +105,8 @@ namespace Duel6 {
         bool operator!=(const Weapon &weapon) const;
 
         bool isChargeable() const;
+
+        Uint8 getId() const;
 
     public:
         static const std::vector<Weapon> &values();

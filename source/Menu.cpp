@@ -88,10 +88,8 @@ namespace Duel6 {
         bool result = false;
         fbinarystream bs("last.dem", std::ios_base::out | std::ios_base::trunc);
         if (bs.is_open()) {
-            //this->replay = std::make_unique<Replay>();
             result = bs << *replay;
             bs.close();
-            //startReplay();
         }
 
         return result;
@@ -479,18 +477,15 @@ namespace Duel6 {
             }
         }
 
-        GameMode &selectedMode = *gameModes[gameModeSwitch->currentItem()];
+        Int32 gameMode = gameModeSwitch->currentItem();
 
         if (replay == nullptr || replay->isRecording() || !replay->isBeforeStart()) {
-            replay = std::make_unique<Replay>(game->getSettings().getMaxRounds(),
-                                              game->getSettings().isGlobalAssistances(),
-                                              game->getSettings().isQuickLiquid());
-            //replay set selectedMode
+            replay = std::make_unique<Replay>(game->getSettings(), gameMode);
         }
         demoPersons = std::make_unique<PersonList>();
         std::vector<Game::PlayerDefinition> playerDefinitions;
         if (replay != nullptr && replay->isReplaying()) {
-
+            replay->configureGameSettings(game->getSettings(), gameMode);
             for (const ReplayPlayerProfile &demoPlayerProfile : replay->players) {
                 demoPersons->add(Person(demoPlayerProfile.getName(), nullptr));
             }
@@ -518,6 +513,7 @@ namespace Duel6 {
                 }
             }
         }
+        GameMode &selectedMode = *gameModes[gameMode];
         selectedMode.initializePlayers(playerDefinitions);
 
         // Levels

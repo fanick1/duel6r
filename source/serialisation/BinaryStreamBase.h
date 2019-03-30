@@ -423,6 +423,17 @@ public:
         return true;
     }
 
+    template<typename F, typename S>
+    bool operator << (std::pair<F, S> & p){
+        return *this << p.first && *this << p.second;
+    }
+
+    template<typename F, typename S>
+    bool operator >> (std::pair<F, S> & p){
+        return *this >> p.first && *this >> p.second;
+    }
+
+
     template<typename C, typename std::enable_if< (std::is_class<C> {} || std::is_enum<C> {}) && !is_serializable_container<C> {} && !is_associative_container<C>{}, int>::type = 0>
      bool operator >>(C & c) {
         BinaryDeserializer<streamtype> b(*this);
