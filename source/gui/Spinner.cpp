@@ -114,6 +114,13 @@ namespace Duel6 {
             drawFrame(x + 20, y, width - 40, 18, true);
             globRenderer->quadXY(Vector(x + 22, y - 16), Vector(width - 44, 15), Color::WHITE);
 
+            if (items.empty())
+                return;
+
+            font.print(x + 25, y - 15, Color::BLACK, items[selectedIndex].second);
+        }
+
+        void Spinner::postDraw(const Font &font) const {
             Int32 px = left->getX() + 7 + (left->isPressed() ? 1 : 0);
             Int32 py = left->getY() - 4 - (left->isPressed() ? 1 : 0);
             globRenderer->triangle(Vector(px + 2, py), Vector(px + 2, py - 7), Vector(px - 2, py - 4), Color::BLACK);
@@ -121,11 +128,6 @@ namespace Duel6 {
             px = right->getX() + 7 + (right->isPressed() ? 1 : 0);
             py = right->getY() - 4 - (right->isPressed() ? 1 : 0);
             globRenderer->triangle(Vector(px - 1, py), Vector(px + 3, py - 4), Vector(px - 1, py - 7), Color::BLACK);
-
-            if (items.empty())
-                return;
-
-            font.print(x + 25, y - 15, Color::BLACK, items[selectedIndex].second);
         }
     }
 }

@@ -43,6 +43,7 @@ namespace Duel6 {
             TextureFilter filtering,
             bool clamp) {
         Image list;
+        list.reserveSlices(animation.framesCount);
         for (uint16_t f = 0; f < animation.framesCount; f++) {
             Image frameImage(animation.width, animation.height);
             for (uint16_t p = 0; p < animation.width * animation.height; p++) {
@@ -119,7 +120,9 @@ namespace Duel6 {
     Texture TextureManager::loadStack(const std::string &path, TextureFilter filtering, bool clamp,
                                       const SubstitutionTable &substitutionTable) {
         Image image = Image::loadStack(path);
-        substituteColors(image, substitutionTable);
+        if(!substitutionTable.empty()) {
+            substituteColors(image, substitutionTable);
+        }
 
         Texture texture = globRenderer->createTexture(image, filtering, clamp);
         return texture;

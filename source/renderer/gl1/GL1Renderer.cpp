@@ -177,7 +177,8 @@ namespace Duel6 {
     }
 
     void GL1Renderer::clearBuffers() {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_DEPTH_BUFFER_BIT);
     }
 
     void GL1Renderer::setProjectionMatrix(const Matrix &m) {
@@ -304,6 +305,7 @@ namespace Duel6 {
         }
         GLuint textureId = textureIterator->second[GLuint(t1.z)];
 
+        {
         if (material.isColored()) {
             const Color &color = material.getColor();
             glColor4ub(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
@@ -336,6 +338,7 @@ namespace Duel6 {
 
         if (material.isColored()) {
             glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        }
         }
     }
 

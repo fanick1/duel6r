@@ -106,16 +106,7 @@ namespace Duel6 {
         }
 
         void Slider::draw(const Font &font) const {
-            int px, py, h = getSliderHeight(), s = 0;
-
-            px = up->getX() + 7 + (up->isPressed() ? 1 : 0);
-            py = up->getY() - 4 - (up->isPressed() ? 1 : 0);
-            globRenderer->triangle(Vector(px, py), Vector(px + 2, py - 6), Vector(px - 3, py - 6), Color::BLACK);
-
-
-            px = down->getX() + 7 + (down->isPressed() ? 1 : 0);
-            py = down->getY() - 4 + (down->isPressed() ? 1 : 0);
-            globRenderer->triangle(Vector(px - 3, py), Vector(px + 3, py), Vector(px, py - 6), Color::BLACK);
+            int h = getSliderHeight(), s = 0;
 
             globRenderer->quadXY(Vector(x, y - height + 1), Vector(15, height - 1), Color(230, 230, 230));
 
@@ -128,6 +119,18 @@ namespace Duel6 {
             globRenderer->quadXY(Vector(x, y - s - h + 1), Vector(15, h - 1), bcgColor);
 
             drawFrame(x, y - s, 16, h, false);
+        }
+        void Slider::postDraw(const Font &font) const {
+            int px, py;
+
+            px = up->getX() + 7 + (up->isPressed() ? 1 : 0);
+            py = up->getY() - 4 - (up->isPressed() ? 1 : 0);
+            globRenderer->triangle(Vector(px, py), Vector(px + 2, py - 6), Vector(px - 3, py - 6), Color::BLACK);
+
+
+            px = down->getX() + 7 + (down->isPressed() ? 1 : 0);
+            py = down->getY() - 4 + (down->isPressed() ? 1 : 0);
+            globRenderer->triangle(Vector(px - 3, py), Vector(px + 3, py), Vector(px, py - 6), Color::BLACK);
         }
 
         Int32 Slider::getSliderHeight() const {

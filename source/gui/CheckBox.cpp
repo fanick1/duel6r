@@ -56,12 +56,14 @@ namespace Duel6 {
         }
 
         void CheckBox::draw(const Font &font) const {
-            Int32 px, py;
-
-            drawFrame(x, y, 16, 16, checked);
-            px = x + 32;
-            py = y - (height >> 1) - 7;
+            Int32 px = x + 32;
+            Int32 py = y - (height >> 1) - 7;
+            auto width = font.getTextWidth(label, font.getCharHeight());
+            drawFrame(x - 1 , y + 1 , 32 + width , 19, false);
             font.print(px, py, Color(0), label);
+            drawFrame(x, y, 16, 16, checked);
+
+
         }
 
     }

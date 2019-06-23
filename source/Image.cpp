@@ -40,7 +40,7 @@
 #include "File.h"
 
 namespace Duel6 {
-    Image::Image(Size width, Size height, Size depth) {
+    Image::Image(Size width, Size height, Size depth): data(width * height * depth) {
         resize(width, height, depth);
     }
 
@@ -87,7 +87,10 @@ namespace Duel6 {
         dimensions[2]++;
 
         Size sliceSize = dimensions[0] * dimensions[1];
-        data.resize(sliceSize * dimensions[2]);
+        Size depth = reservedSlices == 0 ? dimensions[2] : reservedSlices;
+
+        data.resize(sliceSize * depth);
+
 
         memcpy(&data[sliceSize * (dimensions[2] - 1)], slice.data.data(), sliceSize * sizeof(Color));
 
@@ -135,11 +138,15 @@ namespace Duel6 {
         Image result;
 
         for (const auto &fileName : textureFiles) {
+            result.reserveSlices(textureFiles.size());
             Image slice = Image::load(path + fileName);
             result.addSlice(slice);
         }
 
         return result;
+    }
+    void Image::reserveSlices(Size slices) {
+        reservedSlices = slices;
     }
 
     Image Image::fromSurface(SDL_Surface *surface) {

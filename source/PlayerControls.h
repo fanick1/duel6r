@@ -46,6 +46,10 @@ namespace Duel6 {
         }
     };
 
+    class DummyControl : public Control {
+        bool isPressed() const override { return false; }
+    };
+
     class KeyboardButton
             : public Control {
     private:

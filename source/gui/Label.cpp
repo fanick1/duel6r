@@ -49,7 +49,8 @@ namespace Duel6 {
         }
 
         void Label::draw(const Font &font) const {
-            globRenderer->quadXY(Vector(x, y - height + 1), Vector(width - 1, height - 1), Color(170, 170, 170));
+            globRenderer->quadXY(Vector(x, y - height), Vector(width,   height), Color(192, 100, 192));
+          //  globRenderer->quadXY(Vector(x, y - height + 1), Vector(width - 1, height - 1), Color(170, 170, 170));
             font.print(x, y - 15, Color(0), text);
         }
     }

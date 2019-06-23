@@ -73,6 +73,8 @@ namespace Duel6 {
             virtual void update(Float32 elapsedTime) {}
 
             virtual void draw(const Font &font) const = 0;
+//temporary workaround for drawing spinner buttons properly TODO support icons in buttons?
+            virtual void postDraw(const Font &font) const {}
 
             virtual void keyEvent(const KeyPressEvent &event) {}
 

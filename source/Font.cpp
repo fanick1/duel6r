@@ -119,7 +119,14 @@ namespace Duel6 {
     }
 
     Int32 Font::getTextWidth(const std::string &str, Int32 height) const {
-        return Int32(str.size() * height) / 2;
+
+        int w;
+        int h;
+        if(TTF_SizeText(font, str.c_str(), &w, &h) == 0){
+            return w * height / h;
+        } else {
+            return Int32(str.size() * height) / 2;
+        }
     }
 
     void Font::print(Int32 x, Int32 y, const Color &color, const std::string &str) const {
@@ -158,5 +165,9 @@ namespace Duel6 {
         Texture texture = globRenderer->createTexture(image, TextureFilter::Linear, true);
 
         return texture;
+    }
+
+    Int32 Font::getCharHeight() const {
+        return 16;
     }
 }

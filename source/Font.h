@@ -69,9 +69,7 @@ namespace Duel6 {
             return 8;
         }
 
-        Int32 getCharHeight() const {
-            return 16;
-        }
+        Int32 getCharHeight() const;
 
     private:
         Texture getTexture(const std::string &text) const;

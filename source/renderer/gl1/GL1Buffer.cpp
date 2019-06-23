@@ -49,22 +49,33 @@ namespace Duel6 {
         const auto &faces = faceList.getFaces();
         const Vertex *vertex = faceList.getVertexes().data();
 
-        for (const Face &face : faces) {
-            const Vertex &v1 = vertex[0];
-            const Vertex &v2 = vertex[1];
-            const Vertex &v3 = vertex[2];
-            const Vertex &v4 = vertex[3];
+        for (size_t i = 0; i < faces.size(); ++i) {
+            size_t v = 4 * i;
+            const Face &face = faces[i];
+
+            const Vertex &v1 = vertex[v + 0];
+            const Vertex &v2 = vertex[v + 1];
+            const Vertex &v3 = vertex[v + 2];
+            const Vertex &v4 = vertex[v + 3];
 
             Float32 currentTexture = face.getCurrentTexture();
+            if (v2.getFlag() != Vertex::Flow) {
+                    renderer.quad(Vector(v1.x, v1.y, v1.z), Vector(v1.u, v1.v, currentTexture),
+                    Vector(v2.x, v2.y, v2.z), Vector(v2.u, v2.v, currentTexture),
+                    Vector(v3.x, v3.y, v3.z), Vector(v3.u, v3.v, currentTexture),
+                    Vector(v4.x, v4.y, v4.z), Vector(v4.u, v4.v, currentTexture),
+                    material);
+            } else {
+                renderer.quad(getVertexPosition(v1), Vector(v1.u, v1.v, currentTexture),
+                    getVertexPosition(v2), Vector(v2.u, v2.v, currentTexture),
+                    getVertexPosition(v3), Vector(v3.u, v3.v, currentTexture),
+                    getVertexPosition(v4), Vector(v4.u, v4.v, currentTexture),
+                    material);
+            }
 
-            renderer.quad(getVertexPosition(v1), Vector(v1.u, v1.v, currentTexture),
-                          getVertexPosition(v2), Vector(v2.u, v2.v, currentTexture),
-                          getVertexPosition(v3), Vector(v3.u, v3.v, currentTexture),
-                          getVertexPosition(v4), Vector(v4.u, v4.v, currentTexture),
-                          material);
-
-            vertex += 4;
+//            vertex += 4;
         }
+
     }
 
     Vector GL1Buffer::getVertexPosition(const Duel6::Vertex &vertex) const {

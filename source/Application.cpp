@@ -35,6 +35,7 @@
 #include "ConsoleCommands.h"
 #include "Application.h"
 #include "FontException.h"
+#include "menu/MainMenu.h"
 
 namespace Duel6 {
     namespace {
@@ -77,7 +78,8 @@ namespace Duel6 {
               input(console), controlsManager(input),sound(20, console),
               scriptContext(console, sound, gameSettings), scriptManager(scriptContext),
               service(font, console, textureManager, video, input, controlsManager, sound, scriptManager),
-              menu(service), game(service, gameResources, gameSettings), requestClose(false) {}
+              menu(service), game(service, gameResources, gameSettings), requestClose(false),
+              mainMenu(service, gameResources, gameSettings, menu) {}
 
     Application::~Application() {
         tearDown();
@@ -192,17 +194,22 @@ namespace Duel6 {
         static Float64 accumulatedTime = 0.0f;
         Uint32 lastTime = curTime;
 
-        context.render();
-        video.screenUpdate(console, font);
 
         curTime = SDL_GetTicks();
         Float64 elapsedTime = (curTime - lastTime) * 0.001f;
         accumulatedTime += elapsedTime;
 
+        if(accumulatedTime > updateTime) {
+            context.render();
+            video.screenUpdate(console, font);
+        }
         while (accumulatedTime > updateTime) {
             context.update(Float32(updateTime));
             accumulatedTime -= updateTime;
         }
+//        if(accumulatedTime > 0) {
+//            SDL_Delay( (updateTime - accumulatedTime) * 1000);
+//        }
     }
 
     void Application::setup(Int32 argc, char **argv) {
@@ -263,7 +270,9 @@ namespace Duel6 {
     }
 
     void Application::run() {
-        Context::push(menu);
+        //Context::push(menu);
+        mainMenu.initialize();
+        Context::push(mainMenu);
 
         while (Context::exists() && !requestClose) {
             Context &context = Context::getCurrent();

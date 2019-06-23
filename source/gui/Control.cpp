@@ -42,9 +42,12 @@ namespace Duel6 {
         void Control::drawFrame(Int32 x, Int32 y, Int32 w, Int32 h, bool p) {
             w--;
             h--;
-
+            globRenderer->setBlendFunc(BlendFunc::SrcAlpha);
+            //globRenderer->setBlendFunc(BlendFunc::SrcColor);
             const Color &topColor = p ? frameDarkColor : frameLightColor;
             const Color &bottomColor = p ? frameLightColor : frameDarkColor;
+            globRenderer->quadXY(Vector(x, y - h), Vector(w,   h), Color(192, 100, 192));
+
 
             globRenderer->line(Vector(x, y), Vector(x, y - h), 1.0f, topColor);
             globRenderer->line(Vector(x + 1, y), Vector(x + 1, y - h + 1), 1.0f, topColor);

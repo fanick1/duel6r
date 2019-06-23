@@ -139,7 +139,7 @@ namespace Duel6 {
                 }
 
                 if (looping == AnimationLooping::RepeatForever) {
-                    frame = 0;
+                    frame = animation[frame + 1];
                 } else if (looping == AnimationLooping::OnceAndStop) {
                     frame -= 2;
                 }

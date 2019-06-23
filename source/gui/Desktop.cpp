@@ -32,7 +32,7 @@
 namespace Duel6 {
     namespace Gui {
         namespace {
-            Color bcgColor(192, 192, 192);
+            Color bcgColor(192, 192, 192, 100);
         }
 
         Desktop::Desktop() {
@@ -59,11 +59,17 @@ namespace Duel6 {
         }
 
         void Desktop::draw(const Font &font) const {
-            globRenderer->quadXY(Vector(0, 0), Vector(screenWidth, screenHeight), bcgColor);
-            globRenderer->setViewMatrix(Matrix::translate(Float32(trX), Float32(trY), 0));
+   //         globRenderer->setBlendFunc(BlendFunc::SrcAlpha);
+           // globRenderer->quadXY(Vector(0, 0), Vector(screenWidth, screenHeight), bcgColor);
+     //       globRenderer->setBlendFunc(BlendFunc::SrcColor);
 
+            globRenderer->setViewMatrix(Matrix::translate(Float32(trX), Float32(trY), 0));
             for (auto &control : controls) {
                 control->draw(font);
+
+            }
+            for (auto &control : controls) {
+                control->postDraw(font);
             }
 
             globRenderer->setViewMatrix(Matrix::IDENTITY);

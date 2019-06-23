@@ -41,7 +41,7 @@ endif (MSVC)
 
 # gnu compiler or clang
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb3 -Wall -std=c++17")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -ggdb3 -Wall -std=c++17")
     if (D6R_PLATFORM STREQUAL "x86")
 
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse -msse2")
@@ -405,7 +405,7 @@ set(D6R_SOURCES
         source/weapon/impl/Uzi.h
         source/weapon/impl/UziShot.cpp
         source/weapon/impl/UziShot.h
-        )
+        source/menu/MainMenu.cpp source/menu/MainMenu.h source/gui/GuiEvent.h)
 
 if (D6R_RENDERER STREQUAL "gl1")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_RENDERER_GL1")
@@ -489,7 +489,7 @@ elseif (APPLE)
     find_library(LIB_OPEN_GL OpenGL DOC "Path to OpenGL framework")
     target_link_libraries(${D6R_APP_NAME} ${LIB_OPEN_GL})
 else (WIN32) # Linux GCC
-    find_library(LIB_OPEN_GL GL DOC "Path to OpenGL import library")
+    find_library(LIB_OPEN_GL OpenGL DOC "Path to OpenGL import library")
     target_link_libraries(${D6R_APP_NAME} ${LIB_OPEN_GL})
 endif (WIN32)
 

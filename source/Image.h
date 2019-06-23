@@ -36,6 +36,7 @@
 namespace Duel6 {
     class Image {
     private:
+        Size reservedSlices = 0;
         Size dimensions[3];
         std::vector<Color> data;
 
@@ -73,6 +74,8 @@ namespace Duel6 {
         void save(const std::string &path) const;
 
         std::string saveScreenshot() const;
+
+        void reserveSlices(Size slices);
 
         static Image load(const std::string &path);
 
