@@ -42,9 +42,9 @@ public:
         uint8_t val;
         read((char *) &val, 1);
         t = val != 0;
-        bool debug = good();
-        return debug;
+        return good();
     }
+
     bool operator >>(uint8_t & t) {
         read((char *) &t, 1);
         return good();
@@ -102,8 +102,7 @@ public:
         char readBuf[size + 1] = { 0 };
         read((char *) readBuf, size);
         s.assign(readBuf, size);
-        bool debug = good();
-        return debug;
+        return good();
     }
 
     bool operator >>(std::u16string & s) {
@@ -141,11 +140,13 @@ public:
         read((char *) &t, sizeof(char32_t));
         return good();
     }
+
     bool operator <<(const bool & t) {
         uint8_t val = t ? 1 : 0;
         write((const char *) &val, 1);
         return good();
     }
+
     bool operator <<(const uint8_t & t) {
         write((const char *) &t, 1);
         return good();
@@ -212,6 +213,7 @@ public:
         }
         return good();
     }
+
     bool operator <<(std::u32string & s) {
         uint32_t size = s.length();
         writeSize(size);
@@ -221,10 +223,12 @@ public:
 
         return good();
     }
+
     bool operator <<(const char16_t & t) {
         write((const char *) &t, sizeof(char16_t));
         return good();
     }
+
     bool operator <<(const char32_t & t) {
         write((const char *) &t, sizeof(char32_t));
         return good();
@@ -245,6 +249,7 @@ public:
         }
         return true;
     }
+
     template<typename T, typename std::enable_if<is_string<T>::value, int>::type = 0>
     bool s_read(T& l, const uint32_t size_min, const uint32_t size_max) {
         l.clear();
@@ -262,6 +267,7 @@ public:
             return false;
         }
     }
+
     template<typename T, typename std::enable_if<is_serializable_container<T>::value, int>::type = 0>
     bool s_read(T& l, const typename T::value_type & min, const typename T::value_type & max, const uint32_t size_min, const uint32_t size_max) {
         l.clear();
@@ -432,7 +438,6 @@ public:
     bool operator >> (std::pair<F, S> & p){
         return *this >> p.first && *this >> p.second;
     }
-
 
     template<typename C, typename std::enable_if< (std::is_class<C> {} || std::is_enum<C> {}) && !is_serializable_container<C> {} && !is_associative_container<C>{}, int>::type = 0>
      bool operator >>(C & c) {

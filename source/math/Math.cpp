@@ -60,5 +60,6 @@ namespace Duel6 {
 
     void Math::reseed(std::minstd_rand0::result_type seed) {
         Math::randomEngine.seed(seed);
+        Math::randomEngine.discard(1000);
     }
 }

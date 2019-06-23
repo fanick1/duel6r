@@ -109,7 +109,7 @@ namespace Duel6 {
         Game(AppService &appService, GameResources &resources, GameSettings &settings);
 
         void start(Replay * replay, const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
-                   const std::vector<Size> &backgrounds, ScreenMode screenMode, Int32 screenZoom, GameMode &gameMode);
+                   ScreenMode screenMode, Int32 screenZoom, GameMode &gameMode);
 
         void keyEvent(const KeyPressEvent &event) override;
 

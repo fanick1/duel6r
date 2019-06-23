@@ -42,7 +42,9 @@ namespace Duel6 {
 
     void Game::beforeClose(Context *nextContext) {
         round->end();
-        menu->saveReplay();
+        if(replay->isRecording()){
+            menu->saveReplay();
+        }
 
     }
 
@@ -51,10 +53,13 @@ namespace Duel6 {
     }
 
     void Game::update(Float32 elapsedTime) {
-        if (getRound().isOver() || (replay->isReplaying() && replay->roundEnded())) {
+        if (getRound().isOver() || (replay->isReplaying() && replay->roundEnded() && getRound().isOver())) {
             if (!getRound().isLast() && !(replay->isReplaying() && replay->isFinished())) {
                 nextRound();
             } else {
+                if(replay->isReplaying() /* && background demo ?*/){
+                    nextRound();
+                }
                 displayScoreTab = true;
             }
         } else {
@@ -103,8 +108,9 @@ namespace Duel6 {
     void Game::joyDeviceRemovedEvent(const JoyDeviceRemovedEvent & event) {}
 
     void Game::start(Replay * replay, const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
-                     const std::vector<Size> &backgrounds, ScreenMode screenMode, Int32 screenZoom,
+            ScreenMode screenMode, Int32 screenZoom,
                      GameMode &gameMode) {
+        playedRounds = 0;
         this->replay = replay;
         Console &console = appService.getConsole();
         console.printLine("\n=== Starting new game ===");
@@ -128,7 +134,6 @@ namespace Duel6 {
         this->levels = levels;
         std::shuffle(this->levels.begin(), this->levels.end(), Math::randomEngine);
 
-        this->backgrounds = backgrounds;
         this->gameMode = &gameMode;
         settings.setScreenMode(screenMode);
         settings.setScreenZoom(screenZoom);
@@ -142,19 +147,14 @@ namespace Duel6 {
         displayScoreTab = false;
         if (playedRounds != 0) {
             round->end();
-            menu->savePersonData();
+            if(!replay->isReplaying()){
+                menu->savePersonData();
+            }
         }
         if(replay->isReplaying() && replay->isFinished()){
             return;
         }
-        bool shuffle = settings.getLevelSelectionMode() == LevelSelectionMode::Shuffle;
-        Int32 level = shuffle ? playedRounds % Int32(levels.size()) : Math::random(Int32(levels.size()));
-        const std::string levelPath = levels[level];
-        bool mirror = Math::random(2) == 0;
 
-        Console &console = appService.getConsole();
-        console.printLine(Format("\n===Loading level {0}===") << levelPath);
-        console.printLine(Format("...Parameters: mirror: {0}") << mirror);
         std::unique_ptr<Level> levelData;
         if(replay->isReplaying()) {
             replay->nextRound(levelData);
@@ -171,6 +171,14 @@ namespace Duel6 {
                 demoLevel.generateElevators());
         }
         if(replay->isRecording()) {
+            bool shuffle = settings.getLevelSelectionMode() == LevelSelectionMode::Shuffle;
+            Int32 level = shuffle ? playedRounds % Int32(levels.size()) : Math::random(levels.size());
+            const std::string levelPath = levels[level];
+            bool mirror = Math::random(2) == 0;
+
+            Console &console = appService.getConsole();
+            console.printLine(Format("\n===Loading level {0} {1} ===") << level << levelPath);
+            console.printLine(Format("...Parameters: mirror: {0}") << mirror);
             levelData = std::make_unique<Level>(levelPath, mirror, resources.getBlockMeta());
             replay->nextRound(levelData);
         }

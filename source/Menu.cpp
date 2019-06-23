@@ -526,11 +526,11 @@ namespace Duel6 {
             levels.push_back(levelList.getPath(levelListBox->selectedIndex() - 1));
         }
 
-        // Game backgrounds
-        std::vector<Size> backgrounds;
-        for (Size i = 0; i < backgroundCount; i++) {
-            backgrounds.push_back(i);
-        }
+//        // Game backgrounds
+//        std::vector<Size> backgrounds;
+//        for (Size i = 0; i < backgroundCount; i++) {
+//            backgrounds.push_back(i);
+//        }
 
         // Screen
         ScreenMode screenMode = (playerListBox->size() > 4 || screenModeListBox->selectedIndex() == 0)
@@ -541,7 +541,7 @@ namespace Duel6 {
         Context::push(*game);
 
 
-        game->start(replay.get(), playerDefinitions, levels, backgrounds, screenMode, screenZoom, selectedMode);
+        game->start(replay.get(), playerDefinitions, levels, screenMode, screenZoom, selectedMode);
     }
 
     void Menu::addPlayer(Int32 index) {
