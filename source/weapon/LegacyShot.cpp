@@ -37,6 +37,7 @@ namespace Duel6 {
               animationBoom(boomAnimation), collisionRect(collisionRect), orientation(orientation),
               shotHit({false, nullptr, nullptr}), bulletSpeed(weapon.getShotSpeed(player.getChargeLevel())),
               power(weapon.getShotPower(player.getChargeLevel())) {
+
         const Vector dim = getDimensions();
         const Rectangle playerRect = player.getCollisionRect();
         if (orientation == Orientation::Left) {
@@ -132,7 +133,7 @@ namespace Duel6 {
         Float32 powerFactor = getPowerFactor();
         Float32 range = getExplosionRange() * powerFactor;
         Float32 power = getExplosionPower() * powerFactor;
-
+        world.addExplosionAmplitude(0.02 * range * power);
         const Vector shotCentre = getCentre();
         onExplode(shotCentre, range, world);
 
@@ -142,7 +143,9 @@ namespace Duel6 {
             Float32 dist = directHit ? 0 : (playerCentre - shotCentre).length();
             if (directHit || dist < range) {
                 hittedPlayers.push_back(&player);
-                if (player.hitByShot(directHit ? power : ((range - dist) * power) / range, *this, directHit,
+                Float32 amount = directHit ? power : ((range - dist) * power) / range;
+                world.addExplosionAmplitude(0.02 * amount);
+                if (player.hitByShot(amount, *this, directHit,
                                      getCentre(), velocity)) {
                     killedPlayers.push_back(&player);
                 }

@@ -64,7 +64,7 @@ namespace Duel6 {
         elevatorList.update(elapsedTime);
         messageQueue.update(elapsedTime);
         bonusList.update(elapsedTime);
-
+        explosionAmplitude *= 0.9f;
         // Add new bonuses
         Int32 mod = Int32(3.0f / elapsedTime);
         if (mod != 0 && Math::random(mod) == 0) {

@@ -55,6 +55,7 @@ namespace Duel6 {
         BonusList bonusList;
         ElevatorList elevatorList;
         Float32 time;
+        Float32 explosionAmplitude = 0;
 
     public:
         World(Game &game, const std::string &levelPath, bool mirror);
@@ -155,6 +156,15 @@ namespace Duel6 {
             return time;
         }
 
+        void setExplosionAmplitude(Float32 val) {
+            explosionAmplitude = val;
+        }
+        void addExplosionAmplitude(Float32 val) {
+            explosionAmplitude += val;
+        }
+        Float32 getExplosionAmplitude() const {
+            return explosionAmplitude;
+        }
     private:
         std::string findBackground(const GameResources::BackgroundList &backgrounds);
     };

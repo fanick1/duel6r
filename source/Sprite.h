@@ -35,6 +35,7 @@
 #include "TextureManager.h"
 #include "math/Vector.h"
 #include "renderer/RendererTypes.h"
+#include "SpriteEffect.h"
 
 namespace Duel6 {
     class SpriteList;
@@ -65,7 +66,7 @@ namespace Duel6 {
         Float32 zRotation;
         Vector rotationCentre;
         std::function<FinishCallback> onFinished;
-
+        SpriteEffect spriteEffect;
     public:
         Sprite(Animation animation, Texture texture);
 
@@ -136,6 +137,8 @@ namespace Duel6 {
         void update(Float32 elapsedTime);
 
         void render(Renderer &renderer) const;
+
+        void setSpriteEffect(SpriteEffect effect);
     };
 }
 

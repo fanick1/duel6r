@@ -29,7 +29,7 @@
 #include "Video.h"
 
 namespace Duel6 {
-    Sprite::Sprite(Animation animation, Texture texture) {
+    Sprite::Sprite(Animation animation, Texture texture):spriteEffect(SpriteEffect::NONE) {
         this->animation = animation;
         this->texture = texture;
         frame = 0;
@@ -45,6 +45,7 @@ namespace Duel6 {
         alpha = 1.0f;
         zRotation = 0;
         blendFunc = BlendFunc::None;
+
     }
 
     Sprite Sprite::setOnFinished(std::function<FinishCallback> callback) {
@@ -126,6 +127,7 @@ namespace Duel6 {
     }
 
     void Sprite::update(float elapsedTime) {
+        spriteEffect.update(elapsedTime);
         delay += elapsedTime * speed * 1000;
         if (delay >= animation[frame + 1]) {
             frame += 2;
@@ -153,6 +155,10 @@ namespace Duel6 {
         }
     }
 
+    void Sprite::setSpriteEffect(SpriteEffect effect) {
+        spriteEffect = effect;
+    }
+
     void Sprite::render(Renderer &renderer) const {
         if (!visible) {
             return;
@@ -166,7 +172,7 @@ namespace Duel6 {
         }
 
         Int32 textureIndex = animation[frame];
-        Material material(texture, Color(255, 255, 255, Uint8(255 * alpha)), !isTransparent());
+        Material material(texture, Color(255, 255, 255, Uint8(255 * alpha)), !isTransparent(), spriteEffect.getAdditiveColor());
 
         bool rotated = zRotation != 0.0;
         if (rotated) {

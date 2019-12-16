@@ -290,6 +290,7 @@ namespace Duel6 {
         }
 
         Player &pickAmmo(Int32 ammo) {
+            gunSprite->setSpriteEffect(SpriteEffect::BLINK_WHITE_DOUBLE);
             this->ammo += ammo;
             indicators.getBullets().show();
             return *this;
@@ -404,6 +405,8 @@ namespace Duel6 {
         void die();
 
         const CollidingEntity &getCollider() const;
+
+        void onAssistConfirmed();
 
     private:
         void makeMove(const Level &level, Float32 elapsedTime);

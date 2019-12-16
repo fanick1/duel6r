@@ -267,7 +267,8 @@ namespace Duel6 {
         Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
                                 color.getAlpha() / 255.0f};
         materialProgram.setUniform("modulateColor", colorData);
-
+        Float32 effectColorData[4] = {0,0,0,0};
+        materialProgram.setUniform("effectColor", effectColorData);
         glDrawArrays(GL_TRIANGLES, 0, 3);
     }
     void GLES3Renderer::quad(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const Color &color) {
@@ -312,6 +313,10 @@ namespace Duel6 {
         const Color &color = material.getColor();
         Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
                                 color.getAlpha() / 255.0f};
+        const Color &effectColor =  material.getEffectColor();
+        Float32 effectColorData[4] = {effectColor.getRed() / 255.0f, effectColor.getGreen() / 255.0f, effectColor.getBlue() / 255.0f,
+            effectColor.getAlpha() / 255.0f};
+        materialProgram.setUniform("effectColor", effectColorData);
         materialProgram.setUniform("modulateColor", colorData);
 
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);

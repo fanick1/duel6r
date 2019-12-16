@@ -43,6 +43,7 @@ namespace Duel6 {
         Int32 hits;
 
         void confirm() {
+            player->onAssistConfirmed();
             player->getPerson().addAssistances(1);
             player->getPerson().addAssistedDamage(totalDamage);
         }
