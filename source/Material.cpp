@@ -24,46 +24,48 @@
 * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
-#ifndef DUEL6_MATERIAL_H
-#define DUEL6_MATERIAL_H
-
-#include "Color.h"
-#include "renderer/RendererTypes.h"
-
+#include "Material.h"
 namespace Duel6 {
-    struct Material {
-    private:
-        Texture texture;
-        Color color;
-        bool masked;
-        Color additiveColor;
 
-    public:
-        explicit Material(Texture texture, const Color &color = Color::WHITE, bool masked = false, const Color &additiveColor = Color::ZERO);
+        Material::Material(Texture texture, const Color &color, bool masked, const Color &additiveColor)
+                : texture(texture), color(color), masked(masked), additiveColor(additiveColor) {}
 
-        Material &operator=(const Material &m) = default;
+        Texture Material::getTexture() const {
+            return texture;
+        }
 
-        Texture getTexture() const ;
+        bool Material::isColored() const {
+            return &color != &Color::WHITE;
+        }
 
-        bool isColored() const;
+        Color &Material::getEffectColor()  {
+            return additiveColor;
+        }
 
-        const Color &getColor() const;
+        const Color &Material::getEffectColor() const {
+            return additiveColor;
+        }
+        const Color &Material::getColor() const {
+            return color;
+        }
 
-        Color &getEffectColor();
+        bool Material::isMasked() const {
+            return masked;
+        }
 
-        const Color &getEffectColor() const;
+         Material Material::makeTexture(Texture texture) {
+            return Material(texture);
+        }
 
-        bool isMasked() const;
+         Material Material::makeColoredTexture(Texture texture, const Color &color) {
+            return Material(texture, color);
+        }
 
-        static Material makeTexture(Texture texture);
+         Material Material::makeMaskedTexture(Texture texture) {
+            return Material(texture, Color::WHITE, true);
+        }
 
-        static Material makeColoredTexture(Texture texture, const Color &color);
-
-        static Material makeMaskedTexture(Texture texture);
-
-        static Material makeMaskedColoredTexture(Texture texture, const Color &color);
-    };
+         Material Material::makeMaskedColoredTexture(Texture texture, const Color &color) {
+            return Material(texture, color, true);
+        }
 }
-
-#endif

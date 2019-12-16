@@ -340,7 +340,10 @@ namespace Duel6 {
                 unsetFlag(FlagMoveRight);
             }
             if (controllerState & ButtonUp) {
-                if (!hasFlag(FlagMoveUp) && !collider.isOnHardSurface() && hasFlag(FlagDoubleJumpReset)) {
+                if (!hasFlag(FlagMoveUp) && !collider.isOnHardSurface() && (hasFlag(FlagDoubleJumpReset) || (air > D6_MAX_AIR - 1))) {
+                    if(!hasFlag(FlagDoubleJumpReset)){
+                        airHit(D6_MAX_AIR);
+                    }
                     setFlag(FlagDoubleJump);
                 }
                 setFlag(FlagMoveUp);
@@ -706,7 +709,17 @@ namespace Duel6 {
         life = std::max(0.0f, std::min(Float32(D6_MAX_LIFE), life + change));
         if (showHpBar && oldLife != life) {
             indicators.getHealth().show();
-        }
+            if (change > 0) {
+                if (change < 5) {
+                    sprite->setSpriteEffect(SpriteEffect::BLINK_GREEN);
+                } else {
+                    sprite->setSpriteEffect(SpriteEffect::BLINK_GREEN_DOUBLE);
+                }
+            } else if (change < -20) {
+                sprite->setSpriteEffect(SpriteEffect::BLINK_RED_DOUBLE);
+            } else
+                sprite->setSpriteEffect(SpriteEffect::BLINK_RED);
+            }
         return *this;
     }
 
@@ -751,6 +764,9 @@ namespace Duel6 {
             playSound(PlayerSounds::Type::Suicide);
             eventListener->onSuicide(*this, playersKilled);
         } else if (!playersKilled.empty()) {
+            if(isAlive() && hasGun()){
+                gunSprite->setSpriteEffect(SpriteEffect::BLINK_YELLOW_DOUBLE);
+            }
             playSound(PlayerSounds::Type::KilledOther);
         }
 
@@ -804,5 +820,11 @@ namespace Duel6 {
 
     const CollidingEntity &Player::getCollider() const {
         return collider;
+    }
+
+    void Player::onAssistConfirmed() {
+        if(isAlive() && hasGun()){
+            gunSprite->setSpriteEffect(SpriteEffect::BLINK_YELLOW);
+        }
     }
 }

@@ -482,12 +482,16 @@ namespace Duel6 {
         renderer.clearBuffers(); // attempt to resolve rendering issues in Alcatraz
         setView(player.getView());
         renderer.enableDepthTest(false);
+        static Int32 explosionFrame = 0;
+        explosionFrame ++;
+        explosionFrame %= 6;
         if(remainingTime > 0) {
-            Color c = getRoundStartFadeColor(remainingTime);
+            Color fadeColor = getRoundStartFadeColor(remainingTime);
             target->blitDepth();
-            target->render(c); // render texture with color blending (slower)
+            target->render(fadeColor); // render texture with color blending (slower)
         } else {
-            target->blit(); // faster
+            Float32 amp = !game.getRound().isOver() ? game.getRound().getWorld().getExplosionAmplitude() : 0;
+            target->blit((explosionFrame % 3 - 1) * amp, ((explosionFrame + 2)% 3 - 1) * amp); // faster
         }
         renderer.enableDepthTest(true);
         video.setMode(Video::Mode::Perspective);

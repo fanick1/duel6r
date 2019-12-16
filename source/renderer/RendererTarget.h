@@ -26,7 +26,7 @@ namespace Duel6 {
 
         void clear();
 
-        void blit();
+        void blit(Int32 dx, Int32 dy);
 
         void blitDepth();
 

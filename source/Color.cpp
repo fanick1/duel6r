@@ -47,6 +47,7 @@ namespace Duel6 {
     const Color Color::CYAN(0, 255, 255);
     const Color Color::MAGENTA(255, 0, 255);
     const Color Color::YELLOW(255, 255, 0);
+    const Color Color::ZERO(0,0,0,0);
 
     Color Color::scale(Float32 ratio) const {
         Uint8 red = std::min(Uint8(255), Uint8(color[0] * ratio));

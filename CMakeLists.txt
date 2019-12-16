@@ -139,6 +139,7 @@ set(D6R_SOURCES
         source/LevelRenderData.h
         source/Main.cpp
         source/Material.h
+        source/Material.cpp
         source/Menu.cpp
         source/Menu.h
         source/msdir.c
@@ -179,6 +180,8 @@ set(D6R_SOURCES
         source/SoundException.h
         source/Sprite.cpp
         source/Sprite.h
+        source/SpriteEffect.h
+        source/SpriteEffect.cpp
         source/SpriteList.cpp
         source/SpriteList.h
         source/SysEvent.h
