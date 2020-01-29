@@ -56,7 +56,25 @@ namespace Duel6 {
                   additiveColor2(additiveColor2),
                   timeout2(timeout0 + timeout1 + timeout2) {
             }
-            SpriteEffectDefinition &operator=(SpriteEffectDefinition & definition) = default;
+            SpriteEffectDefinition &operator=(SpriteEffectDefinition & definition) {
+                additiveColor0 = definition.additiveColor0;
+                timeout0 = definition.timeout0;
+                additiveColor1 = definition.additiveColor1;
+                timeout1 = definition.timeout1;
+                additiveColor2 = definition.additiveColor2;
+                timeout2 = definition.timeout2;
+                return *this;
+
+            };
+             SpriteEffectDefinition (SpriteEffectDefinition & definition):
+                additiveColor0(definition.additiveColor0),
+                timeout0(definition.timeout0),
+                additiveColor1(definition.additiveColor1),
+                timeout1(definition.timeout1),
+                additiveColor2(definition.additiveColor2),
+                timeout2(definition.timeout2){
+
+            };
             const Color& getAdditiveColor0() const
             {
                 return additiveColor0;

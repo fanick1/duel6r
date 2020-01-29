@@ -324,8 +324,8 @@ namespace Duel6 {
         const Color &effectColor =  material.getEffectColor();
         Float32 effectColorData[4] = {effectColor.getRed() / 255.0f, effectColor.getGreen() / 255.0f, effectColor.getBlue() / 255.0f,
             effectColor.getAlpha() / 255.0f};
-        materialProgram.setUniform("effectColor", effectColorData);
-        materialProgram.setUniform("modulateColor", colorData);
+            materialProgram.setUniform("modulateColor", colorData);
+            materialProgram.setUniform("effectColor", effectColorData);
 
 
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
