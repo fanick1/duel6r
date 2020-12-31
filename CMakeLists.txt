@@ -82,18 +82,10 @@ set(D6R_SOURCES
         source/net/master/MasterServer.cpp
         source/net/master/MasterServer.h
         source/net/master/PeerList.h
-        source/net/master/protocol.cpp
-        source/net/master/protocol.h
+
         source/net/master/stun.cpp
         source/net/master/stun.h
 
-        source/net/binarystream/BinaryDeserializer.h
-        source/net/binarystream/BinarySerializer.h
-        source/net/binarystream/BinaryStream.cpp
-        source/net/binarystream/BinaryStream.h
-        source/net/binarystream/BinaryStreamBase.h
-        source/net/binarystream/FileBinaryStream.h
-        source/net/binarystream/traits.h
 
         source/net/event/Chat.h
         source/net/event/ChatMessage.h
@@ -498,6 +490,23 @@ set(D6R_SOURCES
         source/weapon/impl/UziShot.h
         source/ChatMessage.h)
 
+set (D6R_BINARYSTREAM_SOURCES
+        source/net/binarystream/BinaryDeserializer.h
+        source/net/binarystream/BinarySerializer.h
+        source/net/binarystream/BinaryStream.cpp
+        source/net/binarystream/BinaryStream.h
+        source/net/binarystream/BinaryStreamBase.h
+        source/net/binarystream/FileBinaryStream.h
+        source/net/binarystream/traits.h)
+
+set (D6R_MASTER_PROTOCOL_SOURCES
+        source/net/master/protocol.cpp
+        source/net/master/protocol.h)
+
+set (D6R_MASTERSERVER_SOURCES
+        source/net/masterserver/main.cpp
+        source/net/masterserver/masterserver.h)
+
 if (D6R_RENDERER STREQUAL "gl1")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_RENDERER_GL1")
     set(D6R_SOURCES ${D6R_SOURCES}
@@ -594,6 +603,25 @@ add_executable(${D6R_APP_NAME} ${D6R_SOURCES})
 set_target_properties(${D6R_APP_NAME} PROPERTIES VERSION 6.0.0 DEBUG_OUTPUT_NAME ${D6R_APP_DEBUG_NAME})
 
 #########################################################################
+#  master server executable
+#########################################################################
+
+set(D6R_MASTERSERVER_NAME "duel6r-masterserver" CACHE STRING "master server executable")
+set(D6R_MASTERSERVER_DEBUG_NAME "duel6rd-masterserver" CACHE STRING "master server debug executable")
+add_executable(${D6R_MASTERSERVER_NAME} ${D6R_MASTERSERVER_SOURCES})
+set_target_properties(${D6R_MASTERSERVER_NAME} PROPERTIES VERSION 1.0.0 DEBUG_OUTPUT_NAME ${D6R_MASTERSERVER_DEBUG_NAME})
+
+#########################################################################
+# net libs
+#########################################################################
+
+add_library(MasterProtocolLib ${D6R_MASTER_PROTOCOL_SOURCES})
+add_library(BinaryStreamLib ${D6R_BINARYSTREAM_SOURCES})
+
+target_link_libraries(${D6R_MASTERSERVER_NAME} PRIVATE MasterProtocolLib BinaryStreamLib)
+target_link_libraries(${D6R_APP_NAME} MasterProtocolLib BinaryStreamLib)
+
+#########################################################################
 # External dependencies
 #########################################################################
 
@@ -642,12 +670,14 @@ find_library(LIB_SDL2_TTF SDL2_ttf DOC "Path to SDL2_ttf import library")
 find_library(LIB_SDL2_IMAGE SDL2_image DOC "Path to SDL2_image import library")
 target_link_libraries(${D6R_APP_NAME} ${LIB_SDL2_MAIN} ${LIB_SDL2} ${LIB_SDL2_MIXER} ${LIB_SDL2_TTF} ${LIB_SDL2_IMAGE})
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/debug)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/release)
 
 find_path(HEADERS_ENET enet/enet.h DOC "Path to ENet headers")
 include_directories(${HEADERS_ENET})
 find_library(LIB_ENET NAMES enet enet_static libenet libenet_static DOC "Path to ENet library")
 target_link_libraries(${D6R_APP_NAME} ${LIB_ENET})
-
+target_link_libraries(${D6R_MASTERSERVER_NAME} PRIVATE ${LIB_ENET})
 # GLEW
 if (NOT D6R_RENDERER STREQUAL "headless")
 if (WIN32)

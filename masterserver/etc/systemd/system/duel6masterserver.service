@@ -1,0 +1,27 @@
+# https://stackoverflow.com/questions/21503883/spring-boot-application-as-a-service/22121547#22121547
+[Unit]
+Description=Duel6 master server service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+# use nsbuild user only for ExecStart, not ExecStartPre tasks
+PermissionsStartOnly=true
+
+WorkingDirectory=/home/ubuntu/masterserver
+
+#ExecStartPre=/usr/bin/chown -R <user>:<group> /path/to/dir
+#ExecStartPre=/usr/bin/chmod 400 /path/to/secure/file
+
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=duel6-masterserver
+
+ExecStart=/home/ubuntu/masterserver/duel6r-masterserver-1.0.0 0.0.0.0 25900
+SuccessExitStatus=143
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
