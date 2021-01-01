@@ -83,10 +83,6 @@ set(D6R_SOURCES
         source/net/master/MasterServer.h
         source/net/master/PeerList.h
 
-        source/net/master/stun.cpp
-        source/net/master/stun.h
-
-
         source/net/event/Chat.h
         source/net/event/ChatMessage.h
         source/net/event/Color.h

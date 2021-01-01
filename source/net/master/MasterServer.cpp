@@ -1,5 +1,4 @@
 #include "MasterServer.h"
-#include "stun.h"
 
 namespace masterserver {
 
@@ -193,31 +192,4 @@ namespace masterserver {
         reconnect(requestType);
         return this->peer;
     }
-
-    void MasterServer::sendStunBindingRequest(ENetSocket s) {
-        ENetAddress masterAddress;
-        enet_address_set_host(&masterAddress, this->address.c_str());
-        masterAddress.port = this->port;
-    }
-
-    void MasterServer::sendStunBindingRequest(ENetSocket s, enet_uint32 address, enet_uint16 port) {
-        stun::message message;
-        message.type = stun::type_t::BINDING_REQUEST;
-        stun::changeAttribute ca;
-        ca.flags = 0;
-        message.changeAttributes.push_back(ca);
-        char *mem;
-        size_t len = message.send(&mem);
-        ENetAddress peerAddress;
-        peerAddress.host = address;
-        peerAddress.port = port;
-
-        ENetBuffer buffer;
-        buffer.data = mem;
-        buffer.dataLength = len;
-        // fingers crossed
-        enet_socket_send(s, &peerAddress, &buffer, 1);
-        free(mem);
-    }
-
 }

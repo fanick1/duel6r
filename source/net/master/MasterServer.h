@@ -81,9 +81,6 @@ namespace masterserver {
 
         void onPeerListReceived(peerListReceivedCallback_t callback);
 
-        static void sendStunBindingRequest(ENetSocket s, enet_uint32 address, enet_uint16 port);
-
-        void sendStunBindingRequest(ENetSocket s);
     private:
         void onConnected(connectedCallback_t callback);
 

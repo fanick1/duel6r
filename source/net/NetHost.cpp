@@ -12,7 +12,6 @@
 #include "../console/Console.h"
 #include "master/MasterServer.h"
 #include "master/protocol.h"
-#include "master/stun.h"
 namespace Duel6 {
     namespace net {
 #define MAX_PEERS 15
@@ -178,34 +177,6 @@ namespace Duel6 {
             this->enableMasterDiscovery = enableMasterDiscovery;
             this->enableNAT = enableNAT;
             description = serverDescription;
-        }
-
-        void NetHost::sendStunBindingResponse(enet_uint32 address, enet_uint16 port, enet_uint32 publicAddress, enet_uint16 publicPort){
-            stun::message message;
-            message.type = stun::type_t::BINDING_RESPONSE;
-            stun::addressAttribute sourceAddress;
-            stun::addressAttribute mappedAddress;
-
-            mappedAddress.name = stun::attribute_t::MAPPED_ADDRESS;
-            mappedAddress.address = address;
-            mappedAddress.port = port;
-            message.attributes.push_back(mappedAddress);
-
-            char * mem;
-            size_t len = message.send(&mem);
-
-            ENetHost * host = serviceHost.get();
-            ENetSocket s = host->socket;
-            ENetAddress peerAddress;
-            peerAddress.host = address;
-            peerAddress.port = port;
-
-            ENetBuffer buffer;
-            buffer.data = mem;
-            buffer.dataLength = len;
-            // fingers crossed
-            enet_socket_send(s, &peerAddress, &buffer, 1);
-            free(mem);
         }
     } /* namespace net */
 } /* namespace Duel6 */
