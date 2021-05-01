@@ -80,7 +80,7 @@ namespace Duel6 {
 
 #ifdef D6_RENDERER_HEADLESS
         headless = true;
-        console.printLine("Running in headless mode, suprressing sound system.");
+        console.printLine("Running in headless mode, suppressing sound system.");
         return;
 #endif
         // Init SDL audio sub sytem
