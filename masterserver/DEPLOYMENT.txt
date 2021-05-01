@@ -1,0 +1,11 @@
+deploy the /etc
+
+iptables:
+sudo iptables -A INPUT -p UDP -m multiport --dports 25900:25910 -j ACCEPT 
+sudo netfilter-persistent save
+
+specify the address and port in duel in data/network.json:
+"master": {
+    "port": 25900,
+    "URL": "<URL>"
+  },

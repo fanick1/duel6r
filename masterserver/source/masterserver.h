@@ -7,7 +7,7 @@
 #include <functional>
 
 #include <enet/enet.h>
-#include "../master/protocol.h"
+#include "../../source/net/master/protocol.h"
 
 extern std::chrono::steady_clock::time_point now;
 

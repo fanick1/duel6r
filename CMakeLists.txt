@@ -500,8 +500,8 @@ set (D6R_MASTER_PROTOCOL_SOURCES
         source/net/master/protocol.h)
 
 set (D6R_MASTERSERVER_SOURCES
-        source/net/masterserver/main.cpp
-        source/net/masterserver/masterserver.h)
+        masterserver/source/main.cpp
+        masterserver/source/masterserver.h)
 
 if (D6R_RENDERER STREQUAL "gl1")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_RENDERER_GL1")

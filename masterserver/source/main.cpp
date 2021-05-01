@@ -8,7 +8,7 @@
 #include <list>
 #include <cstring>
 #include <enet/enet.h>
-#include "../binarystream/BinaryStream.h"
+#include "../../source/net/binarystream/BinaryStream.h"
 #include "masterserver.h"
 
 std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
