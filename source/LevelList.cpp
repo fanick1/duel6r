@@ -25,6 +25,7 @@
 * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <algorithm>
 #include "File.h"
 #include "LevelList.h"
 
@@ -32,5 +33,6 @@ namespace Duel6 {
     void LevelList::initialize(const std::string &directoryName, const std::string &fileExtension) {
         directory = directoryName;
         fileNames = File::listDirectory(directoryName, fileExtension);
+        std::sort(fileNames.begin(), fileNames.end());
     }
 }
