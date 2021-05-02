@@ -28,7 +28,7 @@
 #include "UziShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace UziShotImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.25f, 0.74f), Vector(0.42f, 0.18f));
         const AnimationEntry shotAnimation[] = {0, 820, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 82, 1, 82, 0, 82, 1, 82, 0, 82, 1, 82, -1, 0};
@@ -40,12 +40,12 @@ namespace Duel6 {
                 Int32 power, Float32 bulletSpeed,
                 Vector &position,
                 Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, UziShotImpl::shotAnimation, UziShotImpl::boomAnimation, shotOrientation, UziShotImpl::collistionRectangle,
             weapon, shotId, powerful, power,
             bulletSpeed, position, velocity) {
     }
 
     UziShot::UziShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle) {
+            : LegacyShot(player, world, weapon, UziShotImpl::shotAnimation, UziShotImpl::boomAnimation, orientation, UziShotImpl::collistionRectangle) {
     }
 }

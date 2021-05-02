@@ -29,7 +29,7 @@
 #include "UziShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace UziImpl {
         const LegacyWeapon::Definition DEFINITION = {15, 0.26f,
                                                      "uzi",
                                                      "pistol.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Uzi::Uzi(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 8) {}
+            : LegacyWeapon(sound, textureManager, UziImpl::DEFINITION, 8) {}
 
     Float32 Uzi::getBulletSpeed() const {
         return 10.98f;

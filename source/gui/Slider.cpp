@@ -30,7 +30,7 @@
 
 namespace Duel6 {
     namespace Gui {
-        namespace {
+        namespace SliderImpl {
             Color bcgColor(192, 192, 192);
         }
 
@@ -130,7 +130,7 @@ namespace Duel6 {
                     s = height - h;
             }
 
-            renderer.quadXY(Vector(x, y - s - h + 1), Vector(15, h - 1), bcgColor);
+            renderer.quadXY(Vector(x, y - s - h + 1), Vector(15, h - 1), SliderImpl::bcgColor);
 
             drawFrame(renderer, x, y - s, 16, h, false);
         }

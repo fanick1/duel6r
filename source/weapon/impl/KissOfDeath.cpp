@@ -29,14 +29,14 @@
 #include "KissOfDeathShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace KissOfDeathImpl {
         const LegacyWeapon::Definition DEFINITION = {100, 3.11f,
                                                      "kiss of death", "kiss2.wav", "kiss.wav",
                                                      {0, 132, 1, 132, 2, 132, 1, 132, 0, 132, 0, 132, 0, 132, -1, 0}};
     }
 
     KissOfDeath::KissOfDeath(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 12) {}
+            : LegacyWeapon(sound, textureManager, KissOfDeathImpl::DEFINITION, 12) {}
 
     Float32 KissOfDeath::getBulletSpeed() const {
         return 4.27f;

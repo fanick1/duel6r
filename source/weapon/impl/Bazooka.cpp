@@ -29,7 +29,7 @@
 #include "BazookaShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace BazookaImpl {
         const LegacyWeapon::Definition DEFINITION = {100, 3.28f,
                                                      "bazooka",
                                                      "bazooka.wav", "bmbazook.wav",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Bazooka::Bazooka(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 1) {}
+            : LegacyWeapon(sound, textureManager, BazookaImpl::DEFINITION, 1) {}
 
     Float32 Bazooka::getBulletSpeed() const {
         return 6.1f;

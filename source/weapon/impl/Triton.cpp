@@ -29,7 +29,7 @@
 #include "TritonShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace TritonImpl {
         const LegacyWeapon::Definition DEFINITION = {200, 6.56f,
                                                      "triton",
                                                      "triton.wav", "bmbazook.wav",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Triton::Triton(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 7) {}
+            : LegacyWeapon(sound, textureManager, TritonImpl::DEFINITION, 7) {}
 
     Float32 Triton::getBulletSpeed() const {
         return 6.1f;

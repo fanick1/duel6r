@@ -28,7 +28,7 @@
 #include "LaserShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace LaserShotImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.185f, 0.76f), Vector(0.40f, 0.11f));
         const AnimationEntry shotAnimation[] = {0, 820, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 164, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -40,11 +40,11 @@ namespace Duel6 {
                 Int32 power, Float32 bulletSpeed,
                 Vector &position,
                 Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, LaserShotImpl::shotAnimation, LaserShotImpl::boomAnimation, shotOrientation, LaserShotImpl::collistionRectangle,
             weapon, shotId, powerful, power,
             bulletSpeed, position, velocity) {
     }
     LaserShot::LaserShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle) {
+            : LegacyShot(player, world, weapon, LaserShotImpl::shotAnimation, LaserShotImpl::boomAnimation, orientation, LaserShotImpl::collistionRectangle) {
     }
 }

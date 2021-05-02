@@ -28,7 +28,7 @@
 #include "KissOfDeathShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace KissOfDeathShotImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.22f, 0.74f), Vector(0.43f, 0.22f));
         const AnimationEntry shotAnimation[] = {0, 164, 1, 164, 2, 164, 1, 164, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 82, 1, 82, 0, 82, 1, 82, 0, 82, 1, 82, -1, 0};
@@ -40,12 +40,12 @@ namespace Duel6 {
                 Int32 power, Float32 bulletSpeed,
                 Vector &position,
                 Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, KissOfDeathShotImpl::shotAnimation, KissOfDeathShotImpl::boomAnimation, shotOrientation, KissOfDeathShotImpl::collistionRectangle,
             weapon, shotId, powerful, power,
             bulletSpeed, position, velocity) {
     }
     KissOfDeathShot::KissOfDeathShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle) {
+            : LegacyShot(player, world, weapon, KissOfDeathShotImpl::shotAnimation, KissOfDeathShotImpl::boomAnimation, orientation, KissOfDeathShotImpl::collistionRectangle) {
     }
 
     bool KissOfDeathShot::isColliding() const {

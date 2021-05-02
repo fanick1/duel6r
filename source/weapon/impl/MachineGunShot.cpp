@@ -28,7 +28,7 @@
 #include "MachineGunShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace MachineGunShotImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.41f, 0.66f), Vector(0.19f, 0.30f));
         const AnimationEntry shotAnimation[] = {0, 820, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 164, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -40,11 +40,11 @@ namespace Duel6 {
                 Int32 power, Float32 bulletSpeed,
                 Vector &position,
                 Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, MachineGunShotImpl::shotAnimation, MachineGunShotImpl::boomAnimation, shotOrientation, MachineGunShotImpl::collistionRectangle,
             weapon, shotId, powerful, power,
             bulletSpeed, position, velocity) {
     }
     MachineGunShot::MachineGunShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle) {
+            : LegacyShot(player, world, weapon, MachineGunShotImpl::shotAnimation, MachineGunShotImpl::boomAnimation, orientation, MachineGunShotImpl::collistionRectangle) {
     }
 }

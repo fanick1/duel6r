@@ -29,7 +29,7 @@
 #include "PlasmaShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace PlasmaImpl {
         const LegacyWeapon::Definition DEFINITION = {25, 0.33f,
                                                      "plasma",
                                                      "plasma.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Plasma::Plasma(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 4) {}
+            : LegacyWeapon(sound, textureManager, PlasmaImpl::DEFINITION, 4) {}
 
     Float32 Plasma::getBulletSpeed() const {
         return 12.2f;

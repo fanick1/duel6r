@@ -29,14 +29,14 @@
 #include "DoubleLaserShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace DoubleLaserImpl{
         const LegacyWeapon::Definition DEFINITION = {80, 3.44f,
                                                      "double laser", "laser.wav", "bmbazook.wav",
                                                      {1, 164, 0, 164, 0, 82, 0, 82, 0, 82, 0, 82, 0, 820, -1, 0}};
     }
 
     DoubleLaser::DoubleLaser(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 11) {}
+            : LegacyWeapon(sound, textureManager, DoubleLaserImpl::DEFINITION, 11) {}
 
     Float32 DoubleLaser::getBulletSpeed() const {
         return 12.2f;

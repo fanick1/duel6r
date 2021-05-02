@@ -29,7 +29,7 @@
 #include "MachineGunShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace MachineGunImpl {
         const LegacyWeapon::Definition DEFINITION = {40, 0.66f,
                                                      "machine gun",
                                                      "kulomet.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     MachineGun::MachineGun(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 6) {}
+            : LegacyWeapon(sound, textureManager, MachineGunImpl::DEFINITION, 6) {}
 
     Float32 MachineGun::getBulletSpeed() const {
         return 9.15f;

@@ -29,7 +29,7 @@
 #include "SprayShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace SprayImpl {
         const LegacyWeapon::Definition DEFINITION = {20, 0.66f,
                                                      "spray",
                                                      "spray.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Spray::Spray(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 13) {}
+            : LegacyWeapon(sound, textureManager, SprayImpl::DEFINITION, 13) {}
 
     Float32 Spray::getBulletSpeed() const {
         return 4.88f;

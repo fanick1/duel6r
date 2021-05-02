@@ -29,7 +29,7 @@
 #include "ShitThrower.h"
 
 namespace Duel6 {
-    namespace {
+    namespace ShitThrowerImpl {
         const LegacyWeapon::Definition DEFINITION = {0, 1.97f,
                                                      "shit thrower",
                                                      "shit.wav", "shit-hit.wav",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     ShitThrower::ShitThrower(Sound &sound, TextureManager &textureManager, const PlayerAnimations & playerAnimations, const AuxAnimations & auxAnimations)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 16), playerAnimations(playerAnimations), auxAnimations(auxAnimations) {
+            : LegacyWeapon(sound, textureManager, ShitThrowerImpl::DEFINITION, 16), playerAnimations(playerAnimations), auxAnimations(auxAnimations) {
         Color brownColor(83, 44, 0);
         PlayerSkinColors skinColors(brownColor);
         brownSkin = std::make_unique<PlayerSkin>(skinColors, textureManager, playerAnimations, auxAnimations);

@@ -18,8 +18,8 @@ namespace Duel6::net {
     class PlayerScore {
     public:
         PlayerScore();
-        void loadFromPlayer(Player &player);
-        void unloadToPlayer(Player &player);
+        void loadFromPlayer(Duel6::Player &player);
+        void unloadToPlayer(Duel6::Player &player);
         bool operator ==(const PlayerScore &r) const;
         Int32 shots = 0;
         Int32 hits = 0;

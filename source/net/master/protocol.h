@@ -28,7 +28,7 @@ enum class REQUEST_TYPE {
     SERVER_NAT_GET_PEERS, //server scrubbing peers wanting to be NAT punched
     CLIENT_NAT_CONNECT_TO_SERVER, // peer requests NAT punch through to given server, this peer is registered as waiting to be scrapped by the server, CLIENT_NAT_PUNCH packet is expected
 
-    GAME_CONNECTION, // temporary workaround
+    GAME_CONNECTION, // permanent workaround
 
     MASTER_PUSH_NAT_PEERS_TO_SERVER, // experimental - master server will call back to the server and push any peers requesting connection through the NAT
     COUNT

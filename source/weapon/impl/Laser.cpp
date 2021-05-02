@@ -29,7 +29,7 @@
 #include "LaserShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace LaserImpl {
         const LegacyWeapon::Definition DEFINITION = {35, 0.25f,
                                                      "laser",
                                                      "laser.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Laser::Laser(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 5) {}
+            : LegacyWeapon(sound, textureManager, LaserImpl::DEFINITION, 5) {}
 
     Float32 Laser::getBulletSpeed() const {
         return 15.25f;

@@ -28,7 +28,7 @@
 #include "StopperGunShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace StopperGunShotImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.33f, 0.71f), Vector(0.23f, 0.20f));
         const AnimationEntry shotAnimation[] = {0, 820, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 164, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -40,11 +40,11 @@ namespace Duel6 {
                 Int32 power, Float32 bulletSpeed,
                 Vector &position,
                 Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, StopperGunShotImpl::shotAnimation, StopperGunShotImpl::boomAnimation, shotOrientation, StopperGunShotImpl::collistionRectangle,
             weapon, shotId, powerful, power,
             bulletSpeed, position, velocity) {
     }
     StopperGunShot::StopperGunShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle) {
+            : LegacyShot(player, world, weapon, StopperGunShotImpl::shotAnimation, StopperGunShotImpl::boomAnimation, orientation, StopperGunShotImpl::collistionRectangle) {
     }
 }

@@ -49,7 +49,6 @@ namespace Duel6 {
         if (!game.isServer && game.networkGame){
             return;
         }
-        const Level &level = world.getLevel();
         bool weapon = (Math::random(2) == 1);
         const ValidPositionList& validPositionList = findValidPositions(weapon);
 

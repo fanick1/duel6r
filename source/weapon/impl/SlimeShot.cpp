@@ -28,7 +28,7 @@
 #include "SlimeShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace SlimeShoImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.25f, 0.70f), Vector(0.34f, 0.23f));
         const AnimationEntry shotAnimation[] = {0, 820, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 82, 1, 82, 0, 82, 1, 82, 0, 82, 1, 82, -1, 0};
@@ -40,11 +40,11 @@ namespace Duel6 {
                 Int32 power, Float32 bulletSpeed,
                 Vector &position,
                 Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, SlimeShoImpl::shotAnimation, SlimeShoImpl::boomAnimation, shotOrientation, SlimeShoImpl::collistionRectangle,
             weapon, shotId, powerful, power,
             bulletSpeed, position, velocity) {
     }
     SlimeShot::SlimeShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle) {
+            : LegacyShot(player, world, weapon, SlimeShoImpl::shotAnimation, SlimeShoImpl::boomAnimation, orientation, SlimeShoImpl::collistionRectangle) {
     }
 }

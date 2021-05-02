@@ -29,7 +29,7 @@
 #include "PistolShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace PistolImpl {
         const LegacyWeapon::Definition DEFINITION = {30, 0.98f,
                                                      "pistol",
                                                      "pistol.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Pistol::Pistol(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 0) {}
+            : LegacyWeapon(sound, textureManager, PistolImpl::DEFINITION, 0) {}
 
     Float32 Pistol::getBulletSpeed() const {
         return 9.15f;

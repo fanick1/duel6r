@@ -41,7 +41,7 @@ endif (MSVC)
 
 # gnu compiler or clang
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O2 -std=c++17 -pthread")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O2 -std=c++2a -pthread")
     if (D6R_PLATFORM STREQUAL "x86")
 
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse -msse2")
@@ -589,14 +589,36 @@ if (WIN32)
     set(D6R_SOURCES ${D6R_SOURCES} source/duel6r.rc)
 endif (WIN32)
 
+set (D6R_UNITY_BUILD_SOURCES
+        source/aseprite/unity.cpp
+        source/bonus/unity.cpp
+        source/collision/unity.cpp
+        source/console/unity.cpp
+        source/gamemodes/unity.cpp
+        source/gamestateintegration/unity.cpp
+        source/gui/unity.cpp
+        source/input/unity.cpp
+        source/json/unity.cpp
+        source/math/unity.cpp
+        source/net/unity.cpp
+        source/renderer/unity.cpp
+
+        source/script/unity.cpp
+        source/weapon/unity.cpp
+        source/unity.cpp
+        )
 ########################
 #  Add application
 ########################
+set(D6R_UNITY_BUILD "duel6unity" CACHE STRING "Filename of the application bulk build.")
+set(D6R_UNITY_BUILD_DEBUG_NAME "duel6unityd" CACHE STRING "Filename of the debug version of the application.")
 
 set(D6R_APP_NAME "duel6r" CACHE STRING "Filename of the application.")
 set(D6R_APP_DEBUG_NAME "duel6rd" CACHE STRING "Filename of the debug version of the application.")
 add_executable(${D6R_APP_NAME} ${D6R_SOURCES})
+add_executable(${D6R_UNITY_BUILD} ${D6R_UNITY_BUILD_SOURCES})
 set_target_properties(${D6R_APP_NAME} PROPERTIES VERSION 6.0.0 DEBUG_OUTPUT_NAME ${D6R_APP_DEBUG_NAME})
+set_target_properties(${D6R_UNITY_BUILD} PROPERTIES VERSION 6.0.0 DEBUG_OUTPUT_NAME ${D6R_UNITY_BUILD_DEBUG_NAME})
 
 #########################################################################
 #  master server executable
@@ -616,6 +638,7 @@ add_library(BinaryStreamLib ${D6R_BINARYSTREAM_SOURCES})
 
 target_link_libraries(${D6R_MASTERSERVER_NAME} PRIVATE MasterProtocolLib BinaryStreamLib)
 target_link_libraries(${D6R_APP_NAME} MasterProtocolLib BinaryStreamLib)
+target_link_libraries(${D6R_UNITY_BUILD} MasterProtocolLib BinaryStreamLib)
 
 #########################################################################
 # External dependencies
@@ -654,6 +677,7 @@ find_library(LIB_CURL curl DOC "Path to curl library")
 find_path(HEADERS_CURL curl/curl.h DOC "Path to libcurl headers")
 include_directories(${HEADERS_CURL})
 target_link_libraries(${D6R_APP_NAME} ${LIB_CURL})
+target_link_libraries(${D6R_UNITY_BUILD} ${LIB_CURL})
 
 # SDL
 find_path(HEADERS_SDL2 SDL2/SDL.h DOC "Path to SDL2 headers")
@@ -665,6 +689,7 @@ find_library(LIB_SDL2_MIXER SDL2_mixer DOC "Path to SDL2_mixer import library")
 find_library(LIB_SDL2_TTF SDL2_ttf DOC "Path to SDL2_ttf import library")
 find_library(LIB_SDL2_IMAGE SDL2_image DOC "Path to SDL2_image import library")
 target_link_libraries(${D6R_APP_NAME} ${LIB_SDL2_MAIN} ${LIB_SDL2} ${LIB_SDL2_MIXER} ${LIB_SDL2_TTF} ${LIB_SDL2_IMAGE})
+target_link_libraries(${D6R_UNITY_BUILD} ${LIB_SDL2_MAIN} ${LIB_SDL2} ${LIB_SDL2_MIXER} ${LIB_SDL2_TTF} ${LIB_SDL2_IMAGE})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/debug)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/release)
@@ -673,6 +698,7 @@ find_path(HEADERS_ENET enet/enet.h DOC "Path to ENet headers")
 include_directories(${HEADERS_ENET})
 find_library(LIB_ENET NAMES enet enet_static libenet libenet_static DOC "Path to ENet library")
 target_link_libraries(${D6R_APP_NAME} ${LIB_ENET})
+target_link_libraries(${D6R_UNITY_BUILD} ${LIB_ENET})
 target_link_libraries(${D6R_MASTERSERVER_NAME} PRIVATE ${LIB_ENET})
 # GLEW
 if (NOT D6R_RENDERER STREQUAL "headless")
@@ -687,6 +713,7 @@ endif (WIN32)
 endif (NOT D6R_RENDERER STREQUAL "headless")
 
 target_link_libraries(${D6R_APP_NAME} ${RENDERER_LIBS})
+target_link_libraries(${D6R_UNITY_BUILD} ${RENDERER_LIBS})
 find_path(HEADERS_GLEW GL/glew.h DOC "Path to GLEW headers")
 include_directories(${HEADERS_GLEW})
 
@@ -700,6 +727,7 @@ if (D6R_WITH_LUA)
     else (WIN32)
         find_library(LIB_LUA lua5.3 DOC "Path to LUA library")
         target_link_libraries(${D6R_APP_NAME} ${LIB_LUA})
+        target_link_libraries(${D6R_UNITY_BUILD} ${LIB_LUA})
         find_path(HEADERS_LUA lua5.3/lua.hpp DOC "Path to LUA headers")
         include_directories(${HEADERS_LUA}/lua5.3)
     endif (WIN32)

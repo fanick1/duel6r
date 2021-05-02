@@ -18,7 +18,7 @@ namespace Duel6::net {
         changed.set(NO_CHANGE, true);
     }
 
-    void PlayerScore::loadFromPlayer(Player &player) {
+    void PlayerScore::loadFromPlayer(Duel6::Player &player) {
         shots = player.getPerson().getShots();
         hits = player.getPerson().getHits();
         kills = player.getPerson().getKills();
@@ -39,7 +39,7 @@ namespace Duel6::net {
         changed.reset(NO_CHANGE);
     }
 
-    void PlayerScore::unloadToPlayer(Player &player) {
+    void PlayerScore::unloadToPlayer(Duel6::Player &player) {
         player.getPerson().setShots(shots);
         player.getPerson().setHits(hits);
         player.getPerson().setKills(kills);

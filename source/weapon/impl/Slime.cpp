@@ -29,7 +29,7 @@
 #include "SlimeShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace SlimeImpl {
         const LegacyWeapon::Definition DEFINITION = {50, 1.31f,
                                                      "slime",
                                                      "sliz.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Slime::Slime(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 10) {}
+            : LegacyWeapon(sound, textureManager, SlimeImpl::DEFINITION, 10) {}
 
     Float32 Slime::getBulletSpeed() const {
         return 7.93f;

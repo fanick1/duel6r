@@ -28,7 +28,7 @@
 #include "BazookaShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace BazookaShotImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.035f, 0.65f), Vector(0.59f, 0.40f));
         const AnimationEntry shotAnimation[] = {0, 164, 1, 164, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 16, 2, 16, 3, 16, 4, 16, 5, 16, 6, 16, 7, 16, 8, 16, 9, 16, 10, 16,
@@ -43,12 +43,12 @@ namespace Duel6 {
                 Int32 power, Float32 bulletSpeed,
                 Vector &position,
                 Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, BazookaShotImpl::shotAnimation, BazookaShotImpl::boomAnimation, shotOrientation, BazookaShotImpl::collistionRectangle,
             weapon, shotId, powerful, power,
             bulletSpeed, position, velocity) {
     }
     BazookaShot::BazookaShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle) {
+            : LegacyShot(player, world, weapon, BazookaShotImpl::shotAnimation, BazookaShotImpl::boomAnimation, orientation, BazookaShotImpl::collistionRectangle) {
     }
 
     bool BazookaShot::isColliding() const {

@@ -28,7 +28,7 @@
 #include "LightningShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace LightningShotImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.13f, 0.65f), Vector(0.52f, 0.33f));
         const AnimationEntry shotAnimation[] = {0, 164, 1, 164, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 82, 1, 82, 0, 82, 1, 82, 0, 82, 1, 82, -1, 0};
@@ -40,12 +40,12 @@ namespace Duel6 {
                 Int32 power, Float32 bulletSpeed,
                 Vector &position,
                 Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, LightningShotImpl::shotAnimation, LightningShotImpl::boomAnimation, shotOrientation, LightningShotImpl::collistionRectangle,
             weapon, shotId, powerful, power,
             bulletSpeed, position, velocity) {
     }
     LightningShot::LightningShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle) {
+            : LegacyShot(player, world, weapon, LightningShotImpl::shotAnimation, LightningShotImpl::boomAnimation, orientation, LightningShotImpl::collistionRectangle) {
     }
 
     bool LightningShot::hasBlood() const {

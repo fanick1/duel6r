@@ -29,7 +29,7 @@
 #include "StopperGunShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace StopperGunImpl {
         const LegacyWeapon::Definition DEFINITION = {10, 0.9f,
                                                      "stopper gun",
                                                      "spunt.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     StopperGun::StopperGun(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 15) {}
+            : LegacyWeapon(sound, textureManager, StopperGunImpl::DEFINITION, 15) {}
 
     Float32 StopperGun::getBulletSpeed() const {
         return 7.93f;

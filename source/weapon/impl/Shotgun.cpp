@@ -29,7 +29,7 @@
 #include "ShotgunShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace ShotgunImpl {
         const LegacyWeapon::Definition DEFINITION = {60, 2.29f,
                                                      "shotgun",
                                                      "shotgun.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Shotgun::Shotgun(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 3) {}
+            : LegacyWeapon(sound, textureManager, ShotgunImpl::DEFINITION, 3) {}
 
     Float32 Shotgun::getBulletSpeed() const {
         return 9.15f;

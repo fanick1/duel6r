@@ -28,7 +28,7 @@
 #include "TritonShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace TritonShotImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.05f, 0.66f), Vector(0.55f, 0.29f));
         const AnimationEntry shotAnimation[] = {0, 131, 1, 131, 2, 131, 3, 131, 4, 131, 3, 131, 2, 131, 1, 131, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 16, 2, 16, 3, 16, 4, 16, 5, 16, 6, 16, 7, 16, 8, 16, 9, 16, 10, 16, 11, 16, 12,
@@ -43,12 +43,12 @@ namespace Duel6 {
                 Int32 power, Float32 bulletSpeed,
                 Vector &position,
                 Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, TritonShotImpl::shotAnimation, TritonShotImpl::boomAnimation, shotOrientation, TritonShotImpl::collistionRectangle,
             weapon, shotId, powerful, power,
             bulletSpeed, position, velocity) {
     }
     TritonShot::TritonShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle) {
+            : LegacyShot(player, world, weapon, TritonShotImpl::shotAnimation, TritonShotImpl::boomAnimation, orientation, TritonShotImpl::collistionRectangle) {
     }
 
     bool TritonShot::isColliding() const {

@@ -41,8 +41,7 @@
 #include "PlayerEventListener.h"
 #include "Game.h"
 namespace Duel6 {
-    //TODO: This still needs further fine-tuning for good jumping experience
-    static const float GRAVITATIONAL_ACCELERATION = -11.0f;
+
     static const float JUMP_FACTOR = -0.7f;
     static const float JUMP_ACCELERATION = JUMP_FACTOR * GRAVITATIONAL_ACCELERATION;
 

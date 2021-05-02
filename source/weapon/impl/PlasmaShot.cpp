@@ -28,7 +28,7 @@
 #include "PlasmaShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace PlasmaShotImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.28f, 0.70f), Vector(0.38f, 0.23f));
         const AnimationEntry shotAnimation[] = {0, 820, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 82, 1, 82, 0, 82, 1, 82, 0, 82, 1, 82, -1, 0};
@@ -40,11 +40,11 @@ namespace Duel6 {
                 Int32 power, Float32 bulletSpeed,
                 Vector &position,
                 Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, PlasmaShotImpl::shotAnimation, PlasmaShotImpl::boomAnimation, shotOrientation, PlasmaShotImpl::collistionRectangle,
             weapon, shotId, powerful, power,
             bulletSpeed, position, velocity) {
     }
     PlasmaShot::PlasmaShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle) {
+            : LegacyShot(player, world, weapon, PlasmaShotImpl::shotAnimation, PlasmaShotImpl::boomAnimation, orientation, PlasmaShotImpl::collistionRectangle) {
     }
 }

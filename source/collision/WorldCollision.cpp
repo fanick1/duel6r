@@ -28,8 +28,6 @@
 #include "WorldCollision.h"
 #include "../Rectangle.h"
 namespace Duel6 {
-//TODO Duplicity
-static const float GRAVITATIONAL_ACCELERATION = -11.0f;
 
 void CollidingEntity::collideWithElevator(Float32 elapsedTime, Float32 speed) {
     if(elevator != nullptr) {

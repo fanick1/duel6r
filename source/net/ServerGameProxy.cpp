@@ -12,10 +12,7 @@
 #include "../Game.h"
 namespace Duel6 {
     namespace net {
-        uint8_t xor_128 = 127; // % operator yields also negative results
-        auto xor_32768 = 0x7fff;
-        auto xor_32 = 31;
-        const uint16_t xor_64 = 63;
+
         void loadNetWeapon(Weapon &w, const LyingWeapon &weapon);
         void ServerGameProxy::add(Peer *p) {
             peers.push_back(p);

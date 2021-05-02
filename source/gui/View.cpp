@@ -9,7 +9,7 @@
 #include "Desktop.h"
 
 namespace Duel6::Gui {
-    namespace {
+    namespace ViewImpl {
         Color frameLightColor(215, 215, 215);
         Color frameDarkColor(0, 0, 0);
         Color frameFocusColor(0, 50, 255, 50);
@@ -233,20 +233,20 @@ namespace Duel6::Gui {
         renderer.setBlendFunc(BlendFunc::SrcAlpha);
         Float32 shadowWidth = 16.0f;
         // bottom shadow
-        renderer.line(Vector(x + 4, y - 6), Vector(x + w - 1, y - 6), shadowWidth, shadowColor);
+        renderer.line(Vector(x + 4, y - 6), Vector(x + w - 1, y - 6), shadowWidth, ViewImpl::shadowColor);
         // right shadow
-        renderer.line(Vector(x + w + 4, y + h - 8), Vector(x + w + 4, y - 11), shadowWidth, shadowColor);
+        renderer.line(Vector(x + w + 4, y + h - 8), Vector(x + w + 4, y - 11), shadowWidth, ViewImpl::shadowColor);
         renderer.setBlendFunc(BlendFunc::None);
     }
     void View::drawBackground(Renderer &renderer, Int32 x, Int32 y, Int32 w, Int32 h, bool p, bool focus) {
-        renderer.quadXY(Vector(x, y), Vector(w, h), bgColor);
+        renderer.quadXY(Vector(x, y), Vector(w, h), ViewImpl::bgColor);
     }
     void View::drawFrame(Renderer &renderer, Int32 x, Int32 y, Int32 w, Int32 h, bool p, bool focus) {
         w--;
         h--;
 
-        const Color &topColor = p ? frameDarkColor : frameLightColor;
-        const Color &bottomColor = p ? frameLightColor : frameDarkColor;
+        const Color &topColor = p ? ViewImpl::frameDarkColor : ViewImpl::frameLightColor;
+        const Color &bottomColor = p ? ViewImpl::frameLightColor : ViewImpl::frameDarkColor;
 
         renderer.line(Vector(x, y), Vector(x, y + h), 1.0f, topColor);
         renderer.line(Vector(x + 1, y), Vector(x + 1, y + h + 1), 1.0f, topColor);

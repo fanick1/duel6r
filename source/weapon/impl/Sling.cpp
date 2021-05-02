@@ -29,7 +29,7 @@
 #include "SlingShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace SlingImpl {
         const LegacyWeapon::Definition DEFINITION = {15, 0.82f,
                                                      "sling",
                                                      "prak.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Sling::Sling(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 14) {}
+            : LegacyWeapon(sound, textureManager, SlingImpl::DEFINITION, 14) {}
 
     Float32 Sling::getBulletSpeed() const {
         return 6.71f;

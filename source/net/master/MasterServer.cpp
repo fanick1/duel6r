@@ -43,7 +43,7 @@ namespace masterserver {
 
     void MasterServer::requestServerList(ENetHost *host, serverListReceivedCallback_t callback) {
         connect(host, REQUEST_TYPE::CLIENT_REQUEST_SERVERLIST);
-        onServerListReceivedCallback = [=](serverlist_t &serverlist) {
+        onServerListReceivedCallback = [=, this](serverlist_t &serverlist) {
             callback(serverlist);
             disconnect();
             onServerListReceivedCallback = [](serverlist_t&) {
@@ -68,7 +68,7 @@ namespace masterserver {
                               address_t publicIPAddress, port_t publicPort,
                               bool needsNAT) {
         connect(host, REQUEST_TYPE::SERVER_UPDATE);
-        onConnected([=]() {
+        onConnected([=, this]() {
             binarystream bs = createHeader(PACKET_TYPE::SERVER_UPDATE);
             bs << createUpdateRequest(description, localAddress, localPort, publicIPAddress, publicPort, needsNAT);
             send(bs);

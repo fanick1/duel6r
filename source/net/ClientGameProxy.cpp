@@ -11,9 +11,6 @@
 #include "../Level.h"
 namespace Duel6 {
     namespace net {
-        const uint16_t xor_32768 = 32767;
-        const uint16_t xor_32 = 31;
-        const uint16_t xor_64 = 63;
 
         void ClientGameProxy::setPeerReference(Peer &peer) {
             this->peer = &peer;

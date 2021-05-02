@@ -26,7 +26,7 @@ namespace Duel6 {
 
         class NetHost: public Service {
         private:
-            Console &console;
+            Duel6::Console  &console;
             std::vector<std::unique_ptr<Peer>> peers;
             Float64 heartbeatCountDown;
             std::string description = "foobar server";

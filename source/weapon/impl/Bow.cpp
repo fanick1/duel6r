@@ -29,7 +29,7 @@
 #include "BowShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace BowImpl {
         const LegacyWeapon::Definition DEFINITION = {50, 1.64f,
                                                      "bow",
                                                      "luk.wav", "",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Bow::Bow(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 9) {}
+            : LegacyWeapon(sound, textureManager, BowImpl::DEFINITION, 9) {}
 
     Float32 Bow::getBulletSpeed() const {
         return 24.4f;

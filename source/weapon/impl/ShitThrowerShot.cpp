@@ -28,7 +28,7 @@
 #include "ShitThrowerShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace ShitThrowerShotImpl {
         const Rectangle collistionRectangle = Rectangle::fromCornerAndSize(Vector(0.28f, 0.72f), Vector(0.38f, 0.18f));
         const AnimationEntry shotAnimation[] = {0, 164, 1, 164, 2, 164, 1, 164, -1, 0};
         const AnimationEntry boomAnimation[] = {0, 164, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -42,14 +42,14 @@ namespace Duel6 {
                                      Float32 bulletSpeed,
                                      Vector &position,
                                      Vector &velocity)
-        : LegacyShot(owner, world, legacyWeapon, shotAnimation, boomAnimation, shotOrientation, collistionRectangle,
+        : LegacyShot(owner, world, legacyWeapon, ShitThrowerShotImpl::shotAnimation, ShitThrowerShotImpl::boomAnimation, shotOrientation, ShitThrowerShotImpl::collistionRectangle,
               weapon, shotId, powerful, power,
               bulletSpeed, position, velocity),
           brownSkin(brownSkin) {
     }
     ShitThrowerShot::ShitThrowerShot(Player &player, World &world, const LegacyWeapon &weapon, Orientation orientation,
                                      PlayerSkin &brownSkin)
-            : LegacyShot(player, world, weapon, shotAnimation, boomAnimation, orientation, collistionRectangle), brownSkin(brownSkin) {
+            : LegacyShot(player, world, weapon, ShitThrowerShotImpl::shotAnimation, ShitThrowerShotImpl::boomAnimation, orientation, ShitThrowerShotImpl::collistionRectangle), brownSkin(brownSkin) {
     }
 
     bool ShitThrowerShot::isColliding() const {

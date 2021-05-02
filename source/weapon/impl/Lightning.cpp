@@ -29,7 +29,7 @@
 #include "LightningShot.h"
 
 namespace Duel6 {
-    namespace {
+    namespace LightningImpl {
         const LegacyWeapon::Definition DEFINITION = {100, 4.1f,
                                                      "lightning",
                                                      "blesk.wav", "bmblesk.wav",
@@ -37,7 +37,7 @@ namespace Duel6 {
     }
 
     Lightning::Lightning(Sound &sound, TextureManager &textureManager)
-            : LegacyWeapon(sound, textureManager, DEFINITION, 2) {}
+            : LegacyWeapon(sound, textureManager, LightningImpl::DEFINITION, 2) {}
 
     Float32 Lightning::getBulletSpeed() const {
         return 12.2f;

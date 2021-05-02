@@ -16,6 +16,11 @@ namespace Duel6 {
     class Game;
     class Player;
     namespace net {
+        class Peer;
+        const uint8_t xor_128 = 127; // % operator yields also negative results
+        const uint16_t xor_32768 = 32767;
+        const uint16_t xor_32 = 31;
+        const uint16_t xor_64 = 63;
 
         class ClientGameProxy: public GameProxy {
             Peer *peer;

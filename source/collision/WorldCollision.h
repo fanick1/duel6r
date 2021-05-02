@@ -36,6 +36,8 @@
 #include "../Defines.h"
 
 namespace Duel6 {
+    static const float GRAVITATIONAL_ACCELERATION = -11.0f;
+
     class CollisionCheckResult {
     public:
         bool up = false;

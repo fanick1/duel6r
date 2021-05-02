@@ -1,0 +1,6 @@
+#include "DeathMatch.cpp"
+#include "GameModeBase.cpp"
+#include "Predator.cpp"
+#include "PredatorPlayerEventListener.cpp"
+#include "TeamDeathMatch.cpp"
+#include "TeamDeathMatchPlayerEventListener.cpp"
