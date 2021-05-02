@@ -12,10 +12,6 @@
 namespace Duel6 {
     namespace net {
 
-        void ClientGameProxy::setPeerReference(Peer &peer) {
-            this->peer = &peer;
-        }
-
         void ClientGameProxy::setGameReference(Game &g) {
             game = &g;
             defaultSounds = PlayerSounds::makeDefault(game->getAppService().getSound());
@@ -64,26 +60,25 @@ namespace Duel6 {
             }
         }
 
-        void ClientGameProxy::handle(PlayerInputsUpdate &piu) {
+        void ClientGameProxy::handle(Peer &peer, PlayerInputsUpdate &piu) {
 
             if(!game->isServer){
                 return;
             }
-            switch (peer->peerUpdateState) {
+            switch (peer.peerUpdateState) {
             case PeerUpdateState::WAITING_FOR_REQUEST: {
                 return;
-                break;
             }
             case PeerUpdateState::REQUESTED_GAMESTATE: {
                 if (game->isServer) {
-                    peer->peerUpdateState = PeerUpdateState::GAMESTATE_RECEIVED;
+                    peer.peerUpdateState = PeerUpdateState::GAMESTATE_RECEIVED;
                 } else {
                     return;
                 }
                 break;
             }
             case PeerUpdateState::GAMESTATE_RECEIVED: {
-                peer->peerUpdateState = PeerUpdateState::RUNNING;
+                peer.peerUpdateState = PeerUpdateState::RUNNING;
                 break;
             }
             case PeerUpdateState::RUNNING: {
@@ -116,22 +111,22 @@ namespace Duel6 {
             }
         }
 
-        void ClientGameProxy::handle(GameStateUpdate &gsu) {
-            switch (peer->peerUpdateState) {
+        void ClientGameProxy::handle(Peer & peer, GameStateUpdate &gsu) {
+            switch (peer.peerUpdateState) {
             case PeerUpdateState::WAITING_FOR_REQUEST: {
                 return;
                 break;
             }
             case PeerUpdateState::REQUESTED_GAMESTATE: {
                 if(game->isServer){
-                    peer->peerUpdateState = PeerUpdateState::GAMESTATE_RECEIVED;
+                    peer.peerUpdateState = PeerUpdateState::GAMESTATE_RECEIVED;
                 } else {
                     return;
                 }
                 break;
             }
             case PeerUpdateState::GAMESTATE_RECEIVED: {
-                peer->peerUpdateState = PeerUpdateState::RUNNING;
+                peer.peerUpdateState = PeerUpdateState::RUNNING;
                 break;
             }
             case PeerUpdateState::RUNNING: {
@@ -157,9 +152,9 @@ namespace Duel6 {
                         loadSnapshot = true;
                         missingSnapshot = true;
                     }
-                    if (loadSnapshot && peer->snapshot[gsu.snapshotTick & xor_64].count(p.id) > 0) {
-                        if (peer->snapshot[gsu.snapshotTick & xor_64][p.id].snapshotTick == gsu.snapshotTick) {
-                            Player &confirmed = peer->snapshot[gsu.snapshotTick & xor_64][p.id];
+                    if (loadSnapshot && peer.snapshot[gsu.snapshotTick & xor_64].count(p.id) > 0) {
+                        if (peer.snapshot[gsu.snapshotTick & xor_64][p.id].snapshotTick == gsu.snapshotTick) {
+                            Player &confirmed = peer.snapshot[gsu.snapshotTick & xor_64][p.id];
                             Player::fillinFromPreviousConfirmed(confirmed, p);
                             missingSnapshot = false;
                         } else {
@@ -169,14 +164,14 @@ namespace Duel6 {
                     if(missingSnapshot){
                         // correct snapshot not found,
                         // wait out the server to send full copy
-                        peer->receivedInputsTick = peer->receivedInputsTick - 64; // cache is trash
+                        peer.receivedInputsTick = peer.receivedInputsTick - 64; // cache is trash
                         continue; // skip this player to not screw things
                     } else {
                         uint16_t lctdelta = p.lastConfirmedTick - player.lastConfirmedTick;
                         if(lctdelta < 65000 || player.lastConfirmedTick == 0){ // player.lastConfirmedTick == 0 is at the start
                             player.lastConfirmedTick = p.lastConfirmedTick;
                         } else {
-                            peer->receivedInputsTick = peer->receivedInputsTick - 64; // cache is trash
+                            peer.receivedInputsTick = peer.receivedInputsTick - 64; // cache is trash
                             continue;
                         }
                     }
@@ -215,7 +210,7 @@ namespace Duel6 {
                     p.unloadToPlayer(player);
                     p.score.unloadToPlayer(player);
 
-                    peer->snapshot[gsu.inputTick & xor_64][p.id] = p;
+                    peer.snapshot[gsu.inputTick & xor_64][p.id] = p;
                     if((gsu.confirmInputTick - player.lastConfirmedTick) > 0){
                         player.lastConfirmedTick = p.lastConfirmedTick; //
                     }
@@ -257,7 +252,7 @@ namespace Duel6 {
 
         }
 
-        void ClientGameProxy::handle(GameState &sr) {
+        void ClientGameProxy::handle(Peer & peer, GameState &sr) {
             clientId = sr.clientId;
             game->tick = sr.tick;
 
@@ -392,9 +387,9 @@ namespace Duel6 {
                 p.unloadToPlayer(player);
                 p.score.unloadToPlayer(player);
                 p.snapshotTick = sr.tick;
-                peer->snapshot[sr.tick & xor_64][p.id] = p;
+                peer.snapshot[sr.tick & xor_64][p.id] = p;
             }
-            peer->peerUpdateState = PeerUpdateState::GAMESTATE_RECEIVED;
+            peer.peerUpdateState = PeerUpdateState::GAMESTATE_RECEIVED;
 
         }
 
@@ -492,22 +487,6 @@ namespace Duel6 {
             game->broadcastChatMessage(ss.str(), false, true, "SERVER");
             joinPlayers(r.connectingPlayers);
             sendGameState(peer, *game);
-        }
-
-        void ClientGameProxy::handle(ObjectBase &o) {
-            handleObject(o);
-        }
-
-        void ClientGameProxy::handle(EventBase &e) {
-            handleEvent(e);
-        }
-
-        void ClientGameProxy::handle(Peer & peer, ObjectBase &o) {
-            handleObject(peer, o);
-        }
-
-        void ClientGameProxy::handle(Peer & peer, EventBase &e) {
-            handleEvent(peer, e);
         }
 
         bool ClientGameProxy::gameIsServer(){

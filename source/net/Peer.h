@@ -159,6 +159,8 @@ namespace Duel6 {
             void disconnect(bool now);
 
             void destroy();
+        private:
+            bool isServer();
         };
 
         template<>

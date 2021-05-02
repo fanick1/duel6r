@@ -80,7 +80,7 @@ namespace Duel6 {
 
                 receivedInputsTick = gs.tick;
                 confirmedInputsTick = gs.tick;
-                gameProxy->handle(gs);
+                gameProxy->handle(*this,gs);
 
                 break;
             }
@@ -96,7 +96,7 @@ namespace Duel6 {
                     || receivedInputsTick - gs.inputTick >= 30000) {
                     receivedInputsTick = gs.inputTick;
                     confirmedInputsTick = gs.confirmInputTick;
-                    gameProxy->handle(gs);
+                    gameProxy->handle(*this,gs);
                 } else {
                     gameProxy->lateReceive(gs.inputTick);
                     //out of order / late receive
@@ -112,7 +112,7 @@ namespace Duel6 {
                 {
                     receivedInputsTick = piu.inputTick;
                     confirmedInputsTick = piu.confirmInputTick;
-                    gameProxy->handle(piu);
+                    gameProxy->handle(*this,piu);
                 }
                 break;
             }
@@ -340,7 +340,7 @@ namespace Duel6 {
             incomingPeerID = me->incomingPeerID;
             state = PeerState::CONNECTED;
 
-            if(!gameProxy->gameIsServer()){
+            if(!isServer()){
                 requestGameState();
             }
             return true;
@@ -409,10 +409,6 @@ namespace Duel6 {
                 enet_peer_timeout(peer, 500, 200, 1000);
             } else {
                 serverGameProxy.add(this);
-
-                //TODO Get rid of this bullshit - on server: every time  a peer connects, we overwrite the peer reference
-                // it is useful only on client where there is only single peer
-                gameProxy.setPeerReference(*this);
                 // 15 sec timeout during game
                 // the 500 is not 500 ms, it is 500 x current RTT (just in case)
                 enet_peer_timeout(peer, 500, 5000, 15000);
@@ -441,7 +437,6 @@ namespace Duel6 {
                 // this is probably all messed up config and only the 15sec rule applies
                 enet_peer_timeout(peer, 500, 5000, 15000);
                 enet_peer_throttle_configure(peer, 5000, 2, 2 );
-                gameProxy.setPeerReference(*this);
             }
         }
 
@@ -451,6 +446,10 @@ namespace Duel6 {
 
         const std::string& Peer::getDescription() {
             return description;
+        }
+
+        bool Peer::isServer(){
+            return gameProxy->gameIsServer();
         }
 
     } /* namespace net */

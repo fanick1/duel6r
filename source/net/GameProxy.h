@@ -24,9 +24,6 @@ namespace Duel6 {
         class Peer;
 
         class GameProxy {
-        private:
-
-            bool host = false; // todo remove asi
 
         public:
             virtual void sendGameStateUpdate(Game & game){
@@ -40,12 +37,12 @@ namespace Duel6 {
             }
             virtual void startRound(Int32 round, Duel6::Level & level){};
             virtual void handle(Peer & peer, RequestGameState & r);
-            virtual void handle(ObjectBase &o) = 0;
-            virtual void handle(EventBase &e) = 0;
-            virtual void handle(Peer & peer, ObjectBase &o) = 0;
-            virtual void handle(Peer & peer, EventBase &e) = 0;
-            GameProxy();
-            virtual ~GameProxy();
+            GameProxy() = default;
+            GameProxy(const GameProxy &) = delete;
+            GameProxy(GameProxy &&) = delete;
+            GameProxy& operator = (const GameProxy &) = delete;
+            GameProxy& operator = (GameProxy &&) = delete;
+            virtual ~GameProxy() = default;
 
         protected:
             void sendGameState(std::list<Peer *> & peers, Game & game);

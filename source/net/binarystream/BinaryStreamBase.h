@@ -227,14 +227,14 @@ public:
         uint32_t size = s.length();
         writeSize(size);
 
-        write(s.c_str(), size);
+        write(s.data(), size);
         return good();
     }
     bool operator <<(const std::string & s) {
         uint32_t size = s.length();
         writeSize(size);
 
-        write(s.c_str(), size);
+        write(s.data(), size);
         return good();
     }
     bool operator <<(std::u16string & s) {

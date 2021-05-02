@@ -25,6 +25,7 @@ namespace Duel6 {
         private:
             std::list<Peer *> peers;
             Int32 lastSyncedWeapon = -1; // for eventual periodical lying weapon sync
+
         public:
             void spawnBonus(Duel6::Bonus &bonus);
             void spawnWeapon(Duel6::LyingWeapon &lyingWeapon);
@@ -33,10 +34,8 @@ namespace Duel6 {
             void pickWeapon(Duel6::Player &player, unsigned int weaponId);
             void pickBonus(Duel6::Player &player, unsigned int bonusId);
 
-
             void playersJoined(std::vector<PlayerDefinition> & playerDefinitions);
             void playersDisconnected(const std::vector<Int32> & ids);
-            void playersConnected(const std::vector<Int32> & ids);
             void add(Peer *);
             void remove(Peer *);
             void gameEnded();
@@ -54,13 +53,13 @@ namespace Duel6 {
             void startRound(Int32 playedRounds, Duel6::Level & level) override;
             void sendGameStateUpdate(Game & game) override;
             void nextRound() override;
-            void handle(ObjectBase &o) override;
-            void handle(EventBase &e) override;
-            void handle(Peer &peer, ObjectBase &o) override;
-            void handle(Peer &peer, EventBase &e) override;
             void requestNextRound(Int32 currentRound);
 
-            ServerGameProxy();
+            ServerGameProxy() = default;
+            ServerGameProxy(const ServerGameProxy &) = delete;
+            ServerGameProxy(ServerGameProxy &&) = delete;
+            ServerGameProxy & operator = (const ServerGameProxy &) = delete;
+            ServerGameProxy & operator = (ServerGameProxy &&) = delete;
             virtual ~ServerGameProxy();
         private:
             void sendInputs(Game &game);

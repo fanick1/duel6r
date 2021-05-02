@@ -23,7 +23,6 @@ namespace Duel6 {
         const uint16_t xor_64 = 63;
 
         class ClientGameProxy: public GameProxy {
-            Peer *peer;
             Game *game;
             std::list<Person> persons;
             std::map<Int32, Int32> idmap; //player mapping
@@ -38,16 +37,20 @@ namespace Duel6 {
             ClientGameProxy() = default;
             virtual ~ClientGameProxy() = default;
 
+            ClientGameProxy(const ClientGameProxy &) = delete;
+            ClientGameProxy(ClientGameProxy &&) = delete;
+            ClientGameProxy & operator = (const ClientGameProxy &) = delete;
+            ClientGameProxy & operator = (ClientGameProxy &&) = delete;
+
             void setGameReference(Game &g);
-            void setPeerReference(Peer &peer);
 
             void handle(Player &p);
             void handle(Weapon &w);
             void handle(MessageBroadcast &m);
 
-            void handle(GameState &s);
-            void handle(GameStateUpdate &s);
-            void handle(PlayerInputsUpdate &piu);
+            void handle(Peer &peer, GameState &s);
+            void handle(Peer &peer, GameStateUpdate &s);
+            void handle(Peer &peer, PlayerInputsUpdate &piu);
             void handle(NextRound &nr);
             void handle(PlayersDisconnected &pd);
             void handle(PlayersJoined &pj);
@@ -67,27 +70,8 @@ namespace Duel6 {
             void handle(Peer &peer, Chat &c);
             void handle(Peer &peer, net::Console &c);
             void handle(Peer &peer, Focus &f);
-            template<typename ObjectTypeName>
-            void handleObject(ObjectTypeName &o) { //todo I think these are superfluous and can be removed
-
-            }
-            template<typename EventTypeName>
-            void handleEvent(EventTypeName &e) {
-
-            }
-            template<typename ObjectTypeName>
-            void handleObject(Peer &peer, ObjectTypeName &o) { //todo I think these are superfluous and can be removed
-
-            }
-            template<typename EventTypeName>
-            void handleEvent(Peer &peer, EventTypeName &e) {
-
-            }
             void handle(Peer &peer, RequestGameState &r) override;
-            void handle(ObjectBase &o) override;
-            void handle(EventBase &e) override;
-            void handle(Peer &peer, ObjectBase &o) override;
-            void handle(Peer &peer, EventBase &e) override;
+
             RequestGameState getRequestGameState();
 
         protected:

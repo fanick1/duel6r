@@ -11,17 +11,6 @@
 #include "../Game.h"
 namespace Duel6 {
     namespace net {
-        GameProxy::GameProxy()
-        {
-            // TODO Auto-generated constructor stub
-
-        }
-
-        GameProxy::~GameProxy()
-        {
-            // TODO Auto-generated destructor stub
-        }
-
         void GameProxy::handle(Peer &peer, RequestGameState &r) {
 
         }

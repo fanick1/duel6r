@@ -20,11 +20,6 @@ namespace Duel6 {
         void ServerGameProxy::remove(Peer *p) {
             peers.remove(p);
         }
-        ServerGameProxy::ServerGameProxy()
-        {
-            // TODO Auto-generated constructor stub
-
-        }
 
         void ServerGameProxy::startRound(Int32 playedRounds, Duel6::Level &level) {
             StartRound sr;
@@ -67,18 +62,6 @@ namespace Duel6 {
             peers.clear();
         }
 
-        void ServerGameProxy::handle(ObjectBase &o) {
-            ;
-        }
-        void ServerGameProxy::handle(EventBase &e) {
-            ;
-        }
-        void ServerGameProxy::handle(Peer &peer, ObjectBase &o) {
-
-        }
-        void ServerGameProxy::handle(Peer &peer, EventBase &e) {
-
-        }
         void ServerGameProxy::nextRound() {
             for (auto &peer : peers) {
                 for (auto &s : peer->snapshot) {
