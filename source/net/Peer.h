@@ -106,11 +106,7 @@ namespace Duel6 {
 
             template<typename MessageObject>
             void sendUnreliable(MessageObject &msg) {
-                send(msg, UNRELIABLE_CHANNEL++, false);
-                // we are cycling the unreliable channels because of bug in ENet < 1.3.15-1 (fixed in 1.3.16)
-                if(UNRELIABLE_CHANNEL >= 254){
-                    UNRELIABLE_CHANNEL = UNRELIABLE_CHANNEL_BASELINE;
-                }
+                send(msg, UNRELIABLE_CHANNEL, false);
             }
 
             template<typename MessageObject>
