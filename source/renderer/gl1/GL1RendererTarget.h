@@ -37,7 +37,6 @@ namespace Duel6 {
 
     class GL1RendererTarget : public RendererTarget {
     private:
-        RendererTarget::RenderCallback callback;
         GLuint width, height;
         GL1Renderer &renderer;
 
@@ -51,6 +50,8 @@ namespace Duel6 {
         void apply(const Color &modulateColor) override;
 
         void resize(Int32 width, Int32 height) override;
+
+        void rerender() override {};
     };
 }
 #endif

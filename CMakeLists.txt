@@ -606,6 +606,8 @@ set (D6R_UNITY_BUILD_SOURCES
         source/script/unity.cpp
         source/weapon/unity.cpp
         source/unity.cpp
+
+        source/unityWork.cpp
         )
 ########################
 #  Add application

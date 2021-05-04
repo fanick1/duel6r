@@ -158,9 +158,18 @@ namespace Duel6 {
         game->setGameProxyReference(*serverGameProxy);
         FireList::initialize();
         console.printLine("\n===Initialize net subsystem===");
+        auto linkedVersion = net->getEnetLibLinkedVersion();
+        auto compileVersion = net->getEnetLibCompileTimeVersion();
+        console.printLine(
+                Format("ENet       linked version: {0}.{1}.{2}") << linkedVersion.major << linkedVersion.minor << linkedVersion.patch );
+        console.printLine(
+                Format("ENet compile time version: {0}.{1}.{2}") << compileVersion.major << compileVersion.minor << compileVersion.patch );
         if(!net->initialize()){
             console.printLine("\n===Failed to initialize net subsystem===");
             D6_THROW(Exception, Format("Unable initialize net"));
+        }
+        if(linkedVersion != compileVersion){
+            console.printLine("\n=== WARNING: ENet lib version differs from compile time version ===");
         }
         for (Weapon weapon : Weapon::values()) {
             gameSettings.enableWeapon(weapon, true);

@@ -448,6 +448,14 @@ namespace Duel6 {
             }
         }
 
+        void ServerGameProxy::destroyBlocks(const std::vector<Duel6::Vector> &destroyedBlocks) {
+            DestroyBlocks db;
+            db.blocks = container_cast<std::vector<net::Vector2D>>(destroyedBlocks);
+            for (auto &peer : peers) {
+                peer->sendReliable(db);
+            }
+        }
+
         void loadNetWeapon(Weapon &w, const LyingWeapon &weapon) {
             Collider &c = w.collider;
             const auto & collider = weapon.getCollider();

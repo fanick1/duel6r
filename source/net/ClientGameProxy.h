@@ -66,6 +66,7 @@ namespace Duel6 {
             void handle(SpawnExplosion &ss);
             void handle(EraseShot &es);
             void handle(RequestNextRound &rnr);
+            void handle(DestroyBlocks &db);
             void handle(Peer &peer, ChatMessage &cm);
             void handle(Peer &peer, Chat &c);
             void handle(Peer &peer, net::Console &c);

@@ -34,12 +34,16 @@ namespace Duel6 {
             return true;
         }
 
-        Net::~Net()
-        {
+        Net::~Net() {
             deinitialize();
-            // TODO Auto-generated destructor stub
         }
+
         bool Net::initialized = false;
+
+        Net::EnetLibVersion Net::getEnetLibLinkedVersion() const {
+            auto version = enet_linked_version();
+            return {ENET_VERSION_GET_MAJOR(version), ENET_VERSION_GET_MINOR(version), ENET_VERSION_GET_PATCH(version)};
+        }
     } /* namespace net */
 } /* namespace Duel6 */
 

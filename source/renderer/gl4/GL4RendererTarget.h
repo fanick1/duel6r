@@ -56,6 +56,8 @@ namespace Duel6 {
 
         void resize(Int32 width, Int32 height) override;
 
+        void rerender() override;
+
     private:
         void blit();
 

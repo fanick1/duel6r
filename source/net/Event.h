@@ -53,6 +53,9 @@ namespace Duel6 {
             CHAT_MESSAGE, // TODO refactor to Object
             CLIENT_REQUESTS_NEXT_ROUND, // TODO refactor
 
+            DESTROY_BLOCKS,
+
+            RESERVE1,RESERVE2,RESERVE3,RESERVE4,
             MAX_COUNT
         };
 

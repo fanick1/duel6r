@@ -158,8 +158,11 @@ namespace Duel6 {
             }
 
             if (shotHit.hit) {
-                explode(world);
+                std::vector<Vector> destroyedBlocks = explode(world);
                 game.eraseShot(getId());
+                if(!destroyedBlocks.empty()) {
+                    game.destroyBlocks(destroyedBlocks);
+                }
                 return true;
             }
         }
@@ -180,7 +183,7 @@ namespace Duel6 {
         return false;
     }
 
-    void LegacyShot::explode(World &world) {
+    std::vector<Vector> LegacyShot::explode(World &world) {
         std::vector<Player *> killedPlayers;
         std::vector<Player *> hittedPlayers;
 
@@ -204,8 +207,21 @@ namespace Duel6 {
                 }
             }
         }
+        Vector test;
+        std::vector<Vector> destroyedBlocks;
+        destroyedBlocks.reserve(32);
+        for(test.y = shotCentre.y - range; test.y < shotCentre.y + range; test.y += 0.5f ){
+            for(test.x = shotCentre.x - range; test.x < shotCentre.x + range; test.x += 0.5f ){
+                Float32 dist = (test - shotCentre).length();
+                if((((range - dist) * power) / range) > 10){
+                    destroyedBlocks.push_back(test);
+                }
+            }
+        }
 
         author.processShot(*this, hittedPlayers, killedPlayers);
+
+        return destroyedBlocks;
     }
 
     void LegacyShot::onExplode(const Vector &centre, Float32 range, World &world) {

@@ -568,4 +568,11 @@ namespace Duel6 {
         return writer.writeToString(json);
     }
 
+    void Game::destroyBlocks(const std::vector<Duel6::Vector> &destroyedBlocks) {
+        if (isServer) {
+            gameProxy->destroyBlocks(destroyedBlocks);
+        }
+        this->round->getWorld().getLevel().destroyBlocks(destroyedBlocks);
+    }
+
 }

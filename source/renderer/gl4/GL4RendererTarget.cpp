@@ -78,10 +78,8 @@ namespace Duel6 {
     }
 
     void GL4RendererTarget::record(RenderCallback renderCallback) {
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        renderer.clearBuffers();
-        renderCallback();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        callback = renderCallback;
+        rerender();
     }
 
     void GL4RendererTarget::apply(const Color &modulateColor) {
@@ -115,5 +113,12 @@ namespace Duel6 {
     void GL4RendererTarget::resize(Int32 width, Int32 height) {
         this->width = width;
         this->height = height;
+    }
+
+    void GL4RendererTarget::rerender() {
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        renderer.clearBuffers();
+        callback();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 }

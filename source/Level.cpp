@@ -118,6 +118,28 @@ namespace Duel6 {
         }
     }
 
+    void Level::destroyBlock(Int32 x, Int32 y) {
+        if(isWall(x, y, false)){
+            needsRedraw = true;
+            setBlock(static_cast<Uint16>(Block::Type::EmptySpace), x, y);
+            if(y <= waterLevel){
+                setBlock(waterBlock, x, y);
+            }
+        }
+    }
+
+    void Level::destroyBlocks(const std::vector<Vector> &destroyedBlocks) {
+        for(const auto& block: destroyedBlocks){
+            destroyBlock(block.x, block.y);
+        }
+    }
+
+    bool Level::scrapRedraw() {
+        bool result = needsRedraw;
+        needsRedraw = false;
+        return result;
+    }
+
     void Level::raiseWater() {
         raisingWater = true;
         if (waterLevel < getHeight() - 1) {
@@ -197,4 +219,5 @@ namespace Duel6 {
     bool Level::isRaisingWater() const {
         return raisingWater;
     }
+
 }

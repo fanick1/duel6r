@@ -64,7 +64,10 @@ namespace Duel6 {
 
     void World::update(Float32 elapsedTime) {
         time += elapsedTime;
-
+        redraw |= level->scrapRedraw();
+        if(redraw){
+            levelRenderData.generateFaces();
+        }
         spriteList.update(elapsedTime);
         explosionList.update(elapsedTime);
         levelRenderData.update(elapsedTime);
@@ -101,5 +104,11 @@ namespace Duel6 {
 
         Int32 bcgIndex = Math::random(Int32(bcgNames.size()));
         return bcgNames[bcgIndex];
+    }
+
+    bool World::redrawn() const  {
+        bool result = redraw;
+        redraw = false;
+        return result;
     }
 }

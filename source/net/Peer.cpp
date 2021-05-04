@@ -284,6 +284,19 @@ namespace Duel6 {
                 gameProxy->handle(rnr);
                 break;
             }
+            case EventType::DESTROY_BLOCKS: {
+                DestroyBlocks db;
+                if(!(s >> db)) {
+                    D6_THROW(Exception, "Cannot deserialize EventType::DESTROY_BLOCKS");
+                }
+                gameProxy->handle(db);
+                break;
+            }
+
+            case EventType::RESERVE1:
+            case EventType::RESERVE2:
+            case EventType::RESERVE3:
+            case EventType::RESERVE4:
             case EventType::MAX_COUNT:
                 break;
             default: {

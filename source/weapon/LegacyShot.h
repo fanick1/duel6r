@@ -160,7 +160,7 @@ namespace Duel6 {
 
         ShotHit checkShotCollision(ShotList &shotList, ShotCollisionSetting collisionSetting);
 
-        void explode(World &world);
+        std::vector<Vector> explode(World &world);
 
         void addPlayerExplosion(Player &player, World &world);
 

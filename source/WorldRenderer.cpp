@@ -610,7 +610,9 @@ namespace Duel6 {
 
     void WorldRenderer::fullScreen() const {
         Float32 remainingTime = game.getRound().getRemainingYouAreHere();
-
+        if(game.getRound().getWorld().redrawn()){
+            rerender();
+        }
         setView(0, 0, video.getScreen().getClientWidth(), video.getScreen().getClientHeight());
         renderer.clearBuffers(); // attempt to resolve rendering issues in Alcatraz
         Color fadeColor = remainingTime > 0 ? getRoundStartFadeColor(remainingTime) : Color::WHITE;
@@ -653,6 +655,10 @@ namespace Duel6 {
         target->record([this]() {
             renderBackground();
         });
+    }
+
+    void WorldRenderer::rerender() const {
+        target->rerender();
     }
 
     void WorldRenderer::render() const {

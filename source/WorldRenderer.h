@@ -57,7 +57,7 @@ namespace Duel6 {
 
         void render() const;
         void prerender() const;
-
+        void rerender() const;
     private:
         Camera createCamera() const;
 

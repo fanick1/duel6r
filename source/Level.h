@@ -61,6 +61,7 @@ namespace Duel6 {
         Int32 waterLevel;
         bool raisingWater;
         std::vector<Elevator> elevators;
+        bool needsRedraw = true;
 
     public:
         void setBlockMeta(Block::Meta & ref){
@@ -139,6 +140,11 @@ namespace Duel6 {
 
         bool isRaisingWater() const;
 
+        void destroyBlocks(const std::vector<Vector> &destroyedBlocks);
+
+        void destroyBlock(Int32 x, Int32 y);
+
+        bool scrapRedraw();
     private:
         void load(const std::string &path, bool mirror);
 

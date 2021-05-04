@@ -56,7 +56,7 @@ namespace Duel6 {
         ElevatorList elevatorList;
         ElevatorList unconfirmedElevatorList; //for client side prediction
         Float32 time;
-
+        mutable bool redraw = false;
     public:
         World(Game &game, std::unique_ptr<Level> && levelData);
 
@@ -163,6 +163,8 @@ namespace Duel6 {
         Float32 getTime() const {
             return time;
         }
+
+        bool redrawn() const;
 
     private:
         std::string findBackground(const GameResources::BackgroundList &backgrounds);

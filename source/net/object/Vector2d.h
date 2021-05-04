@@ -24,7 +24,7 @@ namespace Duel6::net {
 
         template<class V>
         operator V() {
-            return V(x, y, 0);
+            return V(x, y);
         }
 
         template<class Stream>

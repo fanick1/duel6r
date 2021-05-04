@@ -713,5 +713,10 @@ namespace Duel6 {
                 }
             }
         }
+
+        void ClientGameProxy::handle(DestroyBlocks &db) {
+            auto destroyedBlocks = container_cast<std::vector<Duel6::Vector>>(db.blocks);
+            game->destroyBlocks(destroyedBlocks);
+        }
     } /* namespace net */
 } /* namespace Duel6 */

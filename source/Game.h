@@ -253,6 +253,8 @@ namespace Duel6 {
 
         void eraseShot(Uint16 id);
 
+        void destroyBlocks(const std::vector<Vector> & destroyedBlocks);
+
         void spawnExplosion(Explosion &&explosion);
 
         void playSample(const Player &player, PlayerSounds::Type type);
