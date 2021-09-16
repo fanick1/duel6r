@@ -49,7 +49,9 @@ namespace Duel6 {
     public:
         enum class StencilMode {
             DISABLE,
-            CLEAR_AND_WRITE,
+            CLEAR,
+            WRITE,
+            ERASE,
             TEST
         };
 

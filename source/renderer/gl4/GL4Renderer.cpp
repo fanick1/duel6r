@@ -363,20 +363,46 @@ namespace Duel6 {
     }
 
     void GL4Renderer::stencil(StencilMode mode) const {
+
+        /**
+         * Main use case in gui rendering:
+         *  CLEAR
+         *
+         *  WRITE
+         *   - render rectangle into which we want to render
+         *  TEST
+         *   - now render the graphics. Anything outside the rectangle from previous step gets cropped.
+         *  ERASE
+         *   - re-render the rectangle from step 'WRITE' to patch the stencil buffer into pristine state without the need to
+         *   erase whole stencil buffer. This leaves the stencil buffer reusable for next gui component to be rendered.
+         */
+
         switch (mode) {
             case StencilMode::DISABLE: {
                 glDisable(GL_STENCIL_TEST);
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                 break;
             }
-            case StencilMode::CLEAR_AND_WRITE: {
-                glStencilFunc( GL_ALWAYS, 1, 0xffffffff);
-                glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
-                glClear( GL_STENCIL_BUFFER_BIT);
+            case StencilMode::CLEAR: {
+                glClear( GL_STENCIL_BUFFER_BIT);  // (it is not that expensive, but let's not misuse it)
+                break;
+            }
+            case StencilMode::WRITE: {
+                glStencilFunc( GL_ALWAYS, 1, 0xffffffff); // stencil test always passes
+                glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);   // when a pixel is rendered, 1 gets written into the stencil buffer
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+                break;
+            }
+            case StencilMode::ERASE: {
+                glStencilFunc( GL_ALWAYS, 0, 0xffffffff); // stencil test always passes
+                glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);            // when a pixel is rendered, 0 gets written into the stencil buffer
+                glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
                 break;
             }
             case StencilMode::TEST: {
-                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-                glStencilFunc(GL_EQUAL, 1, 1);
+                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);  // do not modify the stencil buffer
+                glStencilFunc(GL_EQUAL, 1, 1);  // enable rendering only to pixels having 1 in the stencil buffer
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                 glEnable(GL_STENCIL_TEST);
                 break;
             }
