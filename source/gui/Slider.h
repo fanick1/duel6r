@@ -33,6 +33,7 @@
 
 namespace Duel6 {
     namespace Gui {
+        class ScrollPanel;
         class Slider : public Control {
         public:
             struct Position {
@@ -44,12 +45,13 @@ namespace Duel6 {
         private:
             Position *pos;
             Button *up, *down;
-            Int32 height = 0;
             Float32 repeatWait = 0;
             bool dragging = false;
 
         public:
             Slider(View &parentView);
+
+            Slider(ScrollPanel &parentBox);
 
             void setPosition(int X, int Y, int H);
 

@@ -355,6 +355,8 @@ set(D6R_SOURCES
         source/gui/Label.h
         source/gui/ListBox.cpp
         source/gui/ListBox.h
+        source/gui/ScrollPanel.cpp
+        source/gui/ScrollPanel.h
         source/gui/Slider.cpp
         source/gui/Slider.h
         source/gui/Spinner.cpp

@@ -12,10 +12,9 @@
 namespace Duel6::Gui {
     class View;
 
-    class Image : Control {
+    class Image : public Control {
     private:
         Material material;
-        Int32 w, h;
 
     public:
         Image(View &parentView, Material material, Int32 x, Int32 y, Int32 w, Int32 h);

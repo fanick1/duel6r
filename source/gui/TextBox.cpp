@@ -34,6 +34,7 @@ namespace Duel6 {
     namespace Gui {
         Textbox::Textbox(View &parentView)
             : Control(parentView) {
+            height = 18;
             focusable = true;
         }
 
@@ -44,7 +45,7 @@ namespace Duel6 {
             x = X + 2;
             y = Y - 2;
             max = M;
-            width = W;
+            width = (W << 3) + 8;
 
             allowedCharacters = allowed;
             text.clear();
@@ -120,7 +121,7 @@ namespace Duel6 {
         }
 
         void Textbox::mouseButtonEvent(const Duel6::MouseButtonEvent &event) {
-            int w = (width << 3) + 8;
+            int w = width;
             if (Control::mouseIn(event, x, y, w, height)) {
                 if (event.getButton() == SysEvent::MouseButton::RIGHT) {
                     flush();
@@ -164,7 +165,7 @@ namespace Duel6 {
         }
 
         void Textbox::draw(Renderer &renderer, const Font &font) const {
-            int w = (width << 3) + 8;
+            int w = width;
 
             drawFrame(renderer, x - 2, y + 2, w + 4, height + 4, true, focused);
             renderer.quadXY(Vector(x, y - (height - 1)), Vector(w, height - 1), Color::WHITE);
@@ -197,7 +198,7 @@ namespace Duel6 {
             }
         }
         void Textbox::mouseMotionEvent(const MouseMotionEvent &event) {
-            if (Control::mouseIn(event, x, y, (width << 3) + 8, height)) {
+            if (Control::mouseIn(event, x, y, width, height)) {
                 setIBeamCursor();
             }
         }

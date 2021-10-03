@@ -43,8 +43,6 @@ namespace Duel6 {
             Int32 screenHeight = 0;
             Int32 trX = 0; // x translation
             Int32 trY = 0; // y translation
-            std::vector<std::unique_ptr<Control>> controls;
-            Control *focused = nullptr;
             SDL_Cursor *cursorArrow;
             SDL_Cursor *cursorIBeam;
             SDL_Cursor *cursorNWSE;

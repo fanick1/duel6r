@@ -36,9 +36,11 @@
 namespace Duel6 {
     namespace Gui {
         class View;
+        class ScrollPanel;
 
         class Control {
             friend class View;
+            friend class ScrollPanel;
 
         public:
             enum class Type {
@@ -53,9 +55,14 @@ namespace Duel6 {
                 Image
             };
 
+            struct ScissorBox {
+                int x, y, width, height;
+            };
+
         protected:
-            Int32 x = 0, y = 0;
+            Int32 x = 0, y = 0, width = 0, height = 0;
             View *parent = nullptr;
+            Control *parentControl = nullptr;
             bool focusable = false;
             bool focused = false;
             bool enabled = true;
@@ -64,7 +71,11 @@ namespace Duel6 {
 
             void setParent(View *desktop);
 
+            void setPosition(Int32 X, Int32 Y, Int32 W, Int32 H);
+
             Control(View &parentView);
+
+            Control(ScrollPanel &parentBox);
 
             virtual ~Control() {
             }
@@ -84,6 +95,9 @@ namespace Duel6 {
             }
 
             void setFocused(bool val) {
+                if(val && !focused){
+                    scrollToView();
+                }
                 focused = val;
             }
 
@@ -96,9 +110,17 @@ namespace Duel6 {
 
             virtual void drawStencil(Renderer &renderer, const Font &font) const {}
 
+            void drawStencil(Renderer &renderer, const Font &font, const ScissorBox& scissorBox) const;
+
             virtual void draw(Renderer &renderer, const Font &font) const = 0;
 
+            virtual void draw(Renderer &renderer, const Font &font, const ScissorBox& scissorBox) const;
+
             virtual void drawWithStencilTest(Renderer &renderer, const Font &font) {}
+
+            void drawWithStencilTest(Renderer &renderer, const Font &font, const ScissorBox& scissorBox);
+
+            virtual void onSetPosition(Int32 X, Int32 Y, Int32 W, Int32 H) {}
 
             virtual bool keyEvent(const KeyPressEvent &event) {
                 return false;
@@ -119,6 +141,16 @@ namespace Duel6 {
             virtual void onBlur() {
             }
 
+            Int32 getHeight() const {
+                return height;
+            }
+
+            Int32 getWidth() const {
+                return width;
+            }
+
+            virtual ScissorBox getScissorBox(const ScissorBox & parent);
+
             void focus();
 
             void focusNext();
@@ -129,6 +161,11 @@ namespace Duel6 {
 
             Font& getFont();
 
+            void scrollToView();
+
+            void scrollToView(Int32 X, Int32 Y, Int32 W, Int32 H);
+
+            virtual void scrollCoordToView(Int32 X, Int32 Y, Int32 W, Int32 H){}
         protected:
             static void drawFrame(Renderer &renderer, Int32 x, Int32 y, Int32 w, Int32 h, bool p, bool focus = false);
 

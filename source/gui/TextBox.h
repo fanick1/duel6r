@@ -40,8 +40,9 @@ namespace Duel6 {
 
         private:
             std::vector<OnEnterCallback> onEnterListeners;
-            Int32 max = 0, width = 0;
-            const Int32 height = 18;
+            Int32 max = 0;
+//            Int32 width = 0;
+//            const Int32 height = 18;
             std::string text;
             std::string confirmedText;
             std::string allowedCharacters;

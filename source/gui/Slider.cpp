@@ -27,13 +27,22 @@
 #include "../Video.h"
 #include <algorithm>
 #include "Slider.h"
-
+#include "ScrollPanel.h"
 namespace Duel6 {
     namespace Gui {
         namespace SliderImpl {
             Color bcgColor(192, 192, 192);
         }
-
+        Slider::Slider(ScrollPanel &parentBox)
+                : Control(parentBox) {
+            up = new Button(parentBox);
+            up->setCaption(" ");
+            up->setFocusable(false);
+            down = new Button(parentBox);
+            down->setCaption(" ");
+            down->setFocusable(false);
+            pos = nullptr;
+        }
         Slider::Slider(View &parentView)
             : Control(parentView) {
             up = new Button(parentView);

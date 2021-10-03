@@ -34,6 +34,7 @@
 
 namespace Duel6 {
     namespace Gui {
+        class ScrollPanel;
         class ListBox : public Control {
         public:
             struct ItemColor {
@@ -50,8 +51,6 @@ namespace Duel6 {
             ColorizeCallback colorizeCallback;
             bool scrollBar;
             Slider *slider;
-            Int32 width = 0;
-            Int32 height = 0;
             Int32 selected;
             Int32 itemHeight = 1;
             std::vector<std::string> items;
@@ -59,6 +58,8 @@ namespace Duel6 {
 
         public:
             ListBox(View &parentView, bool sb);
+
+            ListBox(ScrollPanel &parentBox, bool sb);
 
             ListBox& setPosition(Int32 x, Int32 y, Int32 width, Int32 height, Int32 itemHeight);
 
@@ -104,6 +105,8 @@ namespace Duel6 {
             static ItemColor defaultColorize(Int32 index, const std::string &label);
 
         protected:
+            void onSetPosition(Int32 X, Int32 Y, Int32 W, Int32 H) override;
+
             void mouseWheelEvent(const MouseWheelEvent &event) override;
 
             void mouseButtonEvent(const MouseButtonEvent &event) override;

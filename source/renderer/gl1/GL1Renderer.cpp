@@ -377,4 +377,22 @@ namespace Duel6 {
                 }
             }
         }
+
+    bool GL1Renderer::setScissorTest(bool value) const {
+        GLboolean originalValue;
+        glGetBooleanv(GL_SCISSOR_TEST, &originalValue);
+        if(value == originalValue){
+            return originalValue;
+        }
+        if(value){
+            glEnable(GL_SCISSOR_TEST);
+        } else {
+            glDisable(GL_SCISSOR_TEST);
+        }
+        return originalValue;
+    }
+
+    bool GL1Renderer::scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const {
+        glScissor(x, y, width, height);
+    }
 }

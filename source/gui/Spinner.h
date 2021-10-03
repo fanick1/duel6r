@@ -33,6 +33,7 @@
 
 namespace Duel6 {
     namespace Gui {
+        class ScrollPanel;
         class Spinner : public Control {
         public:
             struct ItemColor {
@@ -47,7 +48,7 @@ namespace Duel6 {
             std::vector<ToggleCallback> toggleListeners;
             Button *left, *right;
             Int32 selectedIndex;
-            Int32 width = 1;
+//            Int32 width = 1;
             std::vector<std::pair<Int32, std::string> > items;
             Float32 repeatWait = 0;
             ColorizeCallback colorizeCallback = defaultColorize;
@@ -58,7 +59,8 @@ namespace Duel6 {
         public:
             explicit Spinner(View &parentView);
 
-            void setPosition(Int32 X, Int32 Y, Int32 W, Int32 H);
+            explicit Spinner(ScrollPanel &parentBox);
+
 
             void addItem(const std::string &item, Int32 value = 0, bool skipIfPresent = true);
 
@@ -103,6 +105,8 @@ namespace Duel6 {
             void setScrolling(bool value);
 
             void scroll(Float32 distance);
+
+            void onSetPosition(Int32 X, Int32 Y, Int32 W, Int32 H) override;
         };
 
     }

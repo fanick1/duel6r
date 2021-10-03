@@ -39,13 +39,6 @@ namespace Duel6 {
             this->label = label;
         }
 
-        void CheckBox::setPosition(int X, int Y, int W, int H) {
-            x = X;
-            y = Y;
-            width = W;
-            height = H;
-        }
-
         void CheckBox::mouseButtonEvent(const MouseButtonEvent &event) {
             if (Control::mouseIn(event, x, y, width, height)) {
                 if (event.getButton() == SysEvent::MouseButton::LEFT) {

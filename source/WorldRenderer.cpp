@@ -36,7 +36,7 @@ namespace Duel6 {
             : font(appService.getFont()), video(appService.getVideo()), game(game), renderer(video.getRenderer()),
               target(renderer.makeTarget(video.getScreen())) {
         video.onResize([this](Int32 width, Int32 height){
-           target->resize(width, height);
+           rerender();
         });
     }
 
@@ -95,6 +95,7 @@ namespace Duel6 {
 
     Int32 WorldRenderer::renderRankingEntry(const Ranking::Entry &entry, Int32 posX, Int32 posY, Int32 maxLength,
                                             Float32 charHeight, Int32 extendWidth) const {
+        if(posY < 0) return posY;
         renderer.setBlendFunc(BlendFunc::SrcAlpha);
         Color fontColor(entry.fontColor);
         renderer.quadXY(Vector(posX, posY + 1), Vector((charHeight / 2) * (maxLength) + extendWidth, charHeight), entry.bcgColor);
@@ -134,11 +135,14 @@ namespace Duel6 {
             }
             height += fontSize * (1 + entry.entries.size());
         }
+        if(height > video.getScreen().getClientHeight()) {
+            height = video.getScreen().getClientHeight();
+        }
         const auto score = "---SCORE---";
         const std::string kad = "  K   A   D   K/D  PTS  PING[ms]";
         const auto kadWidth = font.getTextWidth(kad, fontSize);
         const auto scoreWidth = font.getTextWidth(score, fontSize);
-        width +=  kadWidth;
+        width += kadWidth;
         int x = video.getScreen().getClientWidth() / 2 - width / 2 ;
         int y = video.getScreen().getClientHeight() / 2 - height / 2;
 
@@ -153,8 +157,11 @@ namespace Duel6 {
                         Vector(width + 2 * fontWidth + 10, fontSize + 4), Color(0, 0, 255, 255));
         renderer.setBlendFunc(BlendFunc::SrcColor);
 
+        if(y < 30) y = 30;
         Int32 posY = y + height - fontSize * 3;
-
+        if (posY > video.getScreen().getClientHeight() - 30){
+            posY = video.getScreen().getClientHeight() - 30;
+        }
         Color fontColor = Color::WHITE;
 
         font.print(x + (width - scoreWidth) / 2, y + height - fontSize, 0.0f, fontColor, score, fontSize, true);
@@ -564,6 +571,7 @@ namespace Duel6 {
 
     void WorldRenderer::renderBackground() const {
         setView(0, 0, video.getScreen().getClientWidth(), video.getScreen().getClientHeight());
+        video.setMode(Video::Mode::Orthogonal);
         background(game.getResources().getBcgTextures().at(game.getRound().getWorld().getBackground()));
         video.setMode(Video::Mode::Perspective);
         Camera camera = createCamera();

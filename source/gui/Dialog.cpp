@@ -41,12 +41,12 @@ namespace Duel6::Gui {
     Dialog::~Dialog() {
     }
 
-    void Dialog::draw(Renderer &renderer, const Font &font) const {
+    void Dialog::draw(Renderer &renderer, const Font &font, Int32 trX, Int32 trY) const {
         drawBackground(renderer, x, y, w, h, false, false);
         drawFrame(renderer, x, y, w, h, false, false);
         drawDropShadow(renderer, x, y, w, h, false, false);
 
-        View::draw(renderer, font);
+        View::draw(renderer, font, trX, trY);
     }
 
     void Dialog::DialogTitleBar::setPos(Int32 x, Int32 y, Int32 w, Int32 h) {

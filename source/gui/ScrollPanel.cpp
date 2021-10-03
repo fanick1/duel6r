@@ -1,0 +1,142 @@
+//
+// Created by fanick on 30.09.21.
+//
+
+#include "ScrollPanel.h"
+#include "View.h"
+
+namespace Duel6::Gui {
+    ScrollPanel::ScrollPanel(View &parentView) : Control(parentView) {
+        focusable = true;
+    }
+
+    ScrollPanel::~ScrollPanel() {
+
+    }
+
+    Control::Type ScrollPanel::getType() const {
+        return Type::Button;
+    }
+
+    void ScrollPanel::update(Float32 elapsedTime) {
+        for (auto &control: controls) {
+            control->update(elapsedTime);
+            if(control->y - control->getHeight() < maxY) {
+                maxY = control->y - control->getHeight();
+            }
+        }
+        if(scrollingToView){
+            if(scrollY - height > Y - H && scrollY > Y ){
+                scrollY = Y - H + height ;
+            } else if (scrollY - H < Y) {
+                scrollY = Y ;
+            }
+            if(scrollY > 0){
+                scrollY = 0;
+            } else if(scrollY < maxY + height){
+                scrollY = maxY + height;
+            }
+            scrollingToView = false;
+        }
+    }
+
+    void ScrollPanel::drawStencil(Renderer &renderer, const Font &font) const {
+        Control::drawStencil(renderer, font);
+    }
+
+    void ScrollPanel::draw(Renderer &renderer, const Font &font, const Control::ScissorBox &parentScissorBox) const {
+        Matrix m = renderer.getViewMatrix();
+        renderer.setViewMatrix(m * Matrix::translate(Float32(x), Float32(y - scrollY), 0));
+        Control::ScissorBox scissorBox{parentScissorBox.x + x, parentScissorBox.y + y - height, width, height};
+        bool originalScissorTest = renderer.setScissorTest(true);
+        for (auto &control: controls) {
+            Control::ScissorBox s = control->getScissorBox(scissorBox);
+            renderer.scissorTest(s.x, s.y, s.width, s.height);
+            renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
+            control->drawStencil(renderer, font);
+            renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
+            control->draw(renderer, font);
+            renderer.stencil(Duel6::Renderer::StencilMode::TEST);
+
+            renderer.stencil(Duel6::Renderer::StencilMode::DISABLE); // TODO remove
+
+            control->drawWithStencilTest(renderer, font);
+            renderer.stencil(Duel6::Renderer::StencilMode::ERASE);
+            control->drawStencil(renderer, font);
+        }
+        if(!originalScissorTest){
+            renderer.setScissorTest(false);
+        }
+        renderer.setViewMatrix(m);
+    }
+
+    void ScrollPanel::draw(Renderer &renderer, const Font &font) const {
+
+    }
+
+    void ScrollPanel::drawWithStencilTest(Renderer &renderer, const Font &font) {
+        Control::drawWithStencilTest(renderer, font);
+    }
+
+    bool ScrollPanel::keyEvent(const KeyPressEvent &event) {
+        return Control::keyEvent(event);
+    }
+
+    void ScrollPanel::textInputEvent(const TextInputEvent &event) {
+        Control::textInputEvent(event);
+    }
+
+    void ScrollPanel::mouseMotionEvent(const MouseMotionEvent &event) {
+        Control::mouseMotionEvent(event);
+    }
+
+    void ScrollPanel::mouseButtonEvent(const MouseButtonEvent &event) {
+//        Control::mouseButtonEvent(event);
+        if(!Control::mouseIn(event, x,y,width,height)){
+            return;
+        }
+        MouseButtonEvent translatedEvent = event.translate(-x, -y + scrollY);
+        for (auto &control : controls) {
+            control->mouseButtonEvent(translatedEvent);
+        }
+    }
+
+    void ScrollPanel::mouseWheelEvent(const MouseWheelEvent &event) {
+        if(!Control::mouseIn(event, x, y, width, height)){
+            return;
+        }
+
+        scrollY += event.getAmountY() * 32;
+        scrollingToView = false;
+        if(scrollY > 0){
+            scrollY = 0;
+            scrollTarget = 0;
+        } else if (scrollY < maxY + height) {
+            scrollY = maxY + height;
+            scrollTarget = scrollY;
+        }
+    }
+
+    void ScrollPanel::onBlur() {
+        Control::onBlur();
+    }
+
+    Control::ScissorBox ScrollPanel::getScissorBox(const Control::ScissorBox &parent) {
+        return Control::getScissorBox(parent);
+    }
+
+    void ScrollPanel::addControl(Control *control) {
+        control->parentControl = this;
+        control->setParent(this->parent); // the parent is the owning view, not this box
+        controls.push_back(std::unique_ptr<Control>(control));
+        this->parent->addToFocusChain(control);
+    }
+
+    void ScrollPanel::scrollCoordToView(Int32 X, Int32 Y, Int32 W, Int32 H) {
+        this->X = X;
+        this->Y = Y;
+        this->W = W;
+        this->H = H;
+        scrollingToView = true;
+    }
+}

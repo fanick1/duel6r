@@ -56,7 +56,7 @@ namespace Duel6::Gui {
 
         virtual ~Dialog();
 
-        virtual void draw(Renderer &renderer, const Font &font) const override;
+        virtual void draw(Renderer &renderer, const Font &font, Int32 trX, Int32 trY) const override;
 
         virtual void mouseButtonEvent(const MouseButtonEvent &event) override;
 

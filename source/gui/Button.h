@@ -32,6 +32,7 @@
 
 namespace Duel6 {
     namespace Gui {
+        class ScrollPanel;
         class Button : public Control {
         public:
             typedef std::function<void(Button &button, bool pressed)> PressCallback;
@@ -40,18 +41,16 @@ namespace Duel6 {
         private:
             std::vector<PressCallback> pressListeners;
             std::vector<ClickCallback> clickListeners;
-            Int32 width = 0, height = 0;
             bool pressed;
             std::string caption;
 
         public:
             explicit Button(View &parentView);
+            explicit Button(ScrollPanel &parentBox);
 
             ~Button();
 
             void setCaption(const std::string &caption);
-
-            void setPosition(int X, int Y, int W, int H);
 
             bool isPressed() const {
                 return pressed;

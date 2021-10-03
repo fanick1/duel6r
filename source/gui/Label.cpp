@@ -36,13 +36,6 @@ namespace Duel6 {
 
         Label::~Label() = default;
 
-        void Label::setPosition(int X, int Y, int W, int H) {
-            x = X;
-            y = Y;
-            width = W;
-            height = H;
-        }
-
         void Label::setCaption(const std::string &caption) {
             text = caption;
         }

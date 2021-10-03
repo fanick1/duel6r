@@ -134,6 +134,9 @@ namespace Duel6 {
             std::string name = playing.get(i).asString();
             playerListBox->addItem(name);
             personListBox->removeItem(name);
+            if(!persons.contains(name)){
+                persons.add(Person(name, nullptr));
+            }
         }
 
         updatePlayerCount();
@@ -181,8 +184,12 @@ namespace Duel6 {
             addPlayer(index);
         });
 
-        playerListBox = new Gui::ListBox(mainView, false);
-        playerListBox->setPosition(200, 641, 20, D6_MAX_PLAYERS, 19);
+        const Int32 BOXROWHEIGHT = 23;
+        box = new Gui::ScrollPanel(mainView);
+        box->setPosition(200, 641, 450, 285);
+
+        playerListBox = new Gui::ListBox(*box, false);
+        playerListBox->setPosition(0, 0, 20, D6_MAX_PLAYERS, BOXROWHEIGHT);
         playerListBox->onDoubleClick([this](Int32 index, const std::string &item) {
             removePlayer(index);
         });
@@ -363,14 +370,14 @@ namespace Duel6 {
         });
         // Player controls
         for (Size i = 0; i < D6_MAX_PLAYERS; i++) {
-            controlSwitch[i] = new Gui::Spinner(mainView);
-            controlSwitch[i]->setPosition(370, 639 - Int32(i) * 19, 192, 0);
+            controlSwitch[i] = new Gui::Spinner(*box);
+            controlSwitch[i]->setPosition(170, - Int32(i) * BOXROWHEIGHT, 192, BOXROWHEIGHT);
         }
 
         for (Size i = 0; i < D6_MAX_PLAYERS; i++) {
-            Gui::Button *button = new Gui::Button(mainView);
+            Gui::Button *button = new Gui::Button(*box);
             button->setCaption("D");
-            button->setPosition(566, 637 - Int32(i) * 19, 18, 18);
+            button->setPosition(366,   - Int32(i) * BOXROWHEIGHT - 2, 18, 18);
             button->onClick([this, i](Gui::Button &) {
                 detectControls(i);
             });
@@ -396,8 +403,8 @@ namespace Duel6 {
 
         // Player teams
         for (Size i = 0; i < D6_MAX_PLAYERS; i++) {
-            teamControlSwitch[i] = new Gui::Spinner(mainView);
-            teamControlSwitch[i]->setPosition(590, 639 - Int32(i) * 19, 60, 0);
+            teamControlSwitch[i] = new Gui::Spinner(*box);
+            teamControlSwitch[i]->setPosition(390, - Int32(i) * BOXROWHEIGHT, 60, BOXROWHEIGHT);
             teamControlSwitch[i]->addItem("", 0, false);
             teamControlSwitch[i]->addItem("", 1, false);
             teamControlSwitch[i]->addItem("", 2, false);

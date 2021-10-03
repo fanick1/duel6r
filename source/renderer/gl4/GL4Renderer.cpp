@@ -363,7 +363,8 @@ namespace Duel6 {
     }
 
     void GL4Renderer::stencil(StencilMode mode) const {
-
+        static const GLint CLEAR_VALUE = 0;
+        static const GLint WRITABLE_VALUE = 1;
         /**
          * Main use case in gui rendering:
          *  CLEAR
@@ -384,28 +385,49 @@ namespace Duel6 {
                 break;
             }
             case StencilMode::CLEAR: {
+                glClearStencil(CLEAR_VALUE);
                 glClear( GL_STENCIL_BUFFER_BIT);  // (it is not that expensive, but let's not misuse it)
                 break;
             }
             case StencilMode::WRITE: {
-                glStencilFunc( GL_ALWAYS, 1, 0xffffffff); // stencil test always passes
+                glStencilFunc( GL_NOTEQUAL, WRITABLE_VALUE, 0xffffffff);
                 glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);   // when a pixel is rendered, 1 gets written into the stencil buffer
                 glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                 break;
             }
             case StencilMode::ERASE: {
-                glStencilFunc( GL_ALWAYS, 0, 0xffffffff); // stencil test always passes
-                glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);            // when a pixel is rendered, 0 gets written into the stencil buffer
+                glStencilFunc(GL_NOTEQUAL, CLEAR_VALUE, 0xffffffff); // clean up
+                glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);  // when a pixel is rendered, 0 gets written into the stencil buffer
                 glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
                 break;
             }
             case StencilMode::TEST: {
                 glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);  // do not modify the stencil buffer
-                glStencilFunc(GL_EQUAL, 1, 1);  // enable rendering only to pixels having 1 in the stencil buffer
+                glStencilFunc(GL_EQUAL, WRITABLE_VALUE, 0xffffffff);  // enable rendering only to pixels having 1 in the stencil buffer
                 glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                 glEnable(GL_STENCIL_TEST);
                 break;
             }
         }
     }
+
+    bool GL4Renderer::setScissorTest(bool value) const {
+        GLboolean originalValue;
+        glGetBooleanv(GL_SCISSOR_TEST, &originalValue);
+        if(value == originalValue){
+            return originalValue;
+        }
+        if(value){
+            glEnable(GL_SCISSOR_TEST);
+        } else {
+            glDisable(GL_SCISSOR_TEST);
+        }
+        return originalValue;
+return false;
+    }
+
+    void GL4Renderer::scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const {
+        glScissor(x, y, width, height);
+    }
+
 }

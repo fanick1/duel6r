@@ -34,7 +34,6 @@ namespace Duel6 {
     namespace Gui {
         class Label : public Control {
         private:
-            Int32 width = 0, height = 0;
             std::string text;
 
         public:
@@ -43,8 +42,6 @@ namespace Duel6 {
             ~Label();
 
             void setCaption(const std::string &caption);
-
-            void setPosition(int X, int Y, int W, int H);
 
             Control::Type getType() const override {
                 return Control::Type::Label;

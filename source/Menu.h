@@ -49,6 +49,7 @@
 #include "gui/Label.h"
 #include "gui/TextBox.h"
 #include "gui/Spinner.h"
+#include "gui/ScrollPanel.h"
 #include "GameMode.h"
 #include "net/ClientGameProxy.h"
 
@@ -197,6 +198,7 @@ namespace Duel6 {
         Gui::CheckBox *quickLiquidCheckBox;
         Gui::CheckBox *reverseConnection; //experimental stuff
         Gui::Label *playersLabel;
+        Gui::ScrollPanel *box;
         Size backgroundCount;
         Texture menuBannerTexture;
         Sound::Track menuTrack;

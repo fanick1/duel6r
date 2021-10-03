@@ -35,7 +35,7 @@
 namespace Duel6 {
     Font::Font(Renderer &renderer)
             : font(nullptr), renderer(renderer),
-              fontCache(renderer, 100), fontCacheOutlined(renderer, 100) {
+              fontCache(renderer, 1000), fontCacheOutlined(renderer, 1000) {
         charHeight = 16;
     }
 

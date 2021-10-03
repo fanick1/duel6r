@@ -31,7 +31,6 @@
 #include <vector>
 #include <unordered_map>
 #include "Type.h"
-#include "FaceList.h"
 #include "TextureManager.h"
 #include "SpriteList.h"
 #include "GameResources.h"

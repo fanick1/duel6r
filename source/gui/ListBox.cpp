@@ -35,6 +35,21 @@ namespace Duel6 {
     }
 
     namespace Gui {
+        ListBox::ListBox(ScrollPanel &parentBox, bool sb)
+                : Control(parentBox) {
+            focusable = true;
+            listPos.items = 0;
+            listPos.start = 0;
+            selected = -1;
+            scrollBar = sb;
+            colorizeCallback = defaultColorize;
+            if (sb) {
+                slider = new Slider(parentBox);
+                slider->connect(&listPos);
+            } else {
+                slider = nullptr;
+            }
+        }
         ListBox::ListBox(View &parentView, bool sb)
             : Control(parentView) {
             focusable = true;
@@ -75,14 +90,11 @@ namespace Duel6 {
                     listener(index, items[index]);
                 }
             }
+            Control::scrollToView(x, y - (index - listPos.start) * itemHeight, width, itemHeight);
             return *this;
         }
 
         ListBox& ListBox::scrollToView(Int32 index) {
-//            if(index > listPos.start && index < listPos.start + listPos.showCount){
-//                return *this;
-//            }
-
             if (index > listPos.start + listPos.showCount) {
                 listPos.start += index - selected;
             } else
@@ -103,6 +115,7 @@ namespace Duel6 {
                     selected = listPos.items - 1;
                 }
             }
+            Control::scrollToView(x, y - (selected - 1) * itemHeight, width, itemHeight);
             return *this;
         }
 
@@ -117,6 +130,8 @@ namespace Duel6 {
         ListBox& ListBox::addItem(const std::string &item) {
             listPos.items++;
             items.push_back(item);
+            volatile Int32 debug = - listPos.items * itemHeight;
+            Control::scrollToView(x, y - listPos.items * itemHeight, width, itemHeight);
             return *this;
         }
 
@@ -126,6 +141,13 @@ namespace Duel6 {
 
         Size ListBox::size() const {
             return items.size();
+        }
+
+        void ListBox::onSetPosition(Int32 X, Int32 Y, Int32 W, Int32 H) {
+            listPos.showCount = H / itemHeight;
+            if (scrollBar) {
+                slider->setPosition(x + width + 4, y, height  + 4);
+            }
         }
 
         ListBox& ListBox::setPosition(Int32 x, Int32 y, Int32 width, Int32 height, Int32 itemHeight) {

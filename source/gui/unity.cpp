@@ -6,6 +6,7 @@
 #include "Image.cpp"
 #include "Label.cpp"
 #include "ListBox.cpp"
+#include "ScrollPanel.cpp"
 #include "Slider.cpp"
 #include "Spinner.cpp"
 #include "TextBox.cpp"

@@ -108,6 +108,11 @@ namespace Duel6 {
         std::unique_ptr<RendererTarget> makeTarget(ScreenParameters screenParameters) override;
 
         void stencil(StencilMode mode) const override;
+
+        bool setScissorTest(bool value) const override;
+
+        void scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const override;
+
     private:
         void enableOption(GLenum option, bool enable);
 

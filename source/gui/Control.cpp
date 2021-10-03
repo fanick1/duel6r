@@ -26,6 +26,7 @@
 */
 
 #include "Control.h"
+#include "ScrollPanel.h"
 #include "View.h"
 #include "../Video.h"
 
@@ -37,6 +38,9 @@ namespace Duel6 {
 
         Control::Control(View &parentView) {
             parentView.addControl(this);
+        }
+        Control::Control(ScrollPanel &parentBox) {
+            parentBox.addControl(this);
         }
 
         void Control::drawFocusFrame(Renderer &renderer, Int32 x, Int32 y, Int32 w, Int32 h, Float32 lineWidth) {
@@ -77,6 +81,49 @@ namespace Duel6 {
                 drawFocusFrame(renderer, x, y, w, h, 2.0f + p * 2.0f);
             }
         }
+        Control::ScissorBox Control::getScissorBox(const ScissorBox & parent) {
+            int r = parent.x + parent.width;
+            int b = parent.y + parent.height;
+
+            ScissorBox result(parent);
+            if(x > r){
+                result.x = r;
+                result.width = 0;
+            } else if(x > result.x) {
+                result.width -= x - result.x;
+                result.x = x;
+            }
+            if(y > b){
+                result.y = b;
+                result.height = 0;
+            } else if(y > result.y) {
+                result.height -= y - result.y;
+                result.y = y;
+            }
+
+            return parent;
+//            return result;
+        }
+
+        void Control::setPosition(Int32 X, Int32 Y, Int32 W, Int32 H) {
+            x = X;
+            y = Y;
+            width = W;
+            height = H;
+            onSetPosition(X,Y,W,H);
+        }
+
+        void Control::drawStencil(Renderer &renderer, const Font &font, const ScissorBox& scissorBox) const {
+
+        }
+
+        void Control::draw(Renderer &renderer, const Font &font, const ScissorBox& scissorBox) const {
+            return draw(renderer, font);
+        }
+
+        void Control::drawWithStencilTest(Renderer &renderer, const Font &font, const ScissorBox& scissorBox) {
+
+        }
 
         void Control::setParent(View *parentView) {
             this->parent = parentView;
@@ -104,5 +151,18 @@ namespace Duel6 {
         Font& Control::getFont() {
             return parent->getFont();
         }
+
+        void Control::scrollToView() {
+            if(parentControl != nullptr){
+                parentControl->scrollCoordToView(x, y, width, height);
+            }
+        }
+
+        void Control::scrollToView(Int32 X, Int32 Y, Int32 W, Int32 H) {
+            if(parentControl != nullptr){
+                parentControl->scrollCoordToView(X, Y, W, H);
+            }
+        }
+
     }
 }

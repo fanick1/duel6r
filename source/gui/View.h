@@ -14,7 +14,7 @@
 namespace Duel6::Gui {
     class Desktop;
     class View {
-
+        friend class ScrollPanel;
     public:
         typedef std::function<void(View&, Int32, Int32, Int32, Int32)> ResizeCallback;
         typedef std::function<void(View&)> CloseCallback;
@@ -22,15 +22,18 @@ namespace Duel6::Gui {
     private:
         Desktop &parent;
         std::vector<std::unique_ptr<Control>> controls;
+
+        std::vector<Control*> focusChain; // this is wrong
+
         Control *focused = nullptr;
         std::vector<ResizeCallback> resizeCallbacks;
         std::vector<CloseCallback> closeCallbacks;
 
     protected:
-        Int32 x = 0, y = 0, w = 100, h = 100;
+        Int32 x = 0, y = 0, w = 1000, h = 1000;
 
     public:
-        View(Desktop &parent, Int32 x = 0, Int32 y = 0, Int32 w = 100, Int32 h = 100);
+        View(Desktop &parent, Int32 x = 0, Int32 y = 0, Int32 w = 1000, Int32 h = 1000);
 
         virtual ~View();
 
@@ -56,7 +59,7 @@ namespace Duel6::Gui {
             }
         }
 
-        virtual void draw(Renderer &renderer, const Font &font) const;
+        virtual void draw(Renderer &renderer, const Font &font, Int32 trX, Int32 trY) const;
 
         virtual bool keyEvent(const KeyPressEvent &event);
 
@@ -109,6 +112,9 @@ namespace Duel6::Gui {
     private:
 
         void advanceFocus(bool backwards = false);
+
+        void addToFocusChain(Control *control);
+
     };
 
 } /* namespace Duel6 */

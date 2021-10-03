@@ -30,6 +30,11 @@
 
 namespace Duel6 {
     namespace Gui {
+        Button::Button(ScrollPanel &parentBox)
+            : Control(parentBox) {
+            focusable = true;
+            pressed = false;
+        }
         Button::Button(View &parentView)
             : Control(parentView) {
             focusable = true;
@@ -41,13 +46,6 @@ namespace Duel6 {
 
         void Button::setCaption(const std::string &caption) {
             this->caption = caption;
-        }
-
-        void Button::setPosition(int X, int Y, int W, int H) {
-            x = X;
-            y = Y;
-            width = W;
-            height = H;
         }
 
         bool Button::keyEvent(const KeyPressEvent &event) {

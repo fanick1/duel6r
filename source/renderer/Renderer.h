@@ -146,6 +146,10 @@ namespace Duel6 {
         virtual std::unique_ptr<RendererTarget> makeTarget(ScreenParameters screenParameters) = 0;
 
         virtual void stencil(StencilMode mode) const = 0;
+
+        virtual bool setScissorTest(bool value) const = 0;
+
+        virtual void scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const = 0;
     };
 }
 

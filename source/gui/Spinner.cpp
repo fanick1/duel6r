@@ -30,8 +30,23 @@
 
 namespace Duel6 {
     namespace Gui {
+        Spinner::Spinner(ScrollPanel &parentBox)
+                : Control(parentBox) {
+            width = 1;
+            height = 20;
+            selectedIndex = -1;
+            focusable = true;
+            left = new Button(parentBox);
+            left->setCaption(" ");
+            right = new Button(parentBox);
+            right->setCaption(" ");
+            left->setFocusable(false);
+            right->setFocusable(false);
+        }
         Spinner::Spinner(View &parentView)
             : Control(parentView) {
+            width = 1;
+            height = 20;
             selectedIndex = -1;
             focusable = true;
             left = new Button(parentView);
@@ -87,12 +102,9 @@ namespace Duel6 {
             }
         }
 
-        void Spinner::setPosition(Int32 X, Int32 Y, Int32 W, Int32 H) {
+        void Spinner::onSetPosition(Int32 X, Int32 Y, Int32 W, Int32 H) {
             left->setPosition(X, Y - 1, 18, 18);
             right->setPosition(X + W - 18, Y - 1, 18, 18);
-            width = W;
-            x = X;
-            y = Y;
         }
 
         void Spinner::update(Float32 elapsedTime) {
@@ -156,7 +168,7 @@ namespace Duel6 {
             }
 
             renderer.quadXY(Vector(x + 22, y - 16), Vector(width - 44, 15), bcgColor);
-            font.print(x + 25 + d, y - 15, fontColor, items[selectedIndex].second);
+            font.print(x + 25 + d, y - 15 - (height - 15) / 2, fontColor, items[selectedIndex].second);
             innerTextWidth = font.getTextWidth(items[selectedIndex].second, 16);
             setScrolling(innerTextWidth > width - 44);
         }
@@ -173,7 +185,7 @@ namespace Duel6 {
             }
         }
         void Spinner::mouseButtonEvent(const MouseButtonEvent &event) {
-            if (Control::mouseIn(event, x, y, width, 20)) {
+            if (Control::mouseIn(event, x, y, width, height) && event.isPressed()) {
                 focus();
             }
         }

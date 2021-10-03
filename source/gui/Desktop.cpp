@@ -77,7 +77,7 @@ namespace Duel6 {
             renderer.setViewMatrix(Matrix::translate(Float32(trX), Float32(trY), 0));
 
             for (auto &view : viewStack) {
-                view->draw(renderer, font);
+                view->draw(renderer, font, trX, trY);
             }
 
             renderer.setViewMatrix(Matrix::IDENTITY);

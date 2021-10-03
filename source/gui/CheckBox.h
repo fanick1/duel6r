@@ -35,7 +35,6 @@ namespace Duel6 {
         class CheckBox : public Control {
 
         private:
-            Int32 width = 0, height = 0;
             bool checked;
             std::string label;
 
@@ -45,8 +44,6 @@ namespace Duel6 {
             ~CheckBox() = default;
 
             void setLabel(const std::string &label);
-
-            void setPosition(int X, int Y, int W, int H);
 
             bool isChecked() const {
                 return checked;

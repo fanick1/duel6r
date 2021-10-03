@@ -15,7 +15,7 @@ namespace Duel6 {
         virtual void resize(Int32 width, Int32 height) {};
         virtual void rerender(){};
     protected:
-        RenderCallback callback;
+        RenderCallback callback = [](){};
     };
 }
 #endif

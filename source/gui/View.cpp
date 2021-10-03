@@ -52,6 +52,10 @@ namespace Duel6::Gui {
     void View::addControl(Control *control) {
         control->setParent(this);
         controls.push_back(std::unique_ptr<Control>(control));
+        addToFocusChain(control);
+    }
+    void View::addToFocusChain(Control *control) {
+        focusChain.push_back(control);
     }
 
     Font& View::getFont() {
@@ -127,27 +131,27 @@ namespace Duel6::Gui {
 
     void View::advanceFocus(bool backwards) {
         Control *first = nullptr;
-        Control *previous = (*controls.rbegin()).get();
-        for (auto &control : controls) {
+        Control *previous = (*focusChain.rbegin());
+        for (auto &control : focusChain) {
             if (!control->focusable) {
                 continue;
             }
-            if (first == nullptr && focused != control.get()) {
-                first = control.get();
+            if (first == nullptr && focused != control) {
+                first = control;
             }
             if (backwards) {
-                if (focused == nullptr || focused == control.get()) {
+                if (focused == nullptr || focused == control) {
                     focus(previous);
                     return;
                 }
             } else {
                 if (focused == nullptr || focused == previous) {
-                    focus(control.get());
+                    focus(control);
 
                     return;
                 }
             }
-            previous = control.get();
+            previous = control;
         }
         if (backwards) {
             if (previous != nullptr) {
@@ -160,20 +164,25 @@ namespace Duel6::Gui {
         }
     }
 
-    void View::draw(Renderer &renderer, const Font &font) const {
+    void View::draw(Renderer &renderer, const Font &font, Int32 trX, Int32 trY) const {
         Matrix m = renderer.getViewMatrix();
         renderer.setViewMatrix(m * Matrix::translate(Float32(x), Float32(y), 0));
         renderer.stencil(Duel6::Renderer::StencilMode::CLEAR);
+        Control::ScissorBox scissorBox {trX + x, trY + y ,w,h};
+        renderer.setScissorTest(true);
         for (auto &control : controls) {
+            Control::ScissorBox s = control->getScissorBox(scissorBox);
+            renderer.scissorTest(s.x, s.y, s.width, s.height);
             renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
             control->drawStencil(renderer, font);
             renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
-            control->draw(renderer, font);
+            control->draw(renderer, font, s);
             renderer.stencil(Duel6::Renderer::StencilMode::TEST);
             control->drawWithStencilTest(renderer, font);
             renderer.stencil(Duel6::Renderer::StencilMode::ERASE);
             control->drawStencil(renderer, font);
         }
+        renderer.setScissorTest(false);
         renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
         renderer.setViewMatrix(m);
     }

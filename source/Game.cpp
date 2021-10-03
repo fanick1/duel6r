@@ -360,7 +360,6 @@ namespace Duel6 {
         round->setOnRoundEnd(callback);
         round->start();
         isRunning = true;
-        //TODO NET send roundstart (players pos)
         worldRenderer.prerender();
     }
     //server
