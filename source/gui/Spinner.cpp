@@ -103,8 +103,8 @@ namespace Duel6 {
         }
 
         void Spinner::onSetPosition(Int32 X, Int32 Y, Int32 W, Int32 H) {
-            left->setPosition(X, Y - 1, 18, 18);
-            right->setPosition(X + W - 18, Y - 1, 18, 18);
+            left->setPosition(X, Y, 18, 18);
+            right->setPosition(X + W - 18, Y, 18, 18);
         }
 
         void Spinner::update(Float32 elapsedTime) {
@@ -128,11 +128,11 @@ namespace Duel6 {
         }
 
         void Spinner::drawStencil(Renderer &renderer, const Font &font) const {
-            renderer.quadXY(Vector(x + 22, y - 16), Vector(width - 44, 15), Color::WHITE);
+            renderer.quadXY(Vector(x + 22, y - (height - 6)), Vector(width - 44, height - 7), Color::WHITE);
         }
 
         void Spinner::draw(Renderer &renderer, const Font &font) const {
-            drawFrame(renderer, x + 20, y, width - 40, 18, true);
+            drawFrame(renderer, x + 20, y, width - 40, height - 4, true);
             Int32 px = left->getX() + 7 + (left->isPressed() ? 1 : 0);
             Int32 py = left->getY() - 4 - (left->isPressed() ? 1 : 0);
             renderer.triangle(Vector(px + 2, py), Vector(px + 2, py - 7), Vector(px - 2, py - 4), Color::BLACK);
@@ -142,7 +142,7 @@ namespace Duel6 {
             renderer.triangle(Vector(px - 1, py), Vector(px + 3, py - 4), Vector(px - 1, py - 7), Color::BLACK);
 
             if (focused) {
-                drawFocusFrame(renderer, x - 1, y - 1, width, 18);
+                drawFocusFrame(renderer, x - 3, y + 2, width + 2, height - 2, 4);
             }
         }
 
@@ -167,7 +167,7 @@ namespace Duel6 {
                 d = 0;
             }
 
-            renderer.quadXY(Vector(x + 22, y - 16), Vector(width - 44, 15), bcgColor);
+            renderer.quadXY(Vector(x + 22, y - (height - 6)), Vector(width - 44, (height - 7)), bcgColor);
             font.print(x + 25 + d, y - 15 - (height - 15) / 2, fontColor, items[selectedIndex].second);
             innerTextWidth = font.getTextWidth(items[selectedIndex].second, 16);
             setScrolling(innerTextWidth > width - 44);

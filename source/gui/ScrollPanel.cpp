@@ -47,27 +47,29 @@ namespace Duel6::Gui {
     void ScrollPanel::draw(Renderer &renderer, const Font &font, const Control::ScissorBox &parentScissorBox) const {
         Matrix m = renderer.getViewMatrix();
         renderer.setViewMatrix(m * Matrix::translate(Float32(x), Float32(y - scrollY), 0));
-        Control::ScissorBox scissorBox{parentScissorBox.x + x, parentScissorBox.y + y - height, width, height};
+        Control::ScissorBox scissorBox{parentScissorBox.rx, parentScissorBox.ry, x, y, width, height, 0, -scrollY};
+
         bool originalScissorTest = renderer.setScissorTest(true);
         for (auto &control: controls) {
             Control::ScissorBox s = control->getScissorBox(scissorBox);
-            renderer.scissorTest(s.x, s.y, s.width, s.height);
+            if(s.width == 0 || s.height == 0) continue;
+            renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
+            renderer.scissorTest(s.rx + s.x, s.ry + s.y - s.height + s.sy, s.width, s.height);
+            control->draw(renderer, font); //TODO pass parentScissorBox
+//            renderer.setScissorTest(false);
             renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
             control->drawStencil(renderer, font);
-            renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
-            control->draw(renderer, font);
             renderer.stencil(Duel6::Renderer::StencilMode::TEST);
-
-            renderer.stencil(Duel6::Renderer::StencilMode::DISABLE); // TODO remove
-
             control->drawWithStencilTest(renderer, font);
             renderer.stencil(Duel6::Renderer::StencilMode::ERASE);
             control->drawStencil(renderer, font);
         }
-        if(!originalScissorTest){
+        if (!originalScissorTest) {
             renderer.setScissorTest(false);
         }
+
         renderer.setViewMatrix(m);
+        renderer.scissorTest(parentScissorBox.rx + parentScissorBox.x, parentScissorBox.ry + parentScissorBox.y - parentScissorBox.height, parentScissorBox.width, parentScissorBox.height);
     }
 
     void ScrollPanel::draw(Renderer &renderer, const Font &font) const {

@@ -56,7 +56,10 @@ namespace Duel6 {
             };
 
             struct ScissorBox {
-                int x, y, width, height;
+                int rx, ry;         // keeping track of the viewMatrix shift because glScissor operates in absolute coords
+                int x, y;
+                int width, height;
+                int sx = 0, sy = 0; //scroll
             };
 
         protected:

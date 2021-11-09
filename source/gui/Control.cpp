@@ -82,27 +82,41 @@ namespace Duel6 {
             }
         }
         Control::ScissorBox Control::getScissorBox(const ScissorBox & parent) {
-            int r = parent.x + parent.width;
-            int b = parent.y + parent.height;
+            int r = parent.width;
+            int t = - parent.sy;
+            int b = - parent.sy - parent.height;
 
-            ScissorBox result(parent);
-            if(x > r){
+            // -4 is a quick hack to reserve space for rendering of focus frames
+            // we could make this an attribute on the Control
+            int X = x - 4;
+            int Y = y + 4;
+            int WIDTH = width + 8;
+            int HEIGHT = height + 8;
+            ScissorBox result{parent.rx + parent.x, parent.ry + parent.y, X, Y, WIDTH, HEIGHT, parent.sx, parent.sy};
+
+            if (X > r) {
                 result.x = r;
                 result.width = 0;
-            } else if(x > result.x) {
-                result.width -= x - result.x;
-                result.x = x;
             }
-            if(y > b){
-                result.y = b;
-                result.height = 0;
-            } else if(y > result.y) {
-                result.height -= y - result.y;
-                result.y = y;
+            else if (X < 0) {
+                result.x = 0;
+                result.width += X;
+            }
+            if(r < result.x + result.width) {
+                result.width = r - result.x;
             }
 
-            return parent;
-//            return result;
+            if (Y < b) { // child component completely hidden down below the bottom border of scrollpanel's view area
+                result.y = b;
+                result.height = 0;
+            } else if (Y > t) { // child component above the top border of scrollpanel's view area
+                result.y = t;
+                result.height -= Y - t;
+            }
+            if(result.y - result.height < b) { // child component intersects the bottom border of scrollpanel's view area
+                result.height = result.y - b;
+            }
+            return result;
         }
 
         void Control::setPosition(Int32 X, Int32 Y, Int32 W, Int32 H) {

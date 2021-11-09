@@ -184,9 +184,9 @@ namespace Duel6 {
             addPlayer(index);
         });
 
-        const Int32 BOXROWHEIGHT = 23;
+        const Int32 BOXROWHEIGHT = 22;
         box = new Gui::ScrollPanel(mainView);
-        box->setPosition(200, 641, 450, 285);
+        box->setPosition(200, 641, 460, 285);
 
         playerListBox = new Gui::ListBox(*box, false);
         playerListBox->setPosition(0, 0, 20, D6_MAX_PLAYERS, BOXROWHEIGHT);
@@ -371,13 +371,13 @@ namespace Duel6 {
         // Player controls
         for (Size i = 0; i < D6_MAX_PLAYERS; i++) {
             controlSwitch[i] = new Gui::Spinner(*box);
-            controlSwitch[i]->setPosition(170, - Int32(i) * BOXROWHEIGHT, 192, BOXROWHEIGHT);
+            controlSwitch[i]->setPosition(170, -2 - Int32(i) * BOXROWHEIGHT, 192, BOXROWHEIGHT);
         }
 
         for (Size i = 0; i < D6_MAX_PLAYERS; i++) {
             Gui::Button *button = new Gui::Button(*box);
             button->setCaption("D");
-            button->setPosition(366,   - Int32(i) * BOXROWHEIGHT - 2, 18, 18);
+            button->setPosition(366, - Int32(i) * BOXROWHEIGHT - 2, 18, 18);
             button->onClick([this, i](Gui::Button &) {
                 detectControls(i);
             });
@@ -386,7 +386,7 @@ namespace Duel6 {
         // Button to detect all user's controllers in a batch
         Gui::Button *button = new Gui::Button(mainView);
         button->setCaption("D");
-        button->setPosition(566, 658, 18, 18);
+        button->setPosition(566, 659, 18, 18);
         button->onClick([this](Gui::Button &) {
             joyRescan();
             Size curPlayersCount = playerListBox->size();
@@ -404,7 +404,7 @@ namespace Duel6 {
         // Player teams
         for (Size i = 0; i < D6_MAX_PLAYERS; i++) {
             teamControlSwitch[i] = new Gui::Spinner(*box);
-            teamControlSwitch[i]->setPosition(390, - Int32(i) * BOXROWHEIGHT, 60, BOXROWHEIGHT);
+            teamControlSwitch[i]->setPosition(390, -2 - Int32(i) * BOXROWHEIGHT, 60, BOXROWHEIGHT);
             teamControlSwitch[i]->addItem("", 0, false);
             teamControlSwitch[i]->addItem("", 1, false);
             teamControlSwitch[i]->addItem("", 2, false);
@@ -770,6 +770,7 @@ namespace Duel6 {
 
     void Menu::render() const {
         gui.draw(font);
+        SDL_Delay(10);
     }
 
     void Menu::keyEvent(const KeyPressEvent &event) {

@@ -168,15 +168,20 @@ namespace Duel6::Gui {
         Matrix m = renderer.getViewMatrix();
         renderer.setViewMatrix(m * Matrix::translate(Float32(x), Float32(y), 0));
         renderer.stencil(Duel6::Renderer::StencilMode::CLEAR);
-        Control::ScissorBox scissorBox {trX + x, trY + y ,w,h};
+        Control::ScissorBox scissorBox {trX, trY, x, y ,w, h, 0, 0};
+        renderer.scissorTest(scissorBox.rx + scissorBox.x, scissorBox.ry + scissorBox.y - scissorBox.height, scissorBox.width, scissorBox.height);
+
         renderer.setScissorTest(true);
         for (auto &control : controls) {
+
+
+
             Control::ScissorBox s = control->getScissorBox(scissorBox);
-            renderer.scissorTest(s.x, s.y, s.width, s.height);
+            renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
+            renderer.scissorTest(s.rx + s.x, s.ry + s.y - s.height + s.sy, s.width, s.height);
+            control->draw(renderer, font); //TODO pass parentScissorBox
             renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
             control->drawStencil(renderer, font);
-            renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
-            control->draw(renderer, font, s);
             renderer.stencil(Duel6::Renderer::StencilMode::TEST);
             control->drawWithStencilTest(renderer, font);
             renderer.stencil(Duel6::Renderer::StencilMode::ERASE);

@@ -390,7 +390,8 @@ namespace Duel6 {
                 break;
             }
             case StencilMode::WRITE: {
-                glStencilFunc( GL_NOTEQUAL, WRITABLE_VALUE, 0xffffffff);
+                glEnable(GL_STENCIL_TEST);
+                glStencilFunc(GL_NOTEQUAL, WRITABLE_VALUE, 0xffffffff);
                 glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);   // when a pixel is rendered, 1 gets written into the stencil buffer
                 glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                 break;
@@ -402,10 +403,10 @@ namespace Duel6 {
                 break;
             }
             case StencilMode::TEST: {
-                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);  // do not modify the stencil buffer
-                glStencilFunc(GL_EQUAL, WRITABLE_VALUE, 0xffffffff);  // enable rendering only to pixels having 1 in the stencil buffer
-                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                 glEnable(GL_STENCIL_TEST);
+                glStencilFunc(GL_NOTEQUAL, CLEAR_VALUE, 0xffffffff);  // enable rendering only to pixels having 1 in the stencil buffer
+                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);  // do not modify the stencil buffer
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                 break;
             }
         }
