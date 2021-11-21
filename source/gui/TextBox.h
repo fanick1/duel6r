@@ -51,7 +51,7 @@ namespace Duel6 {
             std::string placeholder = "";
 
         public:
-            Textbox(View &parentView);
+            Textbox(RenderRoot &parent);
 
             ~Textbox();
 

@@ -10,8 +10,8 @@
 namespace Duel6 {
     namespace Gui {
 
-        Image::Image(View &parentView, Material material, Int32 x, Int32 y, Int32 w, Int32 h)
-            : Control(parentView), material(material) {
+        Image::Image(RenderRoot &parent, Material material, Int32 x, Int32 y, Int32 w, Int32 h)
+            : Control(parent), material(material) {
             setPosition(x,y,w,h);
         }
 

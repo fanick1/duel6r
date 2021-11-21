@@ -39,12 +39,13 @@ namespace Duel6 {
         const GL4Shader &vertexShader;
         const GL4Shader &fragmentShader;
         GLuint id;
+        static GLuint lastBound;
 
     public:
         GL4Program(const GL4Shader &vertexShader, const GL4Shader &fragmentShader);
         ~GL4Program();
 
-        void bind();
+        void bind() const;
         GLint uniformLocation(const GLchar *name);
 
         void setUniform(const GLchar *name, Int32 value);
@@ -52,10 +53,83 @@ namespace Duel6 {
         void setUniform(const GLchar *name, Float32 value[4]);
         void setUniform(const GLchar *name, const Matrix &value);
 
+        void setUniform(const GLint, Int32 value) const;
+        void setUniform(const GLint, Float32 value) const;
+        void setUniform(const GLint, Float32 value[4]) const;
+        void setUniform(const GLint, const Matrix &value) const;
         GLuint getId() const;
 
         const GL4Shader &getVertexShader() const;
         const GL4Shader &getFragmentShader() const;
+    };
+
+    class GL4Uniform {
+    private:
+        const GLuint program;
+        const GLint location;
+    public:
+        GL4Uniform(const GLuint program, const GLchar *name)
+                : program(program),
+                  location(glGetUniformLocation(program, name)) {
+        }
+
+        GL4Uniform & operator = (Int32 value){
+            glProgramUniform1i(program, location, value);
+            return *this;
+        }
+
+        GL4Uniform & operator = (Float32 value){
+            glProgramUniform1f(program, location, value);
+            return *this;
+        }
+
+        GL4Uniform & operator = (Float32 value[4]){
+            glProgramUniform4fv(program, location, 1, value);
+            return *this;
+        }
+
+        GL4Uniform & operator = (const Matrix &value){
+            glProgramUniformMatrix4fv(program, location, 1, GL_FALSE, value.getStorage());
+            return *this;
+        }
+    };
+
+    class GL4ProgramWrapper {
+    private:
+        const GL4Program & program;
+    public:
+        GL4ProgramWrapper(const GL4Program &program) : program(program) {}
+        virtual ~GL4ProgramWrapper(){}
+        void bind() {
+            program.bind();
+        }
+
+    };
+    class GL4ColorProgramWrapper : public GL4ProgramWrapper {
+    public:
+        GL4ColorProgramWrapper(const GL4Program &program)
+            : GL4ProgramWrapper(program),
+              color(program.getId(), "color"),
+              mvp(program.getId(), "mvp") {
+        }
+
+        GL4Uniform color;
+        GL4Uniform mvp;
+    };
+
+    class GL4MaterialProgramWrapper : public GL4ProgramWrapper {
+    public:
+        GL4MaterialProgramWrapper(const GL4Program &program) : GL4ProgramWrapper(program),
+           alphaTest(program.getId(), "alphaTest"),
+           mvp(program.getId(), "mvp"),
+           globalTime(program.getId(), "globalTime"),
+           modulateColor(program.getId(), "modulateColor") {
+        }
+
+        GL4Uniform alphaTest;
+        GL4Uniform mvp;
+        GL4Uniform globalTime;
+        GL4Uniform modulateColor;
     };
 }
 

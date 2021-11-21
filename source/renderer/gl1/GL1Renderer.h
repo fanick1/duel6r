@@ -97,9 +97,9 @@ namespace Duel6 {
 
         void stencil(StencilMode mode) const override;
 
-        virtual bool setScissorTest(bool value) const override;
+        bool setScissorTest(bool value) const override;
 
-        virtual bool scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const override;
+        void scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const override;
 
     private:
         void enableOption(GLenum option, bool enable);

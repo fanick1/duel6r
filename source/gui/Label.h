@@ -37,7 +37,7 @@ namespace Duel6 {
             std::string text;
 
         public:
-            Label(View &parentView);
+            Label(RenderRoot &parent);
 
             ~Label();
 

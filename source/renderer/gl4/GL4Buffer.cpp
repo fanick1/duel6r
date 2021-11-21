@@ -31,7 +31,7 @@
 #include "GL4Buffer.h"
 
 namespace Duel6 {
-    GL4Buffer::GL4Buffer(GL4Program &program, const FaceList &faceList)
+    GL4Buffer::GL4Buffer(GL4MaterialProgramWrapper &program, const FaceList &faceList)
             : program(program), elements(6 * faceList.getFaces().size()) {
         std::vector<Vertex> vertexBuffer;
         createFaceListVertexBuffer(faceList, vertexBuffer);
@@ -89,12 +89,12 @@ namespace Duel6 {
         program.bind();
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, material.getTexture());
-        program.setUniform("alphaTest", material.isMasked() ? 1 : 0);
+        program.alphaTest = material.isMasked() ? 1 : 0;
 
         const Color &color = material.getColor();
         Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
                                 color.getAlpha() / 255.0f};
-        program.setUniform("color", colorData);
+        program.modulateColor = colorData;
 
         glDrawArrays(GL_TRIANGLES, 0, elements);
     }

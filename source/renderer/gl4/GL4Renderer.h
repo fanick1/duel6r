@@ -35,8 +35,15 @@
 #include "GL4Buffer.h"
 
 namespace Duel6 {
-    class GL4Renderer
-            : public RendererBase {
+
+    class GL4RendererContext {
+    public:
+        GL4RendererContext(GL4ColorProgramWrapper&, GL4MaterialProgramWrapper&);
+        GL4ColorProgramWrapper &colorProgram;
+        GL4MaterialProgramWrapper &materialProgram;
+    };
+
+    class GL4Renderer : public RendererBase {
     private:
         GLuint colorVao;
         GLuint colorVbo;
@@ -47,10 +54,19 @@ namespace Duel6 {
         GL4Shader colorFragmentShader;
         GL4Shader materialVertexShader;
         GL4Shader materialFragmentShader;
+        GL4Shader bloomFilterFragmentShader;
 
-        GL4Program colorProgram;
-        GL4Program materialProgram;
+        GL4Program backingColorProgram;
+        GL4Program backingMaterialProgram;
+        GL4Program backingBloomFilterMaterialProgram;
 
+        GL4ColorProgramWrapper colorProgramWrapper;
+        GL4MaterialProgramWrapper materialProgramWrapper;
+        GL4MaterialProgramWrapper bloomFilterMaterialProgramWrapper;
+
+        GL4RendererContext contextRender;
+        GL4RendererContext contextBloom;
+        GL4RendererContext * context = &contextRender;
     public:
         GL4Renderer();
 
@@ -113,6 +129,10 @@ namespace Duel6 {
 
         void scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const override;
 
+        //experiment
+        void enableRenderContext();
+
+        void enableBloomContext();
     private:
         void enableOption(GLenum option, bool enable);
 

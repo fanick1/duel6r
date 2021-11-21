@@ -54,17 +54,25 @@ namespace Duel6 {
 
             D6_THROW(VideoException, (const char *)infoLog.data());
         }
+        glDetachShader(id, vertexShader.getId());
+        glDetachShader(id, fragmentShader.getId());
     }
 
     GL4Program::~GL4Program() {
         if (id != 0) {
+            if(lastBound == id){
+                lastBound = 0;
+            }
             glDeleteProgram(id);
             id = 0;
         }
     }
 
-    void GL4Program::bind() {
-        glUseProgram(id);
+    void GL4Program::bind() const {
+        if(lastBound != id){
+            glUseProgram(id);
+            lastBound = id;
+        }
     }
 
     GLint GL4Program::uniformLocation(const GLchar *name) {
@@ -87,6 +95,22 @@ namespace Duel6 {
         glProgramUniformMatrix4fv(id, uniformLocation(name), 1, GL_FALSE, value.getStorage());
     }
 
+    void GL4Program::setUniform(const GLint location, Int32 value) const {
+        glProgramUniform1i(id, location, value);
+    }
+
+    void GL4Program::setUniform(const GLint location, Float32 value) const {
+        glProgramUniform1f(id, location, value);
+    }
+
+    void GL4Program::setUniform(const GLint location, Float32 value[4]) const {
+        glProgramUniform4fv(id, location, 1, value);
+    }
+
+    void GL4Program::setUniform(const GLint location, const Matrix &value) const {
+        glProgramUniformMatrix4fv(id, location, 1, GL_FALSE, value.getStorage());
+    }
+
     GLuint GL4Program::getId() const {
         return id;
     }
@@ -98,4 +122,6 @@ namespace Duel6 {
     const GL4Shader &GL4Program::getFragmentShader() const {
         return fragmentShader;
     }
+
+    GLuint GL4Program::lastBound = 0;
 }

@@ -37,6 +37,12 @@ namespace Duel6 {
     namespace Gui {
         class View;
         class ScrollPanel;
+        class Control;
+
+        class RenderRoot { //View / ScrollPanel
+        public:
+            virtual void addControl(Control *control) = 0;
+        };
 
         class Control {
             friend class View;
@@ -76,9 +82,7 @@ namespace Duel6 {
 
             void setPosition(Int32 X, Int32 Y, Int32 W, Int32 H);
 
-            Control(View &parentView);
-
-            Control(ScrollPanel &parentBox);
+            Control(RenderRoot &parent);
 
             virtual ~Control() {
             }

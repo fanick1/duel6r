@@ -30,8 +30,8 @@
 
 namespace Duel6 {
     namespace Gui {
-        Label::Label(View &parentView)
-            : Control(parentView) {
+        Label::Label(RenderRoot &parent)
+            : Control(parent) {
         }
 
         Label::~Label() = default;

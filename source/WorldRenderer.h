@@ -51,6 +51,7 @@ namespace Duel6 {
         const Game &game;
         Renderer &renderer;
         std::unique_ptr<RendererTarget> target;
+        std::unique_ptr<RendererTarget> explosionsTarget;
 
     public:
         WorldRenderer(AppService &appService, const Game &game);

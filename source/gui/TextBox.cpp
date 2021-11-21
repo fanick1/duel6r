@@ -32,8 +32,8 @@
 using std::literals::string_literals::operator ""s;
 namespace Duel6 {
     namespace Gui {
-        Textbox::Textbox(View &parentView)
-            : Control(parentView) {
+        Textbox::Textbox(RenderRoot &parent)
+            : Control(parent) {
             height = 18;
             focusable = true;
         }

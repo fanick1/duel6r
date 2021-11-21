@@ -57,9 +57,7 @@ namespace Duel6 {
             Slider::Position listPos;
 
         public:
-            ListBox(View &parentView, bool sb);
-
-            ListBox(ScrollPanel &parentBox, bool sb);
+            ListBox(RenderRoot &parent, bool sb);
 
             ListBox& setPosition(Int32 x, Int32 y, Int32 width, Int32 height, Int32 itemHeight);
 

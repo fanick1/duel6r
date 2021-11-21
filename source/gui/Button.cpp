@@ -30,13 +30,8 @@
 
 namespace Duel6 {
     namespace Gui {
-        Button::Button(ScrollPanel &parentBox)
-            : Control(parentBox) {
-            focusable = true;
-            pressed = false;
-        }
-        Button::Button(View &parentView)
-            : Control(parentView) {
+        Button::Button(RenderRoot &parent)
+            : Control(parent) {
             focusable = true;
             pressed = false;
         }

@@ -42,31 +42,106 @@ namespace Duel6 {
         }
 
         glGenFramebuffers(1, &fbo);
+        glGenFramebuffers(1, &glowFbo);
+        glGenFramebuffers(2, bloomFbo);
         glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, texture);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture, 0, 0);
+        glGenTextures(1, &texture2);
+        glGenTextures(1, &glowTexture);
+        glGenTextures(2, bloomTexture);
         glGenTextures(1, &depthTexture);
+
+        /**
+         * multiple render targets setup
+         */
+        for(Texture t : {texture2, glowTexture}){
+            glBindTexture(GL_TEXTURE_2D_ARRAY, t);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+
+
         glBindTexture(GL_TEXTURE_2D_ARRAY, depthTexture);
         glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, depthBufferFormat, width, height, 1, 0, GL_DEPTH_COMPONENT,
                      GL_UNSIGNED_INT, nullptr);
-        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0, 0);
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            D6_THROW(VideoException, "OpenGL error: Incomplete frameBuffer ");
+
+        /**
+         * first render of static geometry
+         */
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, glowFbo);
+            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture2, 0, 0);
+            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, glowTexture, 0, 0);
+            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0, 0);
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                D6_THROW(VideoException, "OpenGL error: Incomplete frameBuffer ");
+            }
+            GLenum att[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+            glDrawBuffers(2, att);
+            glReadBuffer(GL_COLOR_ATTACHMENT1);
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                D6_THROW(VideoException, "OpenGL error: Incomplete frameBuffer ");
+            }
         }
-        GLenum att[1] = {GL_COLOR_ATTACHMENT0};
-        glDrawBuffers(1, att);
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            D6_THROW(VideoException, "OpenGL error: Incomplete frameBuffer ");
+
+        /**
+         * final fbo (with static geometry)
+         */
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            for(Texture t : {texture}){
+                glBindTexture(GL_TEXTURE_2D_ARRAY, t);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+                glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+            }
+            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture, 0, 0);
+            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0, 0);
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                D6_THROW(VideoException, "OpenGL error: Incomplete frameBuffer ");
+            }
+
+            glDrawBuffer(GL_COLOR_ATTACHMENT0);
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                D6_THROW(VideoException, "OpenGL error: Incomplete frameBuffer ");
+            }
+
         }
+
+
+        /**
+         * double pass bloom pipeline
+         */
+        for(auto i: {0,1}){
+            glBindTexture(GL_TEXTURE_2D_ARRAY, bloomTexture[i]);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, bloomFbo[i]);
+            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, bloomTexture[i], 0, 0);
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                D6_THROW(VideoException, "OpenGL error: Incomplete frameBuffer ");
+            }
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                D6_THROW(VideoException, "OpenGL error: Incomplete frameBuffer ");
+            }
+        }
+
+
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -74,6 +149,8 @@ namespace Duel6 {
     GL4RendererTarget::~GL4RendererTarget() {
         glDeleteFramebuffers(1, &fbo);
         glDeleteTextures(1, &texture);
+        glDeleteTextures(1, &texture2);
+        glDeleteTextures(1, &glowTexture);
         glDeleteTextures(1, &depthTexture);
     }
 
@@ -91,6 +168,59 @@ namespace Duel6 {
         }
     }
 
+    void GL4RendererTarget::bloom() {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, glowFbo);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+        glReadBuffer(GL_COLOR_ATTACHMENT1);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bloomFbo[0]);
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+        renderer.enableBloomContext();
+        const int passes = 2;
+        for(int i = 0 ; i < passes; i++){
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bloomFbo[ (i + 1) % 2]);
+            glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+            // use bloomTexture from bloomFbo[i] to render into bloomFbo[i + 1]
+            renderer.quadXY(Vector::ZERO, Vector((float) width, (float) height), Vector(1, 1), Vector(1, 1),
+                            Material::makeColoredTexture(bloomTexture[i % 2] , Color::WHITE));
+        }
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+        renderer.setBlendFunc(BlendFunc::SrcColor);
+        renderer.enableDepthTest(false);
+        renderer.quadXY(Vector::ZERO, Vector((float) width, (float) height), Vector(1, 1), Vector(1, 1),
+                        Material::makeColoredTexture(bloomTexture[passes % 2] , Color::WHITE));
+        renderer.enableDepthTest(true);
+        renderer.enableRenderContext();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    void GL4RendererTarget::glow() {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, glowFbo);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+//        renderer.clearBuffers();
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
+                          GL_NEAREST);
+//        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
+//                          GL_NEAREST);
+
+     //  renderer.enableDepthTest(false);
+//        renderer.quadXY(Vector::ZERO, Vector((float) width, (float) height), Vector(1, 1), Vector(1, 1),
+//                        Material::makeColoredTexture(texture2 , Color::WHITE));
+        renderer.enableBloomContext();
+        renderer.setBlendFunc(BlendFunc::SrcColor);
+        renderer.enableDepthTest(false);
+       renderer.quadXY(Vector::ZERO, Vector((float) width, (float) height), Vector(1, 1), Vector(1, 1),
+                       Material::makeColoredTexture(glowTexture , Color::WHITE));
+        renderer.enableDepthTest(true);
+        renderer.enableRenderContext();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
     void GL4RendererTarget::blit() {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -107,7 +237,8 @@ namespace Duel6 {
 
     void GL4RendererTarget::render(const Color &color) {
         renderer.quadXY(Vector::ZERO, Vector((float) width, (float) height), Vector(1, 1), Vector(1, 1),
-                              Material::makeColoredTexture(texture, color));
+                              Material::makeColoredTexture(texture2 , color));
+//                              Material::makeColoredTexture(glowTexture , color));
     }
 
     void GL4RendererTarget::resize(Int32 width, Int32 height) {
@@ -116,9 +247,12 @@ namespace Duel6 {
     }
 
     void GL4RendererTarget::rerender() {
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, glowFbo);
         renderer.clearBuffers();
         callback();
+        bloom();
+        glow();
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 }

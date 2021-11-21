@@ -48,19 +48,15 @@ namespace Duel6 {
             std::vector<ToggleCallback> toggleListeners;
             Button *left, *right;
             Int32 selectedIndex;
-//            Int32 width = 1;
             std::vector<std::pair<Int32, std::string> > items;
             Float32 repeatWait = 0;
             ColorizeCallback colorizeCallback = defaultColorize;
-            Float32 innerTextWidth;
-            Float32 scrollLeft;
+            Float32 innerTextWidth = 0;
+            Float32 scrollLeft = 0;
             bool scrolling = false;
 
         public:
-            explicit Spinner(View &parentView);
-
-            explicit Spinner(ScrollPanel &parentBox);
-
+            explicit Spinner(RenderRoot &parent);
 
             void addItem(const std::string &item, Int32 value = 0, bool skipIfPresent = true);
 

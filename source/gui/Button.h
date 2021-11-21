@@ -45,8 +45,7 @@ namespace Duel6 {
             std::string caption;
 
         public:
-            explicit Button(View &parentView);
-            explicit Button(ScrollPanel &parentBox);
+            explicit Button(RenderRoot &parent);
 
             ~Button();
 

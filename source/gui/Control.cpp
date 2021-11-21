@@ -36,11 +36,8 @@ namespace Duel6 {
             Color frameLightColor(235, 235, 235), frameDarkColor(0, 0, 0), frameFocusColor(0, 50, 255, 50);
         }
 
-        Control::Control(View &parentView) {
-            parentView.addControl(this);
-        }
-        Control::Control(ScrollPanel &parentBox) {
-            parentBox.addControl(this);
+        Control::Control(RenderRoot &parent) {
+            parent.addControl(this);
         }
 
         void Control::drawFocusFrame(Renderer &renderer, Int32 x, Int32 y, Int32 w, Int32 h, Float32 lineWidth) {
@@ -83,8 +80,8 @@ namespace Duel6 {
         }
         Control::ScissorBox Control::getScissorBox(const ScissorBox & parent) {
             int r = parent.width;
-            int t = - parent.sy;
-            int b = - parent.sy - parent.height;
+            int t = parent.height - parent.sy;
+            int b = - parent.sy;
 
             // -4 is a quick hack to reserve space for rendering of focus frames
             // we could make this an attribute on the Control

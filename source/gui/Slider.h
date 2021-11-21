@@ -49,9 +49,7 @@ namespace Duel6 {
             bool dragging = false;
 
         public:
-            Slider(View &parentView);
-
-            Slider(ScrollPanel &parentBox);
+            Slider(RenderRoot &parent);
 
             void setPosition(int X, int Y, int H);
 

@@ -35,8 +35,8 @@ namespace Duel6 {
     }
 
     namespace Gui {
-        ListBox::ListBox(ScrollPanel &parentBox, bool sb)
-                : Control(parentBox) {
+        ListBox::ListBox(RenderRoot &parent, bool sb)
+                : Control(parent) {
             focusable = true;
             listPos.items = 0;
             listPos.start = 0;
@@ -44,22 +44,7 @@ namespace Duel6 {
             scrollBar = sb;
             colorizeCallback = defaultColorize;
             if (sb) {
-                slider = new Slider(parentBox);
-                slider->connect(&listPos);
-            } else {
-                slider = nullptr;
-            }
-        }
-        ListBox::ListBox(View &parentView, bool sb)
-            : Control(parentView) {
-            focusable = true;
-            listPos.items = 0;
-            listPos.start = 0;
-            selected = -1;
-            scrollBar = sb;
-            colorizeCallback = defaultColorize;
-            if (sb) {
-                slider = new Slider(parentView);
+                slider = new Slider(parent);
                 slider->connect(&listPos);
             } else {
                 slider = nullptr;
@@ -130,7 +115,6 @@ namespace Duel6 {
         ListBox& ListBox::addItem(const std::string &item) {
             listPos.items++;
             items.push_back(item);
-            volatile Int32 debug = - listPos.items * itemHeight;
             Control::scrollToView(x, y - listPos.items * itemHeight, width, itemHeight);
             return *this;
         }

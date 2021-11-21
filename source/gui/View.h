@@ -13,7 +13,7 @@
 
 namespace Duel6::Gui {
     class Desktop;
-    class View {
+    class View : public RenderRoot {
         friend class ScrollPanel;
     public:
         typedef std::function<void(View&, Int32, Int32, Int32, Int32)> ResizeCallback;
@@ -74,7 +74,7 @@ namespace Duel6::Gui {
         virtual void onBlur() {
         }
 
-        void addControl(Control *control);
+        virtual void addControl(Control *control) override;
 
         Font& getFont();
 

@@ -30,28 +30,15 @@
 
 namespace Duel6 {
     namespace Gui {
-        Spinner::Spinner(ScrollPanel &parentBox)
-                : Control(parentBox) {
+        Spinner::Spinner(RenderRoot &parent)
+                : Control(parent) {
             width = 1;
-            height = 20;
+            height = 40;
             selectedIndex = -1;
             focusable = true;
-            left = new Button(parentBox);
+            left = new Button(parent);
             left->setCaption(" ");
-            right = new Button(parentBox);
-            right->setCaption(" ");
-            left->setFocusable(false);
-            right->setFocusable(false);
-        }
-        Spinner::Spinner(View &parentView)
-            : Control(parentView) {
-            width = 1;
-            height = 20;
-            selectedIndex = -1;
-            focusable = true;
-            left = new Button(parentView);
-            left->setCaption(" ");
-            right = new Button(parentView);
+            right = new Button(parent);
             right->setCaption(" ");
             left->setFocusable(false);
             right->setFocusable(false);

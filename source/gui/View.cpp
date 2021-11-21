@@ -169,17 +169,23 @@ namespace Duel6::Gui {
         renderer.setViewMatrix(m * Matrix::translate(Float32(x), Float32(y), 0));
         renderer.stencil(Duel6::Renderer::StencilMode::CLEAR);
         Control::ScissorBox scissorBox {trX, trY, x, y ,w, h, 0, 0};
-        renderer.scissorTest(scissorBox.rx + scissorBox.x, scissorBox.ry + scissorBox.y - scissorBox.height, scissorBox.width, scissorBox.height);
+        renderer.scissorTest(trX + x, trY + y, w, h);
 
-        renderer.setScissorTest(true);
+        /* TODO: harmonize rendering logic: coords [0,0] is top left corner of a ScrollPanel,
+                 but in case of View the coord [0,0] is bottom left corner.
+                 This doesn't work well together with the scissor logic (Control::getScissorBox)
+                 i.e. get rid of this kind of rendering: renderer.quad( (x, y - height), (width ,height) )
+                  or Control::drawFrame where y - h is also used.
+         */
+        renderer.setScissorTest(false); //TODO set to true ideally - some components have their width or height attributes 1 or 0 and don't render then (Slider,Image etc.)
+
         for (auto &control : controls) {
-
-
-
             Control::ScissorBox s = control->getScissorBox(scissorBox);
+            if(s.width <= 0 || s.height <= 0) continue;
+
             renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
             renderer.scissorTest(s.rx + s.x, s.ry + s.y - s.height + s.sy, s.width, s.height);
-            control->draw(renderer, font); //TODO pass parentScissorBox
+            control->draw(renderer, font, scissorBox);
             renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
             control->drawStencil(renderer, font);
             renderer.stencil(Duel6::Renderer::StencilMode::TEST);

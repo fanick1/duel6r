@@ -38,8 +38,13 @@ namespace Duel6 {
     class GL4RendererTarget : public RendererTarget {
     private:
         GLuint fbo;
+        GLuint glowFbo;
+        GLuint bloomFbo[2];
 
         Texture texture;
+        Texture texture2;
+        Texture glowTexture;
+        Texture bloomTexture[2];
         Texture depthTexture;
 
         GLuint width, height;
@@ -59,6 +64,9 @@ namespace Duel6 {
         void rerender() override;
 
     private:
+        void glow();
+        void bloom();
+
         void blit();
 
         void blitDepth();

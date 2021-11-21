@@ -9,21 +9,21 @@
 #include "Control.h"
 
 namespace Duel6::Gui {
-    class ScrollPanel : public Control {
+    class ScrollPanel : public Control, public RenderRoot {
     private:
         Int32 scrollY = 0, scrollTarget = 0;
-        Int32 maxY = 0;
+        Int32 maxY = 0, minY = 0;
         Int32 X,Y,W,H;
         bool scrollingToView = false;
         std::vector<std::unique_ptr<Control>> controls;
     public:
-        ScrollPanel(View &parentView);
+        ScrollPanel(RenderRoot &parent);
 
         ~ScrollPanel() override;
 
         Type getType() const override;
 
-        void addControl(Control *pControl);
+        virtual void addControl(Control *control) override;
 
     protected:
         void update(Float32 elapsedTime) override;
@@ -51,6 +51,8 @@ namespace Duel6::Gui {
         ScissorBox getScissorBox(const ScissorBox &parent) override;
 
         void scrollCoordToView(Int32 X, Int32 Y, Int32 W, Int32 H) override;
+
+        void clampScroll();
     };
 }
 

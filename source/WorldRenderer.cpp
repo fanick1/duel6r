@@ -34,8 +34,12 @@
 namespace Duel6 {
     WorldRenderer::WorldRenderer(Duel6::AppService &appService, const Duel6::Game &game)
             : font(appService.getFont()), video(appService.getVideo()), game(game), renderer(video.getRenderer()),
-              target(renderer.makeTarget(video.getScreen())) {
+              target(renderer.makeTarget(video.getScreen())),
+              explosionsTarget(renderer.makeTarget(video.getScreen()))
+              {
         video.onResize([this](Int32 width, Int32 height){
+         //  target->resize(width, height);
+         //  explosionsTarget->resize(width, height);
            rerender();
         });
     }
@@ -660,13 +664,18 @@ namespace Duel6 {
     }
 
     void WorldRenderer::prerender() const {
+        const World &world = game.getRound().getWorld();
         target->record([this]() {
             renderBackground();
+        });
+        explosionsTarget->record([this, &world]() {
+            world.getExplosionList().render(renderer);
         });
     }
 
     void WorldRenderer::rerender() const {
         target->rerender();
+        explosionsTarget->rerender();
     }
 
     void WorldRenderer::render() const {

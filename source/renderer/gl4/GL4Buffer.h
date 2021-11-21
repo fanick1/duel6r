@@ -36,14 +36,14 @@
 namespace Duel6 {
     class GL4Buffer : public RendererBuffer {
     private:
-        GL4Program &program;
+        GL4MaterialProgramWrapper &program;
         Uint32 vao;
         Uint32 vertexVbo;
         Uint32 textureIndexVbo;
         Size elements;
 
     public:
-        explicit GL4Buffer(GL4Program &program, const FaceList &faceList);
+        explicit GL4Buffer(GL4MaterialProgramWrapper &program, const FaceList &faceList);
 
         ~GL4Buffer() override;
 

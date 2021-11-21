@@ -29,8 +29,8 @@
 
 namespace Duel6 {
     namespace Gui {
-        CheckBox::CheckBox(View &parentView, bool value)
-            : Control(parentView) {
+        CheckBox::CheckBox(RenderRoot &parent, bool value)
+            : Control(parent) {
             checked = value;
             focusable = true;
         }

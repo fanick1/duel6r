@@ -39,7 +39,7 @@ namespace Duel6 {
             std::string label;
 
         public:
-            CheckBox(View &parentView, bool value = false);
+            CheckBox(RenderRoot &parentView, bool value = false);
 
             ~CheckBox() = default;
 

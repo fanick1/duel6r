@@ -33,25 +33,16 @@ namespace Duel6 {
         namespace SliderImpl {
             Color bcgColor(192, 192, 192);
         }
-        Slider::Slider(ScrollPanel &parentBox)
-                : Control(parentBox) {
-            up = new Button(parentBox);
+        Slider::Slider(RenderRoot &parent)
+                : Control(parent) {
+            up = new Button(parent);
             up->setCaption(" ");
             up->setFocusable(false);
-            down = new Button(parentBox);
+            down = new Button(parent);
             down->setCaption(" ");
             down->setFocusable(false);
             pos = nullptr;
-        }
-        Slider::Slider(View &parentView)
-            : Control(parentView) {
-            up = new Button(parentView);
-            up->setCaption(" ");
-            up->setFocusable(false);
-            down = new Button(parentView);
-            down->setCaption(" ");
-            down->setFocusable(false);
-            pos = nullptr;
+            //TODO: width = something; and then use the attribute in draw. (See View::draw - scissor test)
         }
 
         void Slider::setPosition(int X, int Y, int H) {

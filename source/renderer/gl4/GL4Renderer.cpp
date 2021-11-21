@@ -49,8 +49,15 @@ namespace Duel6 {
               colorFragmentShader(GL_FRAGMENT_SHADER, "shaders/gl4/colorFragment.glsl"),
               materialVertexShader(GL_VERTEX_SHADER, "shaders/gl4/materialVertex.glsl"),
               materialFragmentShader(GL_FRAGMENT_SHADER, "shaders/gl4/materialFragment.glsl"),
-              colorProgram(colorVertexShader, colorFragmentShader),
-              materialProgram(materialVertexShader, materialFragmentShader) {
+              bloomFilterFragmentShader(GL_FRAGMENT_SHADER, "shaders/gl4/bloomFilterFragment.glsl"),
+              backingColorProgram(colorVertexShader, colorFragmentShader),
+              backingMaterialProgram(materialVertexShader, materialFragmentShader),
+              backingBloomFilterMaterialProgram(materialVertexShader, bloomFilterFragmentShader),
+              colorProgramWrapper(backingColorProgram), materialProgramWrapper(backingMaterialProgram),
+              bloomFilterMaterialProgramWrapper(backingBloomFilterMaterialProgram),
+              contextRender(colorProgramWrapper, materialProgramWrapper),
+              contextBloom(colorProgramWrapper, bloomFilterMaterialProgramWrapper)
+              {
         enableOption(GL_CULL_FACE, true);
         glFrontFace(GL_CW);
         glCullFace(GL_BACK);
@@ -177,8 +184,8 @@ namespace Duel6 {
     }
 
     void GL4Renderer::setGlobalTime(Float32 time) {
-        materialProgram.bind(); // Required for INTEL
-        materialProgram.setUniform("globalTime", time);
+        context->materialProgram.bind(); // Required for INTEL
+        context->materialProgram.globalTime = time;
     }
 
     void GL4Renderer::clearBuffers() {
@@ -202,23 +209,23 @@ namespace Duel6 {
 
     void GL4Renderer::point(const Vector &position, Float32 size, const Color &color) {
         glBindVertexArray(colorVao);
-        colorProgram.bind();
+        context->colorProgram.bind();
 
         colorPoints[0].xyz = position;
         updateColorBuffer(1);
 
         Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
                                 color.getAlpha() / 255.0f};
-        colorProgram.setUniform("color", colorData);
+        context->colorProgram.color = colorData;
 
         glPointSize(size);
         glDrawArrays(GL_POINTS, 0, 1);
         glPointSize(1);
     }
 
-    void GL4Renderer::line(const Vector &from, const Vector &to, Float32 width, const Color &color) {
+    inline void GL4Renderer::line(const Vector &from, const Vector &to, Float32 width, const Color &color) {
         glBindVertexArray(colorVao);
-        colorProgram.bind();
+        context->colorProgram.bind();
 
         colorPoints[0].xyz = from;
         colorPoints[1].xyz = to;
@@ -226,8 +233,7 @@ namespace Duel6 {
 
         Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
                                 color.getAlpha() / 255.0f};
-        colorProgram.setUniform("color", colorData);
-
+        context->colorProgram.color = colorData;
         glLineWidth(width);
         glDrawArrays(GL_LINES, 0, 2);
         glLineWidth(1.0f);
@@ -235,7 +241,7 @@ namespace Duel6 {
 
     void GL4Renderer::triangle(const Vector &p1, const Vector &p2, const Vector &p3, const Color &color) {
         glBindVertexArray(colorVao);
-        colorProgram.bind();
+        context->colorProgram.bind();
 
         colorPoints[0].xyz = p1;
         colorPoints[1].xyz = p2;
@@ -244,7 +250,7 @@ namespace Duel6 {
 
         Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
                                 color.getAlpha() / 255.0f};
-        colorProgram.setUniform("color", colorData);
+        context->colorProgram.color = colorData;
 
         glDrawArrays(GL_TRIANGLES, 0, 3);
     }
@@ -254,7 +260,7 @@ namespace Duel6 {
                                const Vector &p3, const Vector &t3,
                                const Material &material) {
         glBindVertexArray(materialVao);
-        materialProgram.bind();
+        context->materialProgram.bind();
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, material.getTexture());
 
@@ -266,19 +272,17 @@ namespace Duel6 {
         materialPoints[2].str = t3;
         updateMaterialBuffer(3);
 
-        materialProgram.setUniform("alphaTest", material.isMasked() ? 1 : 0);
-
+        context->materialProgram.alphaTest = material.isMasked() ? 1 : 0;
         const Color &color = material.getColor();
         Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
                                 color.getAlpha() / 255.0f};
-        materialProgram.setUniform("modulateColor", colorData);
-
+        context->materialProgram.modulateColor = colorData;
         glDrawArrays(GL_TRIANGLES, 0, 3);
     }
 
     void GL4Renderer::quad(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const Color &color) {
         glBindVertexArray(colorVao);
-        colorProgram.bind();
+        context->colorProgram.bind();
 
         colorPoints[0].xyz = p1;
         colorPoints[1].xyz = p2;
@@ -288,8 +292,7 @@ namespace Duel6 {
 
         Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
                                 color.getAlpha() / 255.0f};
-        colorProgram.setUniform("color", colorData);
-
+        context->colorProgram.color = colorData;
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
@@ -299,7 +302,7 @@ namespace Duel6 {
                            const Vector &p4, const Vector &t4,
                            const Material &material) {
         glBindVertexArray(materialVao);
-        materialProgram.bind();
+        context->materialProgram.bind();
 
         glBindTexture(GL_TEXTURE_2D_ARRAY, material.getTexture());
 
@@ -313,18 +316,18 @@ namespace Duel6 {
         materialPoints[3].str = t4;
         updateMaterialBuffer(4);
 
-        materialProgram.setUniform("alphaTest", material.isMasked() ? 1 : 0);
+        context->materialProgram.alphaTest = material.isMasked() ? 1 : 0;
 
         const Color &color = material.getColor();
         Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
                                 color.getAlpha() / 255.0f};
-        materialProgram.setUniform("modulateColor", colorData);
+        context->materialProgram.modulateColor = colorData;
 
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
     std::unique_ptr<RendererBuffer> GL4Renderer::makeBuffer(const FaceList &faceList) {
-        return std::make_unique<GL4Buffer>(materialProgram, faceList);
+        return std::make_unique<GL4Buffer>(context->materialProgram, faceList);
     }
 
     std::unique_ptr<RendererTarget> GL4Renderer::makeTarget(ScreenParameters screenParameters) {
@@ -356,10 +359,10 @@ namespace Duel6 {
     void GL4Renderer::updateMvpUniform() {
         mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
 
-        colorProgram.bind(); // Required for INTEL
-        colorProgram.setUniform("mvp", mvpMatrix);
-        materialProgram.bind(); // Required for INTEL
-        materialProgram.setUniform("mvp", mvpMatrix);
+        context->colorProgram.bind(); // Required for INTEL
+        context->colorProgram.mvp =  mvpMatrix;
+        context->materialProgram.bind(); // Required for INTEL
+        context->materialProgram.mvp = mvpMatrix;
     }
 
     void GL4Renderer::stencil(StencilMode mode) const {
@@ -400,6 +403,7 @@ namespace Duel6 {
                 glStencilFunc(GL_NOTEQUAL, CLEAR_VALUE, 0xffffffff); // clean up
                 glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);  // when a pixel is rendered, 0 gets written into the stencil buffer
                 glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
                 break;
             }
             case StencilMode::TEST: {
@@ -410,6 +414,15 @@ namespace Duel6 {
                 break;
             }
         }
+    }
+    void GL4Renderer::enableRenderContext() {
+        context = &contextRender;
+        updateMvpUniform();
+    }
+
+    void GL4Renderer::enableBloomContext() {
+        context = &contextBloom;
+        updateMvpUniform();
     }
 
     bool GL4Renderer::setScissorTest(bool value) const {
@@ -424,11 +437,13 @@ namespace Duel6 {
             glDisable(GL_SCISSOR_TEST);
         }
         return originalValue;
-return false;
     }
 
     void GL4Renderer::scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const {
         glScissor(x, y, width, height);
     }
 
+    GL4RendererContext::GL4RendererContext(GL4ColorProgramWrapper &colorProgram, GL4MaterialProgramWrapper &materialProgram) :
+            colorProgram(colorProgram), materialProgram(materialProgram) {
+    }
 }

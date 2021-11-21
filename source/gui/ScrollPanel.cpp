@@ -6,7 +6,7 @@
 #include "View.h"
 
 namespace Duel6::Gui {
-    ScrollPanel::ScrollPanel(View &parentView) : Control(parentView) {
+    ScrollPanel::ScrollPanel(RenderRoot &parent) : Control(parent) {
         focusable = true;
     }
 
@@ -21,21 +21,22 @@ namespace Duel6::Gui {
     void ScrollPanel::update(Float32 elapsedTime) {
         for (auto &control: controls) {
             control->update(elapsedTime);
-            if(control->y - control->getHeight() < maxY) {
-                maxY = control->y - control->getHeight();
+            if(control->y - control->getHeight() < minY) {
+                minY = control->y - control->getHeight();
+            } else if(control->y - height > maxY){
+                maxY = control->y - height;
             }
         }
         if(scrollingToView){
-            if(scrollY - height > Y - H && scrollY > Y ){
-                scrollY = Y - H + height ;
-            } else if (scrollY - H < Y) {
-                scrollY = Y ;
+            if(scrollY < Y - height ){
+                scrollY = Y - height;
             }
-            if(scrollY > 0){
-                scrollY = 0;
-            } else if(scrollY < maxY + height){
-                scrollY = maxY + height;
+
+            else if (scrollY > Y - H) {
+                scrollY = Y - H;
             }
+
+            clampScroll();
             scrollingToView = false;
         }
     }
@@ -46,17 +47,24 @@ namespace Duel6::Gui {
 
     void ScrollPanel::draw(Renderer &renderer, const Font &font, const Control::ScissorBox &parentScissorBox) const {
         Matrix m = renderer.getViewMatrix();
-        renderer.setViewMatrix(m * Matrix::translate(Float32(x), Float32(y - scrollY), 0));
+        renderer.setViewMatrix(m * Matrix::translate(Float32(x), Float32(y - height - scrollY), 0));
         Control::ScissorBox scissorBox{parentScissorBox.rx, parentScissorBox.ry, x, y, width, height, 0, -scrollY};
 
         bool originalScissorTest = renderer.setScissorTest(true);
         for (auto &control: controls) {
             Control::ScissorBox s = control->getScissorBox(scissorBox);
-            if(s.width == 0 || s.height == 0) continue;
+            if(s.width <= 0 || s.height <= 0) continue;
             renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
-            renderer.scissorTest(s.rx + s.x, s.ry + s.y - s.height + s.sy, s.width, s.height);
+            renderer.scissorTest(s.rx + s.x, s.ry + s.y - height - s.height + s.sy, s.width, s.height);
             control->draw(renderer, font); //TODO pass parentScissorBox
-//            renderer.setScissorTest(false);
+            // debugging code (draws red boxes in place of scissor boxes)
+            //    renderer.setScissorTest(false);
+            //    xMatrix m2 = renderer.getViewMatrix();
+            //    renderer.setViewMatrix(Matrix::IDENTITY);
+            //    renderer.quadXY(Vector(s.rx + s.x, s.ry + s.y - height - s.height + s.sy), Vector(s.width, s.height),  Color::RED);
+            //    renderer.setViewMatrix(m2);
+            //    renderer.setScissorTest(true);
+
             renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
             control->drawStencil(renderer, font);
             renderer.stencil(Duel6::Renderer::StencilMode::TEST);
@@ -97,7 +105,7 @@ namespace Duel6::Gui {
         if(!Control::mouseIn(event, x,y,width,height)){
             return;
         }
-        MouseButtonEvent translatedEvent = event.translate(-x, -y + scrollY);
+        MouseButtonEvent translatedEvent = event.translate(-x, -y + scrollY + height);
         for (auto &control : controls) {
             control->mouseButtonEvent(translatedEvent);
         }
@@ -108,14 +116,16 @@ namespace Duel6::Gui {
             return;
         }
 
-        scrollY += event.getAmountY() * 32;
+        scrollY += event.getAmountY()  * 32;
         scrollingToView = false;
-        if(scrollY > 0){
-            scrollY = 0;
-            scrollTarget = 0;
-        } else if (scrollY < maxY + height) {
-            scrollY = maxY + height;
-            scrollTarget = scrollY;
+        clampScroll();
+    }
+
+    void ScrollPanel::clampScroll() {
+        if(scrollY > maxY){ // clamp on top
+            scrollY = maxY;
+        } else if (scrollY < minY){ // clamp at the bottom
+            scrollY = minY;
         }
     }
 

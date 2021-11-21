@@ -17,7 +17,7 @@ namespace Duel6::Gui {
         Material material;
 
     public:
-        Image(View &parentView, Material material, Int32 x, Int32 y, Int32 w, Int32 h);
+        Image(RenderRoot &parent, Material material, Int32 x, Int32 y, Int32 w, Int32 h);
         virtual ~Image();
 
         virtual Type getType() const override {
