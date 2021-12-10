@@ -105,7 +105,8 @@ namespace Duel6 {
 
         virtual bool setScissorTest(bool value) const override {}
 
-        virtual bool scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const override {}
+        virtual void scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const override {}
+
     private:
         void enableOption(GLenum option, bool enable);
 

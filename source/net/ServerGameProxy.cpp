@@ -98,7 +98,7 @@ namespace Duel6 {
                     if(player.isDeleted()){
                         peer->snapshot[game.tick & xor_64].erase(player.getId());
                     }
-                    if (!player.local || player.isDeleted()) {
+                    if (!player.isLocal() || player.isDeleted()) {
                         continue;
                     }
                     PlayerInputs pi;
@@ -171,7 +171,7 @@ namespace Duel6 {
                     if(player.isDeleted()){
                         peer->snapshot[game.tick & xor_64].erase(player.getId());
                     }
-                    if (!(player.local || game.isServer) || player.isDeleted()) {
+                    if (!(player.isLocal() || game.isServer) || player.isDeleted()) {
                         continue;
                     }
                     Player p;
@@ -445,6 +445,23 @@ namespace Duel6 {
             ps.sample = static_cast<SampleType>(static_cast<type_t>(type));
             for (auto &peer : peers) {
                 peer->sendReliable(ps, Channel::SAMPLES);
+            }
+        }
+        void ServerGameProxy::broadcastVoice(Int32 playerId, std::unique_ptr<Uint8[]> & buffer, const size_t len) {
+            Voice v(buffer);
+            v.playerId = playerId;
+            v.len = len;
+
+            for (auto &peer : peers) {
+                peer->send(v, Channel::VOICE, false);
+            }
+        }
+        //server just forwards the voice samples
+        void ServerGameProxy::relayVoice(const Peer *srcPeer, Voice &v) {
+            for (auto *peer : peers) {
+                if(peer != srcPeer){
+                    peer->send(v, Channel::VOICE, false);
+                }
             }
         }
 

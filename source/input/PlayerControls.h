@@ -122,12 +122,13 @@ namespace Duel6 {
         std::unique_ptr<Control> shoot;
         std::unique_ptr<Control> pick;
         std::unique_ptr<Control> status;
+        std::unique_ptr<Control> talk;
 
     public:
         PlayerControls(const std::string &description, Control *left, Control *right, Control *up, Control *down,
-                       Control *shoot, Control *pick, Control *status)
+                       Control *shoot, Control *pick, Control *status, Control *talk)
                 : description(description), left(left), right(right), up(up), down(down), shoot(shoot), pick(pick),
-                  status(status) {}
+                  status(status), talk(talk) {}
 
         const std::string &getDescription() const {
             return description;
@@ -161,10 +162,13 @@ namespace Duel6 {
             return *status;
         }
 
+        const Control &getTalk() const {
+            return *talk;
+        }
     public:
         static std::unique_ptr<PlayerControls>
         keyboardControls(const std::string &name, const Input &input, SDL_Keycode left, SDL_Keycode right, SDL_Keycode up, SDL_Keycode down,
-                         SDL_Keycode shoot, SDL_Keycode pick, SDL_Keycode status);
+                         SDL_Keycode shoot, SDL_Keycode pick, SDL_Keycode status, SDL_Keycode talk);
         static std::unique_ptr<PlayerControls> joypadControls(const std::string& name, const GameController & gameController);
         static std::unique_ptr<PlayerControls> noOpControls(const std::string& name);
     };

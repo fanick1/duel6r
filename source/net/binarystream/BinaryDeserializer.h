@@ -6,6 +6,8 @@
  */
 #ifndef BINARYSTREAMS_BINARYDESERIALIZER_H
 #define BINARYSTREAMS_BINARYDESERIALIZER_H
+
+#include <memory>
 #include <stdint.h>
 
 //TODO add safe string read (max len etc.)
@@ -44,6 +46,11 @@ public:
     bool safe_read(M & m, const N val_min, const N val_max, const uint32_t min, const uint32_t max) {
         return stream.s_read(m, val_min, val_max, min, max);
     }
+
+    bool readBuffer(std::unique_ptr<uint8_t[]> & buffer, size_t & len) {
+        return stream.readBuffer(buffer, len);
+    }
+
     constexpr static bool isSerializer() {
         return false;
     }

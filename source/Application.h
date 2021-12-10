@@ -42,6 +42,8 @@
 #include "net/ServerGameProxy.h"
 
 namespace Duel6 {
+    class Recorder;
+
     class Application {
     private:
         struct CommandLineOptions {
@@ -57,6 +59,7 @@ namespace Duel6 {
 
     private:
         Console console;
+        std::unique_ptr<Recorder> recorder; //TODO Have one recorder per capture device available in the system.
         std::unique_ptr<Video> video;
         std::unique_ptr<Font> font;
         std::unique_ptr<TextureManager> textureManager;

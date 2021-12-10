@@ -75,7 +75,21 @@ namespace Duel6 {
     void Game::update(Float32 elapsedTime) {
         if(!isRunning) return;
         tick++;
-
+        if (networkGame) {
+            auto &recorder = appService.getRecorder();
+            while(recorder.hasEncodedAudioReady()){
+                bool error;
+                static const size_t maxLen = 64;
+                std::unique_ptr<Uint8[]> buffer(new Uint8[maxLen]);
+                size_t len = recorder.dequeueEncodedAudio(buffer.get(), maxLen, error);
+                if(!error){
+                    broadcastVoice(recorder.getOwningPlayerId(), buffer, len);
+                } else {
+                    printf("Game::update dequeueEncodedAudio error\n");
+                    break;
+                }
+            }
+        }
         if ((isServer || !networkGame) && getRound().isOver()) {
             if (!getRound().isLast()) {
                 nextRound();
@@ -94,7 +108,7 @@ namespace Duel6 {
         gameProxy->chat(chatOpened);
         if(isServer){
             for(auto & player: players){
-                if(player.local){
+                if(player.isLocal()){
                     player.setChatting(chatOpened);
                 }
             }
@@ -108,7 +122,7 @@ namespace Duel6 {
         gameProxy->console(consoleOpened);
         if(isServer){
             for(auto & player: players){
-                if(player.local){
+                if(player.isLocal()){
                     player.setInConsole(consoleOpened);
                 }
             }
@@ -123,7 +137,7 @@ namespace Duel6 {
 
         if (isServer) {
             for (auto &player : players) {
-                if (player.local) {
+                if (player.isLocal()) {
                     player.setFocused(focusGained);
                 }
             }
@@ -242,16 +256,16 @@ namespace Duel6 {
         for (const PlayerDefinition &playerDef : playerDefinitions) {
             console.printLine(Format("...Generating player for person: {0}") << playerDef.getPerson().getName());
             skins.push_back(PlayerSkin(playerDef.getColors(), textureManager, playerAnimations, playerAuxAnimations));
-            Player & p = players.emplace_back(this,
+            players.emplace_back(this,
                 playerDef.getPerson(),
                 skins.back(),
                 playerDef.getSounds(),
                 playerDef.getControls(),
                 maxPlayerId,
-                playerDef.getTeam(), 0, maxPlayerId, maxPlayerId);
+                playerDef.getTeam(), 0, maxPlayerId, maxPlayerId, true,
+                &appService.getRecorder()
+                );
             maxPlayerId++;
-
-            p.local = true;
         }
 
         this->levels = levels;
@@ -303,7 +317,8 @@ namespace Duel6 {
                     playerDefinition.getTeam(),
                     playerDefinition.getClientId(),
                     playerDefinition.getClientLocalId(),
-                    pos
+                    pos,
+                    false
                 };
                 if(authoritative){
                     playerDefinition.setPlayerId(playerId);
@@ -323,7 +338,8 @@ namespace Duel6 {
             playerDefinition.getTeam(),
             playerDefinition.getClientId(),
             playerDefinition.getClientLocalId(),
-            pos);
+            pos,
+            false);
 
         if(authoritative){
             playerDefinition.setPlayerId(playerId);
@@ -485,6 +501,24 @@ namespace Duel6 {
         player.playSample(type);
     }
 
+    void Game::enqueueVoice(Player &player, const std::unique_ptr<Uint8[]> & encodedVoice, size_t len) {
+        player.enqueueVoice(encodedVoice, len);
+    }
+
+    void Game::broadcastVoice(Int32 playerId, std::unique_ptr<Uint8[]> & buffer, const size_t len) {
+        //DEBUG (echoes the voice back)
+//        std::find_if(players.begin(), players.end(), [&](auto &item) {
+//            if(item.getId() == playerId){
+//                item.enqueueVoice(buffer, len);
+//                return true;
+//            }
+//            return false;
+//        });
+        // DEBUG END
+
+        gameProxy->broadcastVoice(playerId, buffer, len);
+    }
+
     void Game::doubleJumpEffect(Player &player, Float32 x, Float32 y, Float32 angle) {
         if (isServer) {
             gameProxy->doubleJumpEffect(player.getId(), x, y, angle);
@@ -493,7 +527,7 @@ namespace Duel6 {
     }
 
     void Game::onDoubleJumpEffect(Player &player, Float32 x, Float32 y, Float32 angle) {
-        if(!player.local || (player.compensatedUntilTick - player.lastDJumpTick > 10)){
+        if(!player.isLocal() || (player.compensatedUntilTick - player.lastDJumpTick > 10)){
             player.onDoubleJumpEffect(x, y, angle);
         }
     }

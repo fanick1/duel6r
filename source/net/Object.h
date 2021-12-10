@@ -20,6 +20,7 @@ namespace Duel6::net {
         BONUS,
         WEAPON,
         MESSAGE,
+        VOICE,
         MAX_COUNT
     };
 

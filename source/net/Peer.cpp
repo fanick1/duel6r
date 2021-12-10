@@ -54,6 +54,14 @@ namespace Duel6 {
                 }
                 break;
             }
+            case ObjectType::VOICE: {
+                Voice::bufferType buffer;
+                Voice v(buffer);
+                    if(s >> v){
+                        gameProxy->handle(this, serverGameProxy, v);
+                    }
+                    break;
+                }
             case ObjectType::MAX_COUNT:
                 break;
             }

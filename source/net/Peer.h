@@ -34,7 +34,8 @@ namespace Duel6 {
             PLAYERS,
             BROADCAST_MESSAGES,
             DEFAULT,
-            UNRELIABLE_CHANNEL_BASELINE
+            UNRELIABLE_CHANNEL_BASELINE,
+            VOICE
         };
         enum class PeerUpdateState {
             WAITING_FOR_REQUEST,

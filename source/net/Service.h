@@ -128,7 +128,7 @@ namespace Duel6 {
                     return;
                 }
                 PeerRef *ref = (PeerRef*) peer->data;
-                if (ref->isMasterServer) {
+                if (ref->isMasterServer) { [[unlikely]]
                     return onMasterServerReceived(peer, packet);
                 } else {
                     return onPeerReceived(peer, packet);

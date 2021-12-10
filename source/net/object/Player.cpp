@@ -22,12 +22,16 @@ namespace Duel6::net {
         if(player.isFocused()){
             auxFlags |= (1 << AUX_FLAGS::FOCUS);
         }
+        if(player.isSpeaking()){
+            auxFlags |= (1 << AUX_FLAGS::SPEAKING);
+        }
     }
 
     void Player::unloadToPlayer(Duel6::Player &player) {
         player.setChatting((auxFlags & (1 << AUX_FLAGS::CHAT)) == (1 << AUX_FLAGS::CHAT));
         player.setInConsole((auxFlags & (1 << AUX_FLAGS::CONSOLE)) == (1 << AUX_FLAGS::CONSOLE));
         player.setFocused((auxFlags & (1 << AUX_FLAGS::FOCUS)) == (1 << AUX_FLAGS::FOCUS));
+        player.setSpeaking((auxFlags & (1 << AUX_FLAGS::SPEAKING)) == (1 << AUX_FLAGS::SPEAKING));
     }
 
 #define D(POS, FIELD) if(!(confirmed.FIELD == snapshot.FIELD)) snapshot.changed.set(POS)

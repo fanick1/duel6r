@@ -32,8 +32,10 @@
 #include <vector>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
+#include <opus/opus_types.h>
 #include "Type.h"
 #include "console/Console.h"
+#include "voice/VoiceSettings.h"
 
 namespace Duel6 {
     class Sound {
@@ -83,6 +85,10 @@ namespace Duel6 {
         std::vector<Mix_Music *> modules;
         std::vector<Mix_Chunk *> samples;
         bool headless = false;
+        SDL_AudioDeviceID auxdevice;
+        static const size_t frameLen = VOICE_FRAME_SIZE * sizeof(opus_int16);
+        static Uint8 voiceMixBuffer[frameLen];
+        Int32 vol;
     public:
         Sound(Int32 channels, Console &console);
 
@@ -95,6 +101,16 @@ namespace Duel6 {
         void volume(Int32 volume);
 
         void stopMusic();
+
+        void auxBatchMix(Uint8 * buf, int len);
+
+        void auxBatchSubmit();
+
+        void auxPause(int i);
+
+        void auxUnpause();
+
+        void auxQueueSilence();
 
     private:
         void startMusic(Mix_Music *music, bool loop);

@@ -385,6 +385,24 @@ public:
         return true;
     }
 
+    bool readBuffer(std::unique_ptr<uint8_t[]> &buffer, size_t &len) {
+        len = readSize();
+        if (good()) {
+            buffer.reset(new uint8_t[len]);
+        } else {
+            len = 0;
+            return false;
+        }
+        read((char *) buffer.get(), len);
+        return good();
+    }
+
+    bool writeBuffer(const std::unique_ptr<uint8_t[]> &buffer, const size_t len) {
+       writeSize(len);
+       write((const char *)buffer.get(), len);
+       return good();
+    }
+
     template<typename T, typename std::enable_if<is_serializable_container<T>::value, int>::type = 0>
     bool s_read_min(T& l, const typename T::value_type & min) {
         l.clear();

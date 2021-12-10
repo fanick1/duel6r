@@ -62,7 +62,9 @@ namespace Duel6 {
         const AuxAnimation chat;
         const AuxAnimation console;
         const AuxAnimation unfocused;
+        const AuxAnimation speak;
         const AuxAnimation doubleJump;
+
     public:
         AuxAnimations(animation::Animation &&animation, animation::Animation &&doubleJumpAnimation);
         Texture generateAnimationTexture(const TextureManager &textureManager) const;
@@ -72,6 +74,7 @@ namespace Duel6 {
         const AuxAnimation & getConsole() const;
         const AuxAnimation & getUnfocused() const;
         const AuxAnimation & getDoubleJump() const;
+        const AuxAnimation & getSpeak() const;
     };
 
     class PlayerAnimations {

@@ -64,6 +64,8 @@ namespace Duel6 {
 
         void update(Float32 elapsedTime);
 
+        void updateSprites(Float32 elapsedTime);
+
         void raiseWater();
 
         const GameSettings &getGameSettings() const {

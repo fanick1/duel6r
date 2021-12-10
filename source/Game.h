@@ -259,6 +259,10 @@ namespace Duel6 {
 
         void playSample(const Player &player, PlayerSounds::Type type);
 
+        void enqueueVoice(Player &player, const std::unique_ptr<Uint8[]> & encodedVoice, size_t len);
+
+        void broadcastVoice(Int32 playerId, std::unique_ptr<Uint8[]> & buffer, const size_t len);
+
         void broadcastMessage(const Player &player, const std::string & msg, bool display);
 
         void doubleJumpEffect(Player &player, Float32 x, Float32 y, Float32 angle);

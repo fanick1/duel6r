@@ -49,6 +49,7 @@
 #include "collision/WorldCollision.h"
 #include "PlayerIndicators.h"
 #include "PlayerView.h"
+#include "voice/Decoder.h"
 
 namespace Duel6 {
 
@@ -66,6 +67,10 @@ namespace Duel6 {
     class PlayerEventListener;
 
     class Game;
+
+    class Decoder;
+
+    class Recorder;
 
     class Player {
     private:
@@ -100,7 +105,8 @@ namespace Duel6 {
             ButtonDown = 0x08,
             ButtonShoot = 0x10,
             ButtonPick = 0x20,
-            ButtonStatus = 0x40
+            ButtonStatus = 0x40,
+            ButtonTalk = 0x80,
         };
 
     private:
@@ -145,18 +151,19 @@ namespace Duel6 {
         bool chatting = false;
         bool inConsole = false;
         bool focused = true;
-
+        bool speaking = false;
         Int32 id;
         Int32 team;
         Int32 clientId;
         Int32 clientLocalId;
-
+        bool local = false;
+        std::optional<std::unique_ptr<Decoder>>  voiceDecoder;
+        std::optional<Recorder *> voiceRecorder;
     public:
         CollidingEntity confirmedCollider; //for lag compensation
         Orientation confirmedOrientation;
         Uint32 confirmedFlags = 0;
         Float32 confirmedLife = 100;
-        bool local = false;
         size_t pos;
         uint32_t rtt = 0;
         uint16_t tick = 0;
@@ -180,7 +187,9 @@ namespace Duel6 {
         Player(Game *game, Person &person, const PlayerSkin &skin, const PlayerSounds &sounds, const PlayerControls &controls, Int32 id, Int32 team,
                Int32 clientId,
                Int32 clientLocalId,
-               size_t pos);
+               size_t pos,
+               bool localPlayer,
+               Recorder * recorder = nullptr);
         Player(const Player &) = delete;
         Player& operator=(const Player&) = delete;
         Player(Player&&) = default;
@@ -545,6 +554,14 @@ namespace Duel6 {
 
         void setFocused(bool value);
 
+        bool isSpeaking() const;
+
+        void setSpeaking(bool value);
+
+        void enqueueVoice(const std::unique_ptr<Uint8[]> & encodedVoice, size_t len);
+
+        bool getDecodedAudio(Uint8 *buff, int len);
+
     private:
 
         void replaceWeapon(Weapon weapon);
@@ -563,7 +580,7 @@ namespace Duel6 {
 
         void shoot();
 
-        void setAnm();
+//        void setAnm();
 
         void unstuck();
 
@@ -582,6 +599,16 @@ namespace Duel6 {
         void setFlag(Uint32 flag);
 
         void unsetFlag(Uint32 flag);
+
+    public:
+
+        void setAnm();
+
+        void checkTalkKey();
+
+        bool isLocal() const;
+
+        void setLocal(bool local);
 
     private:
         void updateLoop(World &world, ElevatorList &elevators, Float32 elapsedTime);

@@ -51,6 +51,7 @@ namespace Duel6 {
             void handle(Peer &peer, GameState &s);
             void handle(Peer &peer, GameStateUpdate &s);
             void handle(Peer &peer, PlayerInputsUpdate &piu);
+            void handle(Peer *peer, ServerGameProxy *serverGameProxy, Voice &v);
             void handle(NextRound &nr);
             void handle(PlayersDisconnected &pd);
             void handle(PlayersJoined &pj);

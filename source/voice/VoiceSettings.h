@@ -1,0 +1,11 @@
+//
+// Created by fanick on 03.12.21.
+//
+
+#ifndef DUEL6R_VOICESETTINGS_H
+#define DUEL6R_VOICESETTINGS_H
+
+#define VOICE_FREQ 48000
+#define VOICE_FRAME_LEN 20 //ms
+#define VOICE_FRAME_SIZE (VOICE_FREQ / 1000 * VOICE_FRAME_LEN)
+#endif //DUEL6R_VOICESETTINGS_H

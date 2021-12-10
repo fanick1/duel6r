@@ -13,6 +13,7 @@
 #include "Peer.h"
 #include "GameProxy.h"
 #include "event/GameState.h"
+#include "object/Voice.h"
 namespace Duel6 {
     class Bonus;
     class LyingWeapon;
@@ -50,6 +51,8 @@ namespace Duel6 {
             void focus(bool value);
             void doubleJumpEffect(Int32 playerId, Float32 x, Float32 y, Float32 angle);
             void playSample(Int32 playerId, PlayerSounds::Type type);
+            void broadcastVoice(Int32 playerId, std::unique_ptr<Uint8[]> & buffer, const size_t len);
+            void relayVoice(const Peer *peer, Voice &v);
             void startRound(Int32 playedRounds, Duel6::Level & level) override;
             void sendGameStateUpdate(Game & game) override;
             void nextRound() override;

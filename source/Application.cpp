@@ -39,6 +39,7 @@
 #include "net/NetHost.h"
 #include "net/NetClient.h"
 #include "gamestateintegration/Publisher.h"
+#include "voice/Recorder.h"
 
 namespace Duel6 {
     namespace {
@@ -89,7 +90,7 @@ namespace Duel6 {
     }
 
     Application::Application(Int32 argc, char **argv)
-            : console(Console::ExpandFlag), input(console), controlsManager(input), sound(20, console),
+            : console(Console::ExpandFlag), input(console), controlsManager(input), sound(32, console),
               scriptContext(console, sound, gameSettings), scriptManager(scriptContext),
               requestClose(false) {
         parseCommandLineOptions(argc, argv);
@@ -127,6 +128,8 @@ namespace Duel6 {
 #endif
 
         Console::registerBasicCommands(console);
+        console.printLine("\n===Voice initialization==");
+        recorder = std::make_unique<Recorder>();
 
         console.printLine("\n===Video initialization==");
         std::string windowTitle = argv[0];
@@ -145,7 +148,7 @@ namespace Duel6 {
         net = std::make_unique<net::Net>();
 
       //  netHost->setGameProxyReference(*clientGameProxy, *serverGameProxy);
-        service = std::make_unique<AppService>(*font, console, *textureManager, *video, input, controlsManager, sound, scriptManager, *netHost, *netClient);
+        service = std::make_unique<AppService>(*recorder, *font, console, *textureManager, *video, input, controlsManager, sound, scriptManager, *netHost, *netClient);
 
         gameResources.load(console, sound, *textureManager);
 
@@ -194,6 +197,7 @@ namespace Duel6 {
         menu.reset();
         font.reset();
         video.reset();
+        recorder.reset();
 
         TTF_Quit();
         SDL_Quit();

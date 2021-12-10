@@ -172,6 +172,29 @@ namespace Duel6 {
     }
 
     void Round::update(Float32 elapsedTime) {
+        bool playVoice = false;
+        const static size_t frameLen = VOICE_FRAME_SIZE * 2 ;//sizeof(opus_int16)
+        static Uint8 voiceBuffer[frameLen];
+        static bool lastPlayVoice = false;
+        do{
+            playVoice = false;
+            for (Player &player : world.getPlayers()) {
+                if(player.isDeleted()){
+                    continue;
+                }
+                if(player.getDecodedAudio(voiceBuffer, frameLen)){
+                    playVoice = true;
+                    game.getAppService().getSound().auxBatchMix(voiceBuffer, frameLen);
+                }
+            }
+            if(playVoice){
+//                if(!lastPlayVoice){
+//                    game.getAppService().getSound().auxQueueSilence();
+//                }
+                game.getAppService().getSound().auxBatchSubmit();
+            }
+        } while (playVoice);
+
         // Check if there's a winner
         if (game.isServer || !game.networkGame) {
             if (!hasWinner()) {
@@ -183,20 +206,36 @@ namespace Duel6 {
                         if (player.isDeleted()) {
                             continue;
                         }
+                        player.setAnm();
+
                         player.tick++;
                     }
+                    world.updateSprites(elapsedTime);
                     return;
+                } else {
+                    for (Player &player : world.getPlayers()) {
+                        if (player.isDeleted()) {
+                            continue;
+                        }
+                        player.setAnm();
+                    }
                 }
             }
         } else {
             gameOverWait = std::max(gameOverWait - elapsedTime, 0.0f);
         }
 
+
         for (Player &player : world.getPlayers()) {
             if(player.isDeleted()){
                 continue;
             }
-            if(player.local){
+            if(player.isLocal()){
+                //DEBUGGING
+//                if(player.getDecodedAudio(voiceBuffer, frameLen)){
+//                    playVoice = true;
+//                    game.getAppService().getSound().auxBatchMix(voiceBuffer, frameLen);
+//                }
                 player.lateTicks = player.tick - player.lastConfirmedTick;
                 if(!game.isServer && game.networkGame){
                     player.compensateLag(world, elapsedTime);
@@ -214,6 +253,11 @@ namespace Duel6 {
                     player.makeGhost();
                 }
             } else {
+//                if(player.getDecodedAudio(voiceBuffer, frameLen)){
+//                    playVoice = true;
+//                    game.getAppService().getSound().auxBatchMix(voiceBuffer, frameLen);
+//                }
+
                 bool runElevators = player.lastConfirmedTick == player.tick;
 
                 if(game.isServer){
@@ -241,7 +285,16 @@ namespace Duel6 {
         }
         if(!hasWinner() || gameOverWait > (D6_GAME_OVER_WAIT - D6_ROUND_OVER_WAIT) ){
             world.update(elapsedTime);
+        } else {
+            world.updateSprites(elapsedTime);
         }
+//        if(playVoice){
+//            if(!lastPlayVoice){
+//               game.getAppService().getSound().auxQueueSilence();
+//            }
+//            game.getAppService().getSound().auxBatchSubmit();
+//        }
+        lastPlayVoice = playVoice;
         game.getAppService().getVideo().getRenderer().setGlobalTime(world.getTime());
 
         if (suddenDeathMode) {

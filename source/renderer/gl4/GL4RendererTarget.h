@@ -49,6 +49,7 @@ namespace Duel6 {
 
         GLuint width, height;
         GL4Renderer &renderer;
+        GLuint depthBufferFormat;
 
     public:
         GL4RendererTarget(GL4Renderer &renderer, ScreenParameters screenParameters);

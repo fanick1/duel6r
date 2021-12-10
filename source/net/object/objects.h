@@ -19,5 +19,6 @@
 #include "Weapon.h"
 #include "World.h"
 #include "PlayerInputs.h"
+#include "Voice.h"
 
 #endif /* SOURCE_NET_OBJECT_OBJECTS_H_ */

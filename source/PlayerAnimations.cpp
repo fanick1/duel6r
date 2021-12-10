@@ -142,6 +142,7 @@ namespace Duel6 {
           chat(animation, "Think"),
           console(animation, "Tilda"),
           unfocused(animation, "Sleep"),
+          speak(animation, "Voice"),
           doubleJump(doubleJumpAnimation, "Jump"){
     }
 
@@ -173,6 +174,8 @@ namespace Duel6 {
         return doubleJump;
     }
 
-
+    const AuxAnimation& AuxAnimations::getSpeak() const {
+        return speak;
+    }
 }
 

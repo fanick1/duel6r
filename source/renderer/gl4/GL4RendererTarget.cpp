@@ -34,7 +34,6 @@ namespace Duel6 {
             : width(screenParameters.getClientWidth()),
               height(screenParameters.getClientHeight()),
               renderer(renderer) {
-        GLuint depthBufferFormat;
         switch (screenParameters.getDepthBits()) {
             case 16: depthBufferFormat = GL_DEPTH_COMPONENT16; break;
             case 24: depthBufferFormat = GL_DEPTH_COMPONENT24; break;
@@ -127,6 +126,7 @@ namespace Duel6 {
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
             glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -147,8 +147,9 @@ namespace Duel6 {
     }
 
     GL4RendererTarget::~GL4RendererTarget() {
-        glDeleteFramebuffers(1, &fbo);
+        glDeleteFramebuffers(1, &fbo); //TODO delete other frame buffers?
         glDeleteTextures(1, &texture);
+        glDeleteTextures(2, bloomTexture);
         glDeleteTextures(1, &texture2);
         glDeleteTextures(1, &glowTexture);
         glDeleteTextures(1, &depthTexture);
@@ -244,6 +245,14 @@ namespace Duel6 {
     void GL4RendererTarget::resize(Int32 width, Int32 height) {
         this->width = width;
         this->height = height;
+
+        for(Texture t : {texture, texture2, glowTexture, bloomTexture[0], bloomTexture[1]}){
+            glBindTexture(GL_TEXTURE_2D_ARRAY, t);
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        }
+
+        glBindTexture(GL_TEXTURE_2D_ARRAY, depthTexture);
+        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, depthBufferFormat, width, height, 1, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
     }
 
     void GL4RendererTarget::rerender() {

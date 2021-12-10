@@ -121,6 +121,7 @@ set(D6R_SOURCES
         source/net/object/Shot.h
         source/net/object/Vector.h
         source/net/object/Vector2d.h
+        source/net/object/Voice.h
         source/net/object/Weapon.h
         source/net/object/World.h
 
@@ -486,7 +487,12 @@ set(D6R_SOURCES
         source/weapon/impl/Uzi.h
         source/weapon/impl/UziShot.cpp
         source/weapon/impl/UziShot.h
-        source/ChatMessage.h)
+        source/ChatMessage.h
+        source/voice/Decoder.cpp
+        source/voice/Decoder.h
+        source/voice/Recorder.cpp
+        source/voice/Recorder.h
+        source/voice/VoiceSettings.h)
 
 set (D6R_BINARYSTREAM_SOURCES
         source/net/binarystream/BinaryDeserializer.h
@@ -592,6 +598,7 @@ if (WIN32)
 endif (WIN32)
 
 set (D6R_UNITY_BUILD_SOURCES
+        source/voice/unity.cpp
         source/aseprite/unity.cpp
         source/bonus/unity.cpp
         source/collision/unity.cpp
@@ -694,6 +701,11 @@ find_library(LIB_SDL2_TTF SDL2_ttf DOC "Path to SDL2_ttf import library")
 find_library(LIB_SDL2_IMAGE SDL2_image DOC "Path to SDL2_image import library")
 target_link_libraries(${D6R_APP_NAME} ${LIB_SDL2_MAIN} ${LIB_SDL2} ${LIB_SDL2_MIXER} ${LIB_SDL2_TTF} ${LIB_SDL2_IMAGE})
 target_link_libraries(${D6R_UNITY_BUILD} ${LIB_SDL2_MAIN} ${LIB_SDL2} ${LIB_SDL2_MIXER} ${LIB_SDL2_TTF} ${LIB_SDL2_IMAGE})
+
+#Opus
+find_library(LIB_OPUS opus DOC "Path to Opus library")
+target_link_libraries(${D6R_APP_NAME} ${LIB_OPUS})
+target_link_libraries(${D6R_UNITY_BUILD} ${LIB_OPUS})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/debug)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/release)

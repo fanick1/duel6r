@@ -30,6 +30,8 @@
 #include "Sound.h"
 
 namespace Duel6 {
+    Uint8 Sound::voiceMixBuffer[Sound::frameLen];
+
     Sound::Sample::Sample(Sound *sound, Mix_Chunk *chunk)
             : sound(sound), chunk(chunk) {}
 
@@ -77,7 +79,7 @@ namespace Duel6 {
             : console(console), channels(channels), playing(false) {
         console.printLine("\n===Initialization of sound sub-system===");
         console.printLine("...Starting SDL_mixer library");
-
+        memset(Sound::voiceMixBuffer, 0, frameLen);
 #ifdef D6_RENDERER_HEADLESS
         headless = true;
         console.printLine("Running in headless mode, suppressing sound system.");
@@ -87,9 +89,22 @@ namespace Duel6 {
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
             D6_THROW(SoundException, Format("SDL_Mixer error: {0}") << SDL_GetError());
         }
+        auto name = SDL_GetAudioDeviceName(0, 0); //TODO
+        SDL_AudioSpec requested, received;
+        requested.channels = 1;
+        requested.format = AUDIO_S16LSB;
+        requested.freq = 48000; //TODO
+        requested.samples = 960;//20ms //480;//DEBUG
+        requested.callback = nullptr;
+
+        auxdevice = SDL_OpenAudioDevice(name, SDL_FALSE, &requested, &received, SDL_FALSE);
+        if(auxdevice < 2){
+            D6_THROW(SoundException, Format("SDL_OpenAudioDevice error: {0}") << SDL_GetError());
+        }
+        SDL_PauseAudioDevice(auxdevice, SDL_FALSE);
 
         // Init SDL_mixer library
-        if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, 1024) == -1) {
+        if (Mix_OpenAudio(48000, AUDIO_S16LSB, 2, 480) == -1) {
             D6_THROW(SoundException, Format("SDL_Mixer error: {0}") << Mix_GetError());
         }
         if(Mix_Init(MIX_INIT_OGG) != MIX_INIT_OGG){
@@ -178,7 +193,40 @@ namespace Duel6 {
     void Sound::volume(Int32 volume) {
         if(headless) return;
         console.printLine(Format("...Volume set to {0}") << volume);
+        vol = volume;
         Mix_VolumeMusic(volume);
         Mix_Volume(-1, volume);
     }
+
+    void Sound::auxBatchMix(Uint8 * buf, int len){
+        if(headless) return;
+        SDL_MixAudioFormat(Sound::voiceMixBuffer, buf, AUDIO_S16LSB, len, SDL_MIX_MAXVOLUME);
+    }
+
+    void Sound::auxBatchSubmit(){
+        if(headless) return;
+        auto queued = SDL_GetQueuedAudioSize(auxdevice);
+        auto res = SDL_QueueAudio(auxdevice, Sound::voiceMixBuffer, frameLen);
+        if(res == -1){
+            printf("Failed to queue audio\n");
+            return;
+        }
+//        printf("Queued %d\n", queued);
+        memset(Sound::voiceMixBuffer, 0, frameLen);
+    }
+    void Sound::auxQueueSilence() {
+        if(headless) return;
+        static Uint8 silence[frameLen * 4] = {1};
+        SDL_QueueAudio(auxdevice, silence, frameLen);
+    }
+    void Sound::auxPause(int i) {
+        if(headless) return;
+        SDL_PauseAudioDevice(auxdevice, SDL_TRUE);
+    }
+
+    void Sound::auxUnpause() {
+        if(headless) return;
+        SDL_PauseAudioDevice(auxdevice, SDL_FALSE);
+    }
+
 }

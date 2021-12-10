@@ -25,7 +25,7 @@ namespace Duel6 {
             if (!game->isServer) {
                 player.setPosition(position.x, position.y, 0);
             }
-            if (!player.local) {
+            if (!player.isLocal()) {
                 player.setControllerState(p.controls);
                 player.setOrientation(p.orientationLeft ? Orientation::Left : Orientation::Right);
             }
@@ -42,9 +42,31 @@ namespace Duel6 {
         }
 
         void ClientGameProxy::handle(MessageBroadcast &m) {
+            if (idmap.count(m.playerId) == 0) {
+                std::cerr << "Player id " << m.playerId << " not found, skipping MessageBroadcast\n";
+                return;
+            }
             auto pos = idmap[m.playerId];
             auto &player = game->players[pos];
             game->broadcastMessage(player, m.text, true);
+        }
+
+        void ClientGameProxy::handle(Peer *peer, ServerGameProxy *serverGameProxy, Voice &v) {
+            if (idmap.count(v.playerId) == 0) {
+                std::cerr << "Player id " << v.playerId << " not found, skipping Voice\n";
+                return;
+            }
+            auto pos = idmap[v.playerId];
+            auto &player = game->players[pos];
+
+            if(game->isServer){
+                if(player.getClientId() != peer->getClientID()){
+                    std::cerr << "Player's client id " << player.getClientId()  << " != peer.getClientID() " << peer->getClientID()<< "\n";
+                    return;
+                }
+                serverGameProxy->relayVoice(peer, v);
+            }
+            game->enqueueVoice(player, v.buffer, v.len);
         }
 
         void ClientGameProxy::handle(Peer &peer, ChatMessage &m) {
@@ -94,7 +116,7 @@ namespace Duel6 {
                 auto pos = idmap[p.id];
                 auto &player = game->players[pos];
 
-                if (!player.local) {
+                if (!player.isLocal()) {
                     player.lastConfirmedTick = piu.confirmInputTick;
                     uint16_t missed = (uint16_t) (player.lastConfirmedTick - player.tick);
                     if (missed > 64) {
@@ -194,7 +216,7 @@ namespace Duel6 {
                     player.confirmedLife = p.life;
                     player.setAir(p.air);
                     player.setAmmo(p.ammo);
-                    if(!player.local && p.timeToReload > 0.1f){ // prevent multiple-shot-like effect
+                    if(!player.isLocal() && p.timeToReload > 0.1f){ // prevent multiple-shot-like effect
                         player.setReloadTime(p.timeToReload);
                     }
                     player.rtt = p.rtt;
@@ -216,7 +238,7 @@ namespace Duel6 {
                     }
                 }
 
-                if (!player.local) {
+                if (!player.isLocal()) {
                     player.setLife(player.confirmedLife);
                     player.setFlags(player.confirmedFlags);
                     const size_t maxMissed = Player::INPUTS;
@@ -471,11 +493,12 @@ namespace Duel6 {
             for (auto &p : r.connectingPlayers) {
                 p.clientId = peer.getClientID();
             }
+            auto countOthers = r.connectingPlayers.size() - 1;
             if (r.connectingPlayers.size() > 0) {
                 std::string description = r.connectingPlayers[0].name;
-                if (r.connectingPlayers.size() > 1) {
+                if (countOthers > 0) {
                     std::stringstream ss;
-                    ss << " (+" << r.connectingPlayers.size() - 1 << ")";
+                    ss << " (+" << countOthers << " other player" << (countOthers > 1 ? "s" : "") << ")";
                     description += ss.str();
                 }
                 peer.setDescription(description);
@@ -483,7 +506,7 @@ namespace Duel6 {
                 peer.setDescription(hostToIPaddress(peer.getEnetPeer().address.host, peer.getEnetPeer().address.port));
             }
             std::stringstream ss;
-            ss << peer.getDescription() << " is connecting from " << hostToIPaddress(peer.getEnetPeer().address.host, peer.getEnetPeer().address.port);
+            ss << peer.getDescription() << (countOthers > 0 ? " are" : " is") << " connecting from " << hostToIPaddress(peer.getEnetPeer().address.host, peer.getEnetPeer().address.port);
             game->broadcastChatMessage(ss.str(), false, true, "SERVER");
             joinPlayers(r.connectingPlayers);
             sendGameState(peer, *game);
@@ -608,7 +631,7 @@ namespace Duel6 {
            );
             player.getIndicators().getReload().show(player.getReloadInterval() + Indicator::FADE_DURATION);
             player.getIndicators().getBullets().show();
-            if(player.local){
+            if(player.isLocal()){
                 game->spawnShot(std::move(x));
             } else {
                 game->spawnRemoteShot(std::move(x));

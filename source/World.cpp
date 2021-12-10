@@ -62,7 +62,7 @@ namespace Duel6 {
         }
     }
 
-    void World::update(Float32 elapsedTime) {
+    void World::updateSprites(Float32 elapsedTime) {
         time += elapsedTime;
         redraw |= level->scrapRedraw();
         if(redraw){
@@ -71,6 +71,13 @@ namespace Duel6 {
         spriteList.update(elapsedTime);
         explosionList.update(elapsedTime);
         levelRenderData.update(elapsedTime);
+    }
+
+    void World::update(Float32 elapsedTime) {
+        updateSprites(elapsedTime);
+//        spriteList.update(elapsedTime);
+//        explosionList.update(elapsedTime);
+//        levelRenderData.update(elapsedTime);
         shotList.update(*this, elapsedTime);
         elevatorList.update(elapsedTime);
         messageQueue.update(elapsedTime);

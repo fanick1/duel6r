@@ -38,8 +38,8 @@ namespace Duel6 {
               explosionsTarget(renderer.makeTarget(video.getScreen()))
               {
         video.onResize([this](Int32 width, Int32 height){
-         //  target->resize(width, height);
-         //  explosionsTarget->resize(width, height);
+           target->resize(width, height);
+           explosionsTarget->resize(width, height);
            rerender();
         });
     }
@@ -261,7 +261,7 @@ namespace Duel6 {
 
         Float32 radius = 0.5f + 0.5f * std::abs(D6_YOU_ARE_HERE_DURATION / 2 - remainingTime);
         for (const Player &player : game.getPlayers()) {
-            if(player.isDeleted() || !player.local){
+            if(player.isDeleted() || !player.isLocal()){
                 continue;
             }
             Vector playerCentre = player.getCentre();
@@ -622,10 +622,11 @@ namespace Duel6 {
 
     void WorldRenderer::fullScreen() const {
         Float32 remainingTime = game.getRound().getRemainingYouAreHere();
+        setView(0, 0, video.getScreen().getClientWidth(), video.getScreen().getClientHeight());
+
         if(game.getRound().getWorld().redrawn()){
             rerender();
         }
-        setView(0, 0, video.getScreen().getClientWidth(), video.getScreen().getClientHeight());
         renderer.clearBuffers(); // attempt to resolve rendering issues in Alcatraz
         Color fadeColor = remainingTime > 0 ? getRoundStartFadeColor(remainingTime) : Color::WHITE;
         target->apply(fadeColor);

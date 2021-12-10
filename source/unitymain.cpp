@@ -1,3 +1,4 @@
+#include "voice/unity.cpp"
 #include "aseprite/unity.cpp"
 #include "bonus/unity.cpp"
 #include "collision/unity.cpp"

@@ -20,7 +20,7 @@ namespace Duel6::net {
             CHAT,
             CONSOLE,
             FOCUS,
-            AUX3,
+            SPEAKING,
             AUX4,
             AUX5,
             AUX6,

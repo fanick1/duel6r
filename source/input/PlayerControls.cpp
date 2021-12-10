@@ -61,12 +61,13 @@ namespace Duel6 {
             new NoOpControl(),
             new NoOpControl(),
             new NoOpControl(),
+            new NoOpControl(),
             new NoOpControl());
     }
     std::unique_ptr<PlayerControls>
     PlayerControls::keyboardControls(const std::string &name, const Input &input, SDL_Keycode left, SDL_Keycode right,
                                      SDL_Keycode up, SDL_Keycode down, SDL_Keycode shoot, SDL_Keycode pick,
-                                     SDL_Keycode status) {
+                                     SDL_Keycode status, SDL_Keycode talk) {
         auto cleft = new KeyboardButton(input, left);
         auto cright = new KeyboardButton(input, right);
         auto cup = new KeyboardButton(input, up);
@@ -74,7 +75,8 @@ namespace Duel6 {
         auto cshoot = new KeyboardButton(input, shoot);
         auto cpick = new KeyboardButton(input, pick);
         auto cstatus = new KeyboardButton(input, status);
-        auto controls = std::make_unique<PlayerControls>(name, cleft, cright, cup, cdown, cshoot, cpick, cstatus);
+        auto ctalk = new KeyboardButton(input, talk);
+        auto controls = std::make_unique<PlayerControls>(name, cleft, cright, cup, cdown, cshoot, cpick, cstatus, ctalk);
         return controls;
     }
 
@@ -92,7 +94,8 @@ namespace Duel6 {
         auto pick = new ComplexControl(new JoypadButton(gameController, GameController::GameControllerButton::CONTROLLER_BUTTON_B),
                                        new JoypadAxis(gameController, GameController::GameControllerAxis::CONTROLLER_AXIS_TRIGGERLEFT, JoypadAxis::Direction::Right));
         auto status = new JoypadButton(gameController, GameController::GameControllerButton::CONTROLLER_BUTTON_Y);
-        auto controls = std::make_unique<PlayerControls>(name, left, right, up, down, shoot, pick, status);
+        auto talk = new JoypadButton(gameController, GameController::GameControllerButton::CONTROLLER_BUTTON_RIGHTSHOULDER);
+        auto controls = std::make_unique<PlayerControls>(name, left, right, up, down, shoot, pick, status, talk);
         return controls;
     }
 
@@ -101,27 +104,27 @@ namespace Duel6 {
         controls.push_back(
                 PlayerControls::keyboardControls("K1: Arrows", input, SDLK_LEFT, SDLK_RIGHT, SDLK_UP, SDLK_DOWN,
                                                  SDLK_RCTRL,
-                                                 SDLK_RSHIFT, SDLK_RETURN));
+                                                 SDLK_RSHIFT, SDLK_RETURN, SDLK_BACKSPACE));
         controls.push_back(
                 PlayerControls::keyboardControls("K2: WSAD", input, SDLK_a, SDLK_d, SDLK_w, SDLK_s, 
                                                  SDLK_q,
-                                                 SDLK_1, SDLK_2));
+                                                 SDLK_1, SDLK_2, SDLK_3));
         controls.push_back(
                 PlayerControls::keyboardControls("K3: IKJL", input, SDLK_j, SDLK_l, SDLK_i, SDLK_k, 
                                                  SDLK_u,
-                                                 SDLK_7, SDLK_8));
+                                                 SDLK_7, SDLK_8, SDLK_9));
         controls.push_back(
                 PlayerControls::keyboardControls("K4: 5213", input, SDLK_KP_1, SDLK_KP_3, SDLK_KP_5, SDLK_KP_2,
                                                  SDLK_KP_PERIOD,
-                                                 SDLK_KP_0, SDLK_KP_ENTER));
-      	controls.push_back(
-				        PlayerControls::keyboardControls("K5: TGFH", input, SDLK_f, SDLK_h, SDLK_t, SDLK_g,
+                                                 SDLK_KP_0, SDLK_KP_ENTER, SDLK_KP_6));
+        controls.push_back(
+                PlayerControls::keyboardControls("K5: TGFH", input, SDLK_f, SDLK_h, SDLK_t, SDLK_g,
                                                  SDLK_r,
-                                                 SDLK_4, SDLK_5));
+                                                 SDLK_4, SDLK_5, SDLK_6));
         controls.push_back(
                 PlayerControls::keyboardControls("K6: /879", input, SDLK_KP_7, SDLK_KP_9, SDLK_KP_DIVIDE, SDLK_KP_8,
                                                  SDLK_PAGEDOWN,
-                                                 SDLK_PAGEUP, SDLK_END));
+                                                 SDLK_PAGEUP, SDLK_END, SDLK_HOME));
         noopControls = PlayerControls::noOpControls("no-op");
     }
 

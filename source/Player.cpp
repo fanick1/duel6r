@@ -39,7 +39,10 @@
 #include "math/Math.h"
 #include "Video.h"
 #include "PlayerEventListener.h"
+#include "voice/Decoder.h"
 #include "Game.h"
+#include "voice/Recorder.h"
+
 namespace Duel6 {
 
     static const float JUMP_FACTOR = -0.7f;
@@ -52,7 +55,9 @@ namespace Duel6 {
                    Int32 id, Int32 team,
                    Int32 clientId,
                    Int32 clientLocalId,
-                   size_t pos)
+                   size_t pos,
+                   bool local,
+                   Recorder * recorder)
             : game(game),
               person(&person),
               skin(skin),
@@ -65,11 +70,21 @@ namespace Duel6 {
               team(team),
               clientId(clientId),
               clientLocalId(clientLocalId),
+              local(local),
               pos(pos){
         flags = 0;
         camera.rotate(180.0, 0.0, 0.0);
         controllerState = 0;
         unconfirmedInputs.fill(0);
+
+        if(local){
+            voiceRecorder = recorder;
+//            (*voiceRecorder)->unpause();
+        } else {
+            voiceDecoder = std::make_unique<Decoder>();
+        }
+        voiceDecoder = std::make_unique<Decoder>(); //DEBUGGING
+
     }
 
     Player::~Player() {
@@ -405,10 +420,35 @@ namespace Duel6 {
         } else {
             unsetFlag(FlagKnee);
         }
+
+        if (controllerState & ButtonTalk) {
+            speaking = true;
+        } else {
+            speaking = false;
+        }
     }
+
+    void Player::checkTalkKey() {
+        // we need to call startRecording/stopRecording in pairs
+        if(!(controllerState & ButtonTalk)){
+            if(controls->getTalk().isPressed()){
+                (*voiceRecorder)->startRecording(id);
+            }
+        } else {
+            if(!controls->getTalk().isPressed()){
+                (*voiceRecorder)->stopRecording();
+            }
+        }
+        if (controls->getTalk().isPressed()) {
+            controllerState |= ButtonTalk;
+        } else {
+            controllerState &= ~ButtonTalk;
+        }
+    };
 
     void Player::updateControllerStatus() {
         if(local){
+            checkTalkKey();
             controllerState = 0;
         } else {
             return;
@@ -434,6 +474,9 @@ namespace Duel6 {
         }
         if (controls.getStatus().isPressed()) {
             controllerState |= ButtonStatus;
+        }
+        if (controls.getTalk().isPressed()) {
+            controllerState |= ButtonTalk;
         }
     }
 
@@ -648,10 +691,12 @@ namespace Duel6 {
             auxAnimation = auxAnimations->getUnfocused().get();
         } else if(inConsole){
             auxAnimation = auxAnimations->getConsole().get();
+        } else if(speaking){
+            auxAnimation = auxAnimations->getSpeak().get();
         } else {
             auxAnimation = auxAnimations->getChat().get();
-        }
-        bool auxVisible = chatting || inConsole || !focused;
+        } // TODO add speaker animation, using chat for now
+        bool auxVisible = chatting || speaking || inConsole || !focused;
         auxSprite->setPosition(thinkPosition, 1.0f)
             .setNoDepth(true)
             .setAnimation(auxAnimation)
@@ -1079,4 +1124,33 @@ namespace Duel6 {
     void Player::setFocused(bool value) {
         focused = value;
     }
+
+    void Player::enqueueVoice(const std::unique_ptr<Uint8[]> & encodedVoice, size_t len){
+        voiceDecoder->get()->pushEncodedData(encodedVoice.get(), len);
+    }
+
+    bool Player::getDecodedAudio(Uint8 *buff, int len) {
+//        if(local) { //DEBUGGING
+//            return false;
+//        }
+        return voiceDecoder->get()->getAudio(buff, len);
+    }
+
+    bool Player::isLocal() const {
+        return local;
+    }
+
+    void Player::setLocal(bool local) {
+        Player::local = local;
+    }
+
+    bool Player::isSpeaking() const {
+        return speaking;
+    }
+
+    void Player::setSpeaking(bool value) {
+        speaking = value;
+
+    }
+
 }
