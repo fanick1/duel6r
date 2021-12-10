@@ -34,7 +34,7 @@ namespace Duel6 {
             if (nethost == nullptr) {
                 D6_THROW(Exception, "Failed to start net client  \\(^^)/ ");
             }
-
+            enet_host_compress_with_range_coder(nethost);
             // To make connection to master server work
             serviceHost.reset(nethost);
             state = ServiceState::STARTING;

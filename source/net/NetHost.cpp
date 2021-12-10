@@ -38,10 +38,10 @@ namespace Duel6 {
             }
             address.port = port;
             ENetHost *nethost = enet_host_create(&address, MAX_PEERS, CHANNELS, 0, 1000000);
-
             if (nethost == nullptr) {
                 D6_THROW(Exception, "cannot start server (port taken?)");
             }
+            enet_host_compress_with_range_coder(nethost);
 
             console.printLine("NetHost::listen start");
             start(nethost);
