@@ -88,6 +88,9 @@ namespace Duel6 {
     }
 
     Player::~Player() {
+        if(voiceRecorder.has_value()){
+            (*voiceRecorder)->stopRecording(clientLocalId);
+        }
     }
 
     void Player::startRound(World &world, Int32 startBlockX, Int32 startBlockY, Int32 ammo, const Weapon &weapon) {
@@ -421,27 +424,21 @@ namespace Duel6 {
             unsetFlag(FlagKnee);
         }
 
-        if (controllerState & ButtonTalk) {
-            speaking = true;
-        } else {
-            speaking = false;
+        if(isLocal()){ // workaround for online multiplayer - animation gets stuck on the first frame for remote players
+            if (controllerState & ButtonTalk) {
+                speaking = true;
+            } else {
+                speaking = false;
+            }
         }
     }
 
     void Player::checkTalkKey() {
-        // we need to call startRecording/stopRecording in pairs
-        if(!(controllerState & ButtonTalk)){
-            if(controls->getTalk().isPressed()){
-                (*voiceRecorder)->startRecording(id);
-            }
-        } else {
-            if(!controls->getTalk().isPressed()){
-                (*voiceRecorder)->stopRecording();
-            }
-        }
         if (controls->getTalk().isPressed()) {
+            (*voiceRecorder)->startRecording(clientLocalId);
             controllerState |= ButtonTalk;
         } else {
+            (*voiceRecorder)->stopRecording(clientLocalId);
             controllerState &= ~ButtonTalk;
         }
     };
@@ -682,10 +679,9 @@ namespace Duel6 {
                 .setOrientation(getOrientation())
                 .setDraw(hasGun() && isAlive() && !isPickingGun())
                 .setAlpha(alpha);
-        Vector thinkPosition = getSpritePosition();
-        thinkPosition.y += 1.5f;
-        thinkPosition.x += 0.04f;
-
+        Vector auxPosition = getSpritePosition();
+        auxPosition.y += 1.5f;
+        auxPosition.x += 0.04f;
         Animation auxAnimation;
         if(!focused){
             auxAnimation = auxAnimations->getUnfocused().get();
@@ -697,10 +693,10 @@ namespace Duel6 {
             auxAnimation = auxAnimations->getChat().get();
         } // TODO add speaker animation, using chat for now
         bool auxVisible = chatting || speaking || inConsole || !focused;
-        auxSprite->setPosition(thinkPosition, 1.0f)
+        auxSprite->setPosition(auxPosition, 1.0f)
             .setNoDepth(true)
             .setAnimation(auxAnimation)
-            .setDraw(isAlive() && auxVisible);
+            .setDraw((isAlive() && auxVisible) || speaking); //TODO speaking is always visible (even on dead players)
     }
 
     void Player::prepareCam(const Video &video, ScreenMode screenMode, Int32 zoom, Int32 levelSizeX, Int32 levelSizeY) {
@@ -1076,6 +1072,9 @@ namespace Duel6 {
 
     void Player::setDeleted(bool value) {
         die();
+        if(voiceRecorder.has_value()){
+            (*voiceRecorder)->stopRecording(clientLocalId);
+        }
         sprite->setDraw(false);
         this->deleted = value;
     }
@@ -1130,9 +1129,6 @@ namespace Duel6 {
     }
 
     bool Player::getDecodedAudio(Uint8 *buff, int len) {
-//        if(local) { //DEBUGGING
-//            return false;
-//        }
         return voiceDecoder->get()->getAudio(buff, len);
     }
 

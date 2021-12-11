@@ -142,18 +142,16 @@ namespace Duel6 {
     }
 
     void Round::checkWinner() {
-        std::vector<Player> &allPlayers = world.getPlayers();
-
-        alivePlayers.clear();
-
-        // todo: rewrite to copy_if if it is possible to do it that way without billion lines of compile errors:-)
-        for (Player &player : allPlayers) {
-            if (player.isAlive() && !player.isDeleted()) {
-                alivePlayers.push_back(&player);
-            }
-        }
-
         if (!game.networkGame || game.isServer){
+            alivePlayers.clear();
+
+            // todo: rewrite to copy_if if it is possible to do it that way without billion lines of compile errors:-)
+            for (Player &player : world.getPlayers()) {
+                if (player.isAlive() && !player.isDeleted()) {
+                    alivePlayers.push_back(&player);
+                }
+            }
+
             if (!suddenDeathMode && game.getMode().checkForSuddenDeathMode(world, alivePlayers)) {
                 suddenDeathMode = true;
             }
@@ -175,7 +173,6 @@ namespace Duel6 {
         bool playVoice = false;
         const static size_t frameLen = VOICE_FRAME_SIZE * 2 ;//sizeof(opus_int16)
         static Uint8 voiceBuffer[frameLen];
-        static bool lastPlayVoice = false;
         do{
             playVoice = false;
             for (Player &player : world.getPlayers()) {
@@ -188,9 +185,6 @@ namespace Duel6 {
                 }
             }
             if(playVoice){
-//                if(!lastPlayVoice){
-//                    game.getAppService().getSound().auxQueueSilence();
-//                }
                 game.getAppService().getSound().auxBatchSubmit();
             }
         } while (playVoice);
@@ -225,7 +219,6 @@ namespace Duel6 {
             gameOverWait = std::max(gameOverWait - elapsedTime, 0.0f);
         }
 
-
         for (Player &player : world.getPlayers()) {
             if(player.isDeleted()){
                 continue;
@@ -253,11 +246,6 @@ namespace Duel6 {
                     player.makeGhost();
                 }
             } else {
-//                if(player.getDecodedAudio(voiceBuffer, frameLen)){
-//                    playVoice = true;
-//                    game.getAppService().getSound().auxBatchMix(voiceBuffer, frameLen);
-//                }
-
                 bool runElevators = player.lastConfirmedTick == player.tick;
 
                 if(game.isServer){
@@ -288,13 +276,7 @@ namespace Duel6 {
         } else {
             world.updateSprites(elapsedTime);
         }
-//        if(playVoice){
-//            if(!lastPlayVoice){
-//               game.getAppService().getSound().auxQueueSilence();
-//            }
-//            game.getAppService().getSound().auxBatchSubmit();
-//        }
-        lastPlayVoice = playVoice;
+
         game.getAppService().getVideo().getRenderer().setGlobalTime(world.getTime());
 
         if (suddenDeathMode) {

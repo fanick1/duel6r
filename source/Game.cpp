@@ -83,7 +83,7 @@ namespace Duel6 {
                 std::unique_ptr<Uint8[]> buffer(new Uint8[maxLen]);
                 size_t len = recorder.dequeueEncodedAudio(buffer.get(), maxLen, error);
                 if(!error){
-                    broadcastVoice(recorder.getOwningPlayerId(), buffer, len);
+                    broadcastVoice(players[recorder.getOwningPlayerId()].getId(), buffer, len);
                 } else {
                     printf("Game::update dequeueEncodedAudio error\n");
                     break;

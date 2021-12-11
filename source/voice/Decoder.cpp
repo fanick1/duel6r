@@ -32,18 +32,9 @@ namespace Duel6{
     bool Decoder::getAudio(Uint8 *buff, int len) {
         int avail = SDL_AudioStreamAvailable(stream);
         if(avail < len) {
-//            printf("avail < len, skipping\n");
             return false;
         }
         SDL_AudioStreamGet(stream, buff, len);
-//        while (avail >= len) {
-//            SDL_AudioStreamGet(stream, buff, len);
-////            if (avail > len * 3) { //lag
-////                printf("Stream Cleaned\n");
-////                SDL_AudioStreamClear(stream);
-////            }
-//            avail = SDL_AudioStreamAvailable(stream);
-//        }
         return true;
     }
 

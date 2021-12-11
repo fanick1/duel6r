@@ -6,9 +6,11 @@
 #define DUEL6R_RECORDER_H
 
 #include <string>
+#include <bitset>
 #include <SDL2/SDL_audio.h>
 #include "../Type.h"
 #include "VoiceSettings.h"
+#include "../Defines.h"
 class OpusEncoder;
 
 namespace Duel6 {
@@ -31,10 +33,9 @@ namespace Duel6 {
         // if more players play on the same computer,
         // we have to track number of players simultaneously using this device
         // TODO: The voice packet should carry info of all the speaking players.
-        // TODO: case when player A triggers recording, then player B starts and later player A stops (the owner should transfer to B)
-        size_t triggerCnt = 0;
+        std::bitset<D6_MAX_PLAYERS> clients;
     public:
-        Recorder(int deviceIndex = 0);
+        explicit Recorder(int deviceIndex = 0);
 
         ~Recorder();
 
@@ -47,13 +48,11 @@ namespace Duel6 {
 
         void startRecording(Int32 playerId);
 
-        void stopRecording();
+        void stopRecording(Int32 playerId);
 
         bool hasEncodedAudioReady();
 
         [[nodiscard]] size_t dequeueEncodedAudio(Uint8 *buffer, const size_t maxLen, bool &errorOut);
-
-        void dequeueRawAudio(Uint8 *buff, int maxLen);
 
         Int32 getOwningPlayerId();
 

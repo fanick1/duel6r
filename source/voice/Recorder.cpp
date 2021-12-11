@@ -27,10 +27,10 @@ namespace Duel6 {
         if (error != OPUS_OK) {
             printf("Failed to initialize Opus encoder %d\n", error);
         }
-        opus_encoder_ctl(opusEncoder, OPUS_SET_DTX(1));
+        opus_encoder_ctl(opusEncoder, OPUS_SET_DTX(0));
         opus_encoder_ctl(opusEncoder, OPUS_SET_COMPLEXITY(10));
 //        opus_encoder_ctl(opusEncoder, OPUS_SET_PREDICTION_DISABLED(1));
-        opus_encoder_ctl(opusEncoder, OPUS_SET_PACKET_LOSS_PERC(0));
+        opus_encoder_ctl(opusEncoder, OPUS_SET_PACKET_LOSS_PERC(10));
         opus_encoder_ctl(opusEncoder, OPUS_SET_VBR(1));
     }
 
@@ -63,6 +63,7 @@ namespace Duel6 {
     }
 
     void Recorder::close() {
+        clients.reset();
         if (opened) {
             SDL_CloseAudioDevice(deviceId);
             opened = false;
@@ -103,15 +104,16 @@ namespace Duel6 {
     }
 
     void Recorder::startRecording(Int32 playerId) {
-        if(triggerCnt == 0){
+        if(clients.none()){
             owningPlayerId = playerId;
         }
-        triggerCnt++;
+        clients.set(playerId);
         unpause();
     }
 
-    void Recorder::stopRecording() {
-        if(--triggerCnt == 0){
+    void Recorder::stopRecording(Int32 playerId) {
+        clients.reset(playerId);
+        if(clients.none()){
             pause();
         }
     }
@@ -122,10 +124,10 @@ namespace Duel6 {
         }
         SDL_AudioStreamPut(stream, buff, len);
     }
+
     size_t Recorder::dequeueEncodedAudio(Uint8 *buffer, const size_t maxLen, bool &errorOut) {
         static opus_int16 soundFrame[VOICE_FRAME_SIZE];
 
-//        int avail = SDL_AudioStreamAvailable(stream) * sizeof(opus_int16); // Uint8 in stream vs opus_int16 in soundFrame
         SDL_LockAudioDevice(deviceId); //TODO check if locking is necessary ( check SDL_AudioStream thread safety)
         auto readRes = SDL_AudioStreamGet(stream, (Uint8 *) soundFrame, VOICE_FRAME_SIZE * sizeof(opus_int16));
         SDL_UnlockAudioDevice(deviceId);
@@ -147,15 +149,6 @@ namespace Duel6 {
         }
         errorOut = false;
         return res;
-    }
-
-    void Recorder::dequeueRawAudio(Uint8 *buff, int len) {
-        SDL_LockAudioDevice(deviceId);
-        int avail = SDL_AudioStreamAvailable(stream);
-        if (avail >= len) {
-            SDL_AudioStreamGet(stream, buff, len);
-        }
-        SDL_UnlockAudioDevice(deviceId);
     }
 
     Int32 Recorder::getOwningPlayerId() {
