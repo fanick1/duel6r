@@ -30,7 +30,7 @@ enum class REQUEST_TYPE {
 
     GAME_CONNECTION, // permanent workaround
 
-    MASTER_PUSH_NAT_PEERS_TO_SERVER, // experimental - master server will call back to the server and push any peers requesting connection through the NAT
+    MASTER_PUSH_NAT_PEERS_TO_SERVER, // master server will call back to the server and push any peers requesting connection through the NAT
     COUNT
 };
 

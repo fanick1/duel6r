@@ -17,7 +17,7 @@ StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier=duel6-masterserver
 
-ExecStart=/home/ubuntu/masterserver/duel6r-masterserver-1.0.0 0.0.0.0 25900
+ExecStart=/home/ubuntu/masterserver/duel6r-masterserver-1.1.0 0.0.0.0 25900
 SuccessExitStatus=143
 TimeoutStopSec=120
 Restart=on-failure

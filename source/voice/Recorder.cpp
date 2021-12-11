@@ -125,7 +125,7 @@ namespace Duel6 {
     size_t Recorder::dequeueEncodedAudio(Uint8 *buffer, const size_t maxLen, bool &errorOut) {
         static opus_int16 soundFrame[VOICE_FRAME_SIZE];
 
-        int avail = SDL_AudioStreamAvailable(stream) * sizeof(opus_int16); // Uint8 in stream vs opus_int16 in soundFrame
+//        int avail = SDL_AudioStreamAvailable(stream) * sizeof(opus_int16); // Uint8 in stream vs opus_int16 in soundFrame
         SDL_LockAudioDevice(deviceId); //TODO check if locking is necessary ( check SDL_AudioStream thread safety)
         auto readRes = SDL_AudioStreamGet(stream, (Uint8 *) soundFrame, VOICE_FRAME_SIZE * sizeof(opus_int16));
         SDL_UnlockAudioDevice(deviceId);
@@ -134,8 +134,8 @@ namespace Duel6 {
             printf("Failed to get audio from stream %i\n", readRes);
             errorOut = true;
             return 0;
-        } else if(readRes < VOICE_FRAME_SIZE * sizeof(opus_int16)){
-            printf("Stream underflow %i/%u\n", readRes, VOICE_FRAME_SIZE * sizeof(opus_int16));
+        } else if(readRes < (int) (VOICE_FRAME_SIZE * sizeof(opus_int16))){
+            printf("Stream underflow %i/%lu\n", readRes, VOICE_FRAME_SIZE * sizeof(opus_int16));
         }
         int res = opus_encode(opusEncoder, soundFrame, VOICE_FRAME_SIZE, buffer, maxLen);
         if (res < 0) {
@@ -143,7 +143,7 @@ namespace Duel6 {
             errorOut = true;
             return 0;
         } else {
-            printf("opus res %d\n", res);
+//            printf("opus res %d\n", res);
         }
         errorOut = false;
         return res;

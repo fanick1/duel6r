@@ -638,7 +638,7 @@ set_target_properties(${D6R_UNITY_BUILD} PROPERTIES VERSION 6.0.0 DEBUG_OUTPUT_N
 set(D6R_MASTERSERVER_NAME "duel6r-masterserver" CACHE STRING "master server executable")
 set(D6R_MASTERSERVER_DEBUG_NAME "duel6rd-masterserver" CACHE STRING "master server debug executable")
 add_executable(${D6R_MASTERSERVER_NAME} ${D6R_MASTERSERVER_SOURCES})
-set_target_properties(${D6R_MASTERSERVER_NAME} PROPERTIES VERSION 1.0.0 DEBUG_OUTPUT_NAME ${D6R_MASTERSERVER_DEBUG_NAME})
+set_target_properties(${D6R_MASTERSERVER_NAME} PROPERTIES VERSION 1.1.0 DEBUG_OUTPUT_NAME ${D6R_MASTERSERVER_DEBUG_NAME})
 
 #########################################################################
 # net libs

@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
         std::cerr << "An error occurred while trying to create an ENet server host.\n";
         exit(EXIT_FAILURE);
     }
-
+    enet_host_compress_with_range_coder(server);
     std::cout << "Master local address: " << hostToIPaddress(server->address.host, server->address.port) << "\n";
     ENetEvent event;
 
