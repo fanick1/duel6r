@@ -46,7 +46,7 @@ namespace Duel6 {
         Texture glowTexture;
         Texture bloomTexture[2];
         Texture depthTexture;
-
+        float bloomTextureRatio;
         GLuint width, height;
         GL4Renderer &renderer;
         GLuint depthBufferFormat;
@@ -65,7 +65,6 @@ namespace Duel6 {
         void rerender() override;
 
     private:
-        void glow();
         void bloom();
 
         void blit();

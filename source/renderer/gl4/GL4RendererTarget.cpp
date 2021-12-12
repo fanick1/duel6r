@@ -39,7 +39,7 @@ namespace Duel6 {
             case 24: depthBufferFormat = GL_DEPTH_COMPONENT24; break;
             default: depthBufferFormat = GL_DEPTH_COMPONENT; break;
         }
-
+        bloomTextureRatio = 2;
         glGenFramebuffers(1, &fbo);
         glGenFramebuffers(1, &glowFbo);
         glGenFramebuffers(2, bloomFbo);
@@ -127,7 +127,7 @@ namespace Duel6 {
 
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width / bloomTextureRatio, height / bloomTextureRatio, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -178,50 +178,32 @@ namespace Duel6 {
 
         glReadBuffer(GL_COLOR_ATTACHMENT1);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bloomFbo[0]);
-        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width/bloomTextureRatio, height/bloomTextureRatio,  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
         renderer.enableBloomContext();
+
         const int passes = 2;
         for(int i = 0 ; i < passes; i++){
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bloomFbo[ (i + 1) % 2]);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, bloomFbo[i % 2]);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bloomFbo[(i + 1) % 2]);
             glReadBuffer(GL_COLOR_ATTACHMENT0);
+            glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
             // use bloomTexture from bloomFbo[i] to render into bloomFbo[i + 1]
-            renderer.quadXY(Vector::ZERO, Vector((float) width, (float) height), Vector(1, 1), Vector(1, 1),
-                            Material::makeColoredTexture(bloomTexture[i % 2] , Color::WHITE));
+            renderer.quadXY(Vector::ZERO, Vector((float) width/bloomTextureRatio, (float) height/bloomTextureRatio), Vector(1, 1), Vector(1, 1), Material::makeTexture(bloomTexture[i % 2]));
         }
+
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
-        renderer.setBlendFunc(BlendFunc::SrcColor);
+        renderer.enableRenderContext();
+        renderer.setBlendFunc(BlendFunc::SrcAlpha);
+
         renderer.enableDepthTest(false);
         renderer.quadXY(Vector::ZERO, Vector((float) width, (float) height), Vector(1, 1), Vector(1, 1),
-                        Material::makeColoredTexture(bloomTexture[passes % 2] , Color::WHITE));
+                        Material::makeTexture(bloomTexture[(passes + 1) % 2]));
         renderer.enableDepthTest(true);
-        renderer.enableRenderContext();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    void GL4RendererTarget::glow() {
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, glowFbo);
-        glReadBuffer(GL_COLOR_ATTACHMENT0);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
-        glDrawBuffer(GL_COLOR_ATTACHMENT0);
-//        renderer.clearBuffers();
-        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
-                          GL_NEAREST);
-//        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
-//                          GL_NEAREST);
-
-     //  renderer.enableDepthTest(false);
-//        renderer.quadXY(Vector::ZERO, Vector((float) width, (float) height), Vector(1, 1), Vector(1, 1),
-//                        Material::makeColoredTexture(texture2 , Color::WHITE));
-        renderer.enableBloomContext();
-        renderer.setBlendFunc(BlendFunc::SrcColor);
-        renderer.enableDepthTest(false);
-       renderer.quadXY(Vector::ZERO, Vector((float) width, (float) height), Vector(1, 1), Vector(1, 1),
-                       Material::makeColoredTexture(glowTexture , Color::WHITE));
-        renderer.enableDepthTest(true);
-        renderer.enableRenderContext();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
     void GL4RendererTarget::blit() {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -238,19 +220,22 @@ namespace Duel6 {
 
     void GL4RendererTarget::render(const Color &color) {
         renderer.quadXY(Vector::ZERO, Vector((float) width, (float) height), Vector(1, 1), Vector(1, 1),
-                              Material::makeColoredTexture(texture2 , color));
+                              Material::makeColoredTexture(texture , color));
+//                              Material::makeColoredTexture(texture2 , color));
 //                              Material::makeColoredTexture(glowTexture , color));
     }
 
     void GL4RendererTarget::resize(Int32 width, Int32 height) {
         this->width = width;
         this->height = height;
-
-        for(Texture t : {texture, texture2, glowTexture, bloomTexture[0], bloomTexture[1]}){
+        for(Texture t : {texture, texture2, glowTexture}){
             glBindTexture(GL_TEXTURE_2D_ARRAY, t);
             glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
         }
-
+        for(Texture t : { bloomTexture[0], bloomTexture[1]}){
+            glBindTexture(GL_TEXTURE_2D_ARRAY, t);
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width / bloomTextureRatio, height / bloomTextureRatio, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        }
         glBindTexture(GL_TEXTURE_2D_ARRAY, depthTexture);
         glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, depthBufferFormat, width, height, 1, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
     }
@@ -260,7 +245,6 @@ namespace Duel6 {
         renderer.clearBuffers();
         callback();
         bloom();
-        glow();
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
