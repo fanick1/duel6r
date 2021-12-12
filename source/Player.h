@@ -29,6 +29,7 @@
 #define DUEL6_PLAYER_H
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <time.h>
 #include "math/Camera.h"
