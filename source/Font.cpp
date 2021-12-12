@@ -57,14 +57,14 @@ namespace Duel6 {
     Float32 Font::getTextWidth(const std::string &str, Float32 height) const {
         Int32 result;
         int origHeight;
-        TTF_SizeText(font, str.c_str(), &result, &origHeight);
+        TTF_SizeUTF8(font, str.c_str(), &result, &origHeight);
         return result * ((Float32) height / (Float32) origHeight);
     }
 
     Int32 Font::getTextWidth(const std::string &str, Int32 height) const {
         Int32 result;
         int origHeight;
-        TTF_SizeText(font, str.c_str(), &result, &origHeight);
+        TTF_SizeUTF8(font, str.c_str(), &result, &origHeight);
         return result * ((Float32) height / (Float32) origHeight);
     }
 
@@ -148,9 +148,9 @@ namespace Duel6 {
             }
             int O = 2;
             TTF_SetFontOutline(font, O);
-            SDL_Surface *outline_surface = TTF_RenderText_Blended(font, text.c_str(), SDL_Color { 1, 1, 1, 255 });
+            SDL_Surface *outline_surface = TTF_RenderUTF8_Blended(font, text.c_str(), SDL_Color { 1, 1, 1, 255 });
             TTF_SetFontOutline(font, 0);
-            SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), SDL_Color { 255, 255, 255, 0 });
+            SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text.c_str(), SDL_Color { 255, 255, 255, 0 });
             SDL_Rect rect = { 0, 0, surface->w, surface->h };
             SDL_Rect rect2 = { O, O, outline_surface->w - 2 * O, outline_surface->h - O };
             SDL_SetSurfaceBlendMode(surface, SDL_BLENDMODE_BLEND);
@@ -161,7 +161,7 @@ namespace Duel6 {
             SDL_FreeSurface(outline_surface);
             return renderer.createTexture(image, TextureFilter::Linear, true);
         } else {
-            SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), SDL_Color { 255, 255, 255, 0 });
+            SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text.c_str(), SDL_Color { 255, 255, 255, 0 });
             Image image = Image::fromSurface(surface);
             SDL_FreeSurface(surface);
             return renderer.createTexture(image, TextureFilter::Linear, true);
@@ -172,9 +172,9 @@ namespace Duel6 {
         if(outline){
             int O = 2;
             TTF_SetFontOutline(font, O);
-            SDL_Surface *outline_surface = TTF_RenderText_Blended_Wrapped(font, text.c_str(), SDL_Color{1, 1, 1, 255}, maxWidth);
+            SDL_Surface *outline_surface = TTF_RenderUTF8_Blended_Wrapped(font, text.c_str(), SDL_Color{1, 1, 1, 255}, maxWidth);
             TTF_SetFontOutline(font, 0);
-            SDL_Surface *surface = TTF_RenderText_Blended_Wrapped(font, text.c_str(), SDL_Color{255, 255, 255, 0}, maxWidth);
+            SDL_Surface *surface = TTF_RenderUTF8_Blended_Wrapped(font, text.c_str(), SDL_Color{255, 255, 255, 0}, maxWidth);
             SDL_Rect rect = {0, 0 , surface->w  , surface->h};
             SDL_Rect rect2 = {O, O, outline_surface->w - 2 * O, outline_surface->h - O};
 
@@ -190,7 +190,7 @@ namespace Duel6 {
             SDL_FreeSurface(outline_surface);
             return renderer.createTexture(image, TextureFilter::Linear, true);
         } else {
-            SDL_Surface *surface = TTF_RenderText_Blended_Wrapped(font, text.c_str(), SDL_Color { 255, 255, 255, 0 }, maxWidth);
+            SDL_Surface *surface = TTF_RenderUTF8_Blended_Wrapped(font, text.c_str(), SDL_Color { 255, 255, 255, 0 }, maxWidth);
             Image image = Image::fromSurface(surface);
             SDL_FreeSurface(surface);
             resultSize.set(image.getWidth(), image.getHeight(), image.getDepth());
