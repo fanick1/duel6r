@@ -8,6 +8,7 @@
 #include "ListBox.cpp"
 #include "ScrollPanel.cpp"
 #include "Slider.cpp"
+#include "Splash.cpp"
 #include "Spinner.cpp"
 #include "TextBox.cpp"
 #include "View.cpp"

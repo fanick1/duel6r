@@ -37,6 +37,7 @@
 #include "renderer/RendererTypes.h"
 #include "renderer/Renderer.h"
 #include "FontCache.h"
+#include "FontRenderer.h"
 
 namespace Duel6 {
     class Console;
@@ -45,6 +46,7 @@ namespace Duel6 {
     private:
         TTF_Font *font;
         Renderer &renderer;
+        FontRenderer fontRenderer;
         FontCache fontCache;
         FontCache fontCacheOutlined;
         Int32 charHeight;
@@ -74,6 +76,8 @@ namespace Duel6 {
         Int32 getCharHeight() const {
             return charHeight;
         }
+
+        const FontRenderer &getFontRenderer();
 
     private:
         Texture getTexture(const std::string &text, bool outline) const;

@@ -50,6 +50,7 @@
 #include "gui/TextBox.h"
 #include "gui/Spinner.h"
 #include "gui/ScrollPanel.h"
+#include "gui/Splash.h"
 #include "GameMode.h"
 #include "net/ClientGameProxy.h"
 
@@ -199,6 +200,7 @@ namespace Duel6 {
         Gui::CheckBox *reverseConnection; //experimental stuff
         Gui::Label *playersLabel;
         Gui::ScrollPanel *box;
+        Gui::Splash *splash;
         Size backgroundCount;
         Texture menuBannerTexture;
         Sound::Track menuTrack;
@@ -333,6 +335,8 @@ namespace Duel6 {
         void joinServer();
 
         void joinServerFromServerList(Int32 index);
+
+        std::string getRandomSplashText();
     };
 }
 

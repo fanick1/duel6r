@@ -25,6 +25,7 @@
 #include "LevelRenderData.cpp"
 #include "Main.cpp"
 #include "Menu.cpp"
+#include "FontRenderer.cpp"
 #include "Person.cpp"
 #include "PersonList.cpp"
 #include "PersonProfile.cpp"

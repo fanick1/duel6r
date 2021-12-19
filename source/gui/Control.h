@@ -58,7 +58,8 @@ namespace Duel6 {
                 Switchbox,
                 Slider,
                 DialogTitlebar,
-                Image
+                Image,
+                Splash
             };
 
             struct ScissorBox {

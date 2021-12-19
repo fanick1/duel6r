@@ -190,6 +190,8 @@ set(D6R_SOURCES
         source/Font.h
         source/FontCache.h
         source/FontException.h
+        source/FontRenderer.cpp
+        source/FontRenderer.h
         source/Format.cpp
         source/Format.h
         source/FormatException.h
@@ -366,6 +368,8 @@ set(D6R_SOURCES
         source/gui/TextBox.h
         source/gui/View.cpp
         source/gui/View.h
+        source/gui/Splash.cpp
+        source/gui/Splash.h
 
         source/input/GameController.cpp
         source/input/GameController.h

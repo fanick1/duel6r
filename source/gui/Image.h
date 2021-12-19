@@ -13,7 +13,7 @@ namespace Duel6::Gui {
     class View;
 
     class Image : public Control {
-    private:
+    protected:
         Material material;
 
     public:
