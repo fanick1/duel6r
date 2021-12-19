@@ -280,6 +280,7 @@ namespace Duel6 {
             startRound();
         }
         if(networkGame && !isServer){
+            gameProxy->requestGameState(this);
             appService.getConsole().printLine("Awaiting server to accept connection.");
         }
     }

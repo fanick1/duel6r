@@ -473,6 +473,43 @@ namespace Duel6 {
             }
         }
 
+        void ServerGameProxy::requestGameState(Game *game) {
+            for (auto &peer: peers) {
+                if (peer->peerUpdateState != PeerUpdateState::WAITING_FOR_REQUEST) {
+                    continue;
+                }
+                RequestGameState r;
+
+                r.connectingPlayers.reserve(game->getPlayers().size());
+                for (auto &player: game->getPlayers()) {
+                    PlayerProfile cp;
+                    PlayerProfile::Skin &skin = cp.skin;
+                    cp.playerId = player.getId();
+                    cp.clientLocalId = player.getId();
+                    const Person &person = player.getPerson();
+                    cp.name = person.getName();
+                    cp.team = player.getTeam();
+                    const PlayerSkinColors &colors = player.getSkin().getColors();
+                    skin.hair = (PlayerProfile::Hair) colors.getHair();
+                    skin.headBand = colors.hasHeadBand();
+
+                    size_t i = 0;
+                    for (auto &c: skin.colors) {
+                        PlayerSkinColors::BodyPart bp = (PlayerSkinColors::BodyPart) i;
+                        c.red = colors.get(bp).getRed();
+                        c.green = colors.get(bp).getGreen();
+                        c.blue = colors.get(bp).getBlue();
+                        c.alpha = colors.get(bp).getAlpha();
+
+                        i++;
+                    }
+                    r.connectingPlayers.push_back(cp);
+                }
+                peer->sendReliable(r);
+                peer->peerUpdateState = PeerUpdateState::REQUESTED_GAMESTATE;
+            }
+        }
+
         void loadNetWeapon(Weapon &w, const LyingWeapon &weapon) {
             Collider &c = w.collider;
             const auto & collider = weapon.getCollider();

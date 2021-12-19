@@ -60,11 +60,14 @@ namespace Duel6 {
         }
 
         void NetClient::connect(Game &game, const std::string &host,
-                                const Duel6::net::port_t port) {
+                                const Duel6::net::port_t port,
+                                callback_t connectedCallback,
+                                callback_t connectionFailedCallback) {
             setGameReference(game);
             this->host = host;
             this->port = port;
-
+            this->connectedCallback = connectedCallback;
+            this->connectionFailedCallback = connectionFailedCallback;
             start(nethost);
         }
 
@@ -88,6 +91,8 @@ namespace Duel6 {
         void NetClient::onStopping() {
             if (peer.get() != nullptr) {
                 peer->disconnect();
+            } else {
+                connectionFailedCallback();
             }
             stopped();
         }
@@ -113,6 +118,8 @@ namespace Duel6 {
             }
 
             started();
+            connectedCallback();
+            connectedCallback = [](){};
         }
 
         void NetClient::onPeerDisconnected(ENetPeer *me, enet_uint32 reason) {
@@ -190,6 +197,10 @@ namespace Duel6 {
             ttl = 64;
             setsockopt(s, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
             enet_socket_send(s, &addressForNATPunch, &buffer, 0);
+        }
+
+        bool NetClient::connected() const {
+            return peer.get() != nullptr;
         }
     } /* namespace net */
 } /* namespace Duel6 */

@@ -361,15 +361,9 @@ namespace Duel6 {
             incomingPeerID = me->incomingPeerID;
             state = PeerState::CONNECTED;
 
-            if(!isServer()){
-                requestGameState();
-            }
             return true;
         }
-        void Peer::requestGameState() {
-            peerUpdateState = PeerUpdateState::REQUESTED_GAMESTATE;
-            send(gameProxy->getRequestGameState());
-        }
+
         bool Peer::onDisconnected(ENetPeer *me, enet_uint32 reason) {
             if (state == PeerState::DISCONNECTED || state == PeerState::DESTROYED) {
                 return true;

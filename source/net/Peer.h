@@ -140,8 +140,6 @@ namespace Duel6 {
                 return state;
             }
 
-            void requestGameState();
-
             peer_id_t getIncomingPeerID();
 
             peer_id_t getClientID();

@@ -95,7 +95,7 @@ namespace Duel6 {
             callback_t callback = defaultCallback;
 
         public:
-            callbackReset_t setCallback(callback_t);
+            [[nodiscard]] callbackReset_t setCallback(callback_t);
             void clearCallback() {
                 callback = defaultCallback;
             }
@@ -206,6 +206,7 @@ namespace Duel6 {
         NetConfig netConfig;
         ServerList serverList;
         Int32 pickedServerIndex;
+        bool connectingDialogVisible = false; //TODOs
     public:
         explicit Menu(AppService &appService);
 
@@ -259,13 +260,15 @@ namespace Duel6 {
 
         std::vector<std::string> listMaps();
 
-        bool play(std::vector<std::string> levels, bool networkGame);
+        bool play(std::vector<std::string> levels, bool cleanStats, bool networkGame);
 
         void startDedicatedServer();
 
         void serverlist();
 
     private:
+
+        bool confirmStart(bool &cleanStats);
 
         void quit();
 
@@ -280,6 +283,8 @@ namespace Duel6 {
         bool detectControls(Size playerIndex);
 
         bool play(bool networkGame);
+
+        bool play(bool cleanStats, bool networkGame);
 
         void playPlayersSound(const std::string &name);
 

@@ -164,7 +164,7 @@ namespace Duel6 {
             if(console.isActive()) {
                 console.toggle();
             }
-            menu.play(paths, false);
+            menu.play(paths, true, false);
         }
     }
 

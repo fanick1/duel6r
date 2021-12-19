@@ -516,37 +516,6 @@ namespace Duel6 {
             return game->isServer;
         }
 
-        RequestGameState ClientGameProxy::getRequestGameState() {
-            RequestGameState r;
-
-            r.connectingPlayers.reserve(game->getPlayers().size());
-            for (auto &player : game->getPlayers()) {
-                PlayerProfile cp;
-                PlayerProfile::Skin &skin = cp.skin;
-                cp.playerId = player.getId();
-                cp.clientLocalId = player.getId();
-                const Person &person = player.getPerson();
-                cp.name = person.getName();
-                cp.team = player.getTeam();
-                const PlayerSkinColors &colors = player.getSkin().getColors();
-                skin.hair = (PlayerProfile::Hair) colors.getHair();
-                skin.headBand = colors.hasHeadBand();
-
-                size_t i = 0;
-                for (auto &c : skin.colors) {
-                    PlayerSkinColors::BodyPart bp = (PlayerSkinColors::BodyPart) i;
-                    c.red = colors.get(bp).getRed();
-                    c.green = colors.get(bp).getGreen();
-                    c.blue = colors.get(bp).getBlue();
-                    c.alpha = colors.get(bp).getAlpha();
-
-                    i++;
-                }
-                r.connectingPlayers.push_back(cp);
-            }
-            return r;
-        }
-
         void ClientGameProxy::handle(DoubleJumpEffects &dje) {
             if (idmap.count(dje.playerId) == 0) {
                 return;

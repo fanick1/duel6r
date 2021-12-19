@@ -22,7 +22,7 @@ namespace Duel6::Gui {
     }
 
     View::~View() {
-        close();
+// close called twice
     }
 
     void View::focus(Control *control) {
@@ -247,6 +247,7 @@ namespace Duel6::Gui {
     }
 
     void View::close() {
+        onClose();
         parent.closeView(this);
     }
 

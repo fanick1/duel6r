@@ -73,9 +73,6 @@ namespace Duel6 {
             void handle(Peer &peer, net::Console &c);
             void handle(Peer &peer, Focus &f);
             void handle(Peer &peer, RequestGameState &r) override;
-
-            RequestGameState getRequestGameState();
-
         protected:
             void nextRound() override;
 

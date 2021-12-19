@@ -57,6 +57,7 @@ namespace Duel6 {
             void sendGameStateUpdate(Game & game) override;
             void nextRound() override;
             void requestNextRound(Int32 currentRound);
+            void requestGameState(Game *game);
             void destroyBlocks(const std::vector<Duel6::Vector> &destroyedBlocks);
 
             ServerGameProxy() = default;

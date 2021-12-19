@@ -647,27 +647,34 @@ namespace Duel6 {
         }
     }
 
-    bool Menu::play(bool networkGame) {
-       return play(listMaps(), networkGame);
+    bool Menu::confirmStart(bool &cleanStats) {
+        bool cancelled = false;
+        cleanStats = false;
+        if (game->getSettings().isRoundLimit()) {
+            cleanStats = (game->getPlayedRounds() == 0 || game->getPlayedRounds() >= game->getSettings().getMaxRounds() ||
+                          !question("Resume previous game? (Y/N)", cancelled));
+        } else {
+            cleanStats = question("Clear statistics? (Y/N)", cancelled);
+        }
+        return !cancelled;
     }
 
-    bool Menu::play(std::vector<std::string> levels, bool networkGame) {
+    bool Menu::play(bool networkGame) {
+        bool cleanStats = false;
+        confirmStart(cleanStats);
+        return play(cleanStats, networkGame);
+    }
+    bool Menu::play(bool cleanStats, bool networkGame) {
+       return play(listMaps(), cleanStats, networkGame);
+    }
+
+    bool Menu::play(std::vector<std::string> levels, bool cleanStats, bool networkGame) {
         game->getSettings().setQuickLiquid(quickLiquidCheckBox->isChecked());
         game->getSettings().setGlobalAssistances(globalAssistanceCheckBox->isChecked());
-        if (game->getSettings().isRoundLimit()) {
-            if (game->getPlayedRounds() == 0 || game->getPlayedRounds() >= game->getSettings().getMaxRounds() || !question("Resume previous game? (Y/N)")) {
-                cleanPersonData();
-                game->setPlayedRounds(0);
-            }
-        } else {
-            bool cancelled = false;
-            if (question("Clear statistics? (Y/N)", cancelled)) {
-                cleanPersonData();
-                game->setPlayedRounds(0);
-            }
-            if(cancelled){
-                return false;
-            }
+
+        if (cleanStats) {
+            cleanPersonData();
+            game->setPlayedRounds(0);
         }
 
         GameMode &selectedMode = *gameModes[gameModeSwitch->currentItem()];
@@ -856,13 +863,48 @@ namespace Duel6 {
 
     void Menu::joinServer(){
         game->isServer = false || reverseConnection->isChecked();
-        if(!play(true)){
+        bool cleanStats = false;
+        if (!confirmStart(cleanStats)) {
             return;
         }
+        Gui::Dialog * dialog = new Gui::Dialog(this->gui, 10, 400, 300, 300, std::string("Connecting..."));
+        auto stopBt = new Gui::Button(*dialog);
+        stopBt->setCaption("Stop");
+        stopBt->setPosition(100, 150, 100, 25);
 
+        stopBt->onClick([this, dialog](Gui::Button& bt){
+            if (!appService.getNetClient().connected()) {
+                appService.getNetClient().requestStop();
+                dialog->close();
+            }
+        });
+        connectingDialogVisible = true;
+        dialog->onClose([this](Gui::View & d){
+            connectingDialogVisible = false;
+            if (!appService.getNetClient().connected()) {
+                appService.getNetClient().requestStop();
+            }
+        });
         /// TODO To make connection via server's public address and its local address in case it sits on the
         // same network as this client
-        appService.getNetClient().connect(*game, host->getText(), std::stoi(port->getText()));
+        appService.getNetClient()
+                .connect(*game, host->getText(), std::stoi(port->getText()),
+                         [this, cleanStats, dialog]() {
+                             if (!play(cleanStats, true)) {
+                                 return;
+                             }
+                             if (connectingDialogVisible) {
+                                 dialog->close();
+                             }
+                         },
+                         [this, dialog, stopBt]() {
+                             if (connectingDialogVisible) {
+                                 auto lbl = new Gui::Label(*dialog);
+                                 lbl->setCaption("Connection failed");
+                                 lbl->setPosition(80, 200, 200, 25);
+                                 stopBt->setEnabled(false);
+                             }
+                         });
     }
 
     void Menu::enableMusic(bool enable) {

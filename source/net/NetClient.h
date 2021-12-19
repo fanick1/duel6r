@@ -24,6 +24,7 @@ namespace Duel6 {
          * The thing that connects to server
          */
         class NetClient: public Service {
+            typedef std::function<void()> callback_t;
         private:
             std::string host;
             port_t port;
@@ -31,12 +32,16 @@ namespace Duel6 {
             ENetHost *nethost;
             Duel6::Console &console;
             int pendingConnectionRequests = 0;
+            callback_t connectedCallback = [](){};
+            callback_t connectionFailedCallback = [](){};
         public:
+
             NetClient(ClientGameProxy &clientGameProxy, ServerGameProxy &serverGameProxy, Duel6::Console &console);
 
             virtual ~NetClient();
 
-            void connect(Game &game, const std::string &host, const Duel6::net::port_t port);
+            void connect(Game &game, const std::string &host, const Duel6::net::port_t port,
+                         callback_t connectedCallback, callback_t connectionFailedCallback);
 
             void requestServerList(masterserver::serverListReceivedCallback_t callback); // connect to master server, expect list of servers to be received
 
@@ -45,6 +50,8 @@ namespace Duel6 {
                                  const enet_uint32 localAddress, const enet_uint16 localPort); // needs master server, send NAT hole punch requests, expect the host to be calling back
 
             void initNetHost();
+
+            bool connected() const;
 
         private:
             void recordPeerNetStats(ENetPeer *peer) override;
