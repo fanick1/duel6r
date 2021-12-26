@@ -453,14 +453,14 @@ namespace Duel6 {
             v.len = len;
 
             for (auto &peer : peers) {
-                peer->send(v, Channel::VOICE, false);
+                peer->send(v, Channel::VOICE, true);
             }
         }
         //server just forwards the voice samples
         void ServerGameProxy::relayVoice(const Peer *srcPeer, Voice &v) {
             for (auto *peer : peers) {
                 if(peer != srcPeer){
-                    peer->send(v, Channel::VOICE, false);
+                    peer->send(v, Channel::VOICE, true);
                 }
             }
         }
