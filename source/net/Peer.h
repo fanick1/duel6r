@@ -34,8 +34,8 @@ namespace Duel6 {
             PLAYERS,
             BROADCAST_MESSAGES,
             DEFAULT,
-            UNRELIABLE_CHANNEL_BASELINE,
-            VOICE
+            VOICE,
+            UNRELIABLE_CHANNEL,
         };
         enum class PeerUpdateState {
             WAITING_FOR_REQUEST,
@@ -57,8 +57,6 @@ namespace Duel6 {
         };
         class Peer {
         private:
-            uint8_t UNRELIABLE_CHANNEL  = Channel::UNRELIABLE_CHANNEL_BASELINE;
-
             PeerState state = PeerState::DISCONNECTED;
             ClientGameProxy *gameProxy = nullptr;
             ServerGameProxy *serverGameProxy = nullptr; //parent
@@ -107,7 +105,7 @@ namespace Duel6 {
 
             template<typename MessageObject>
             void sendUnreliable(MessageObject &msg) {
-                send(msg, UNRELIABLE_CHANNEL, false);
+                send(msg, Channel::UNRELIABLE_CHANNEL, false);
             }
 
             template<typename MessageObject>
