@@ -105,8 +105,13 @@ namespace Duel6 {
 
         void windowFocusEvent(Context & context, const WindowFocusEvent &event);
 
-        void syncUpdateAndRender(Context &context);
+        Float64 syncUpdateAndRender(Context &context);
+
         void parseCommandLineOptions(int argc, char **argv);
+
+        void networkFlushCommands();
+
+        void networkRun(const Float64 elapsedTime);
     };
 }
 

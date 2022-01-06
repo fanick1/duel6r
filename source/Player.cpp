@@ -479,6 +479,8 @@ namespace Duel6 {
 
     void Player::updateLoop(World &world, ElevatorList &elevators, Float32 elapsedTime) {
         checkKeys();
+        unconfirmedInputs[tick & 127] = getControllerState();
+
         updateDimensions();
         makeMove(world.getLevel(), elevators, elapsedTime);
         setAnm();

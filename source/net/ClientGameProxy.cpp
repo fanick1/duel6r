@@ -509,6 +509,9 @@ namespace Duel6 {
             ss << peer.getDescription() << (countOthers > 0 ? " are" : " is") << " connecting from " << hostToIPaddress(peer.getEnetPeer().address.host, peer.getEnetPeer().address.port);
             game->broadcastChatMessage(ss.str(), false, true, "SERVER");
             joinPlayers(r.connectingPlayers);
+
+            //TODO route this somehow through the Game object - connecting peer should be recognized
+            // as expecting to be provided the game state
             sendGameState(peer, *game);
         }
 

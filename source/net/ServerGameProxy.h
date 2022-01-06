@@ -65,6 +65,7 @@ namespace Duel6 {
             ServerGameProxy(ServerGameProxy &&) = delete;
             ServerGameProxy & operator = (const ServerGameProxy &) = delete;
             ServerGameProxy & operator = (ServerGameProxy &&) = delete;
+            bool peerRunning();
             virtual ~ServerGameProxy();
         private:
             void sendInputs(Game &game);

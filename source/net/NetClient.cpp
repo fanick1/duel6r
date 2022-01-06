@@ -9,7 +9,7 @@
 #include "../Game.h"
 #include "../Format.h"
 #include "master/protocol.h"
-#define CHANNELS 254 //todo extract for usage in NetHost
+#define CHANNELS 9 //todo extract for usage in NetHost
 namespace Duel6 {
     namespace net {
 
@@ -28,7 +28,7 @@ namespace Duel6 {
             enet_address_set_host(&localAddress, this->localIPAddress.c_str());
             nethost = enet_host_create(&localAddress,
                 4 /* only allow 4 outgoing connections */,
-                CHANNELS /* allow up 254 channels to be used */,
+                CHANNELS /* allow up 9 channels to be used */,
                 0 /* assume any amount of incoming bandwidth */,
                 0 /* assume any amount of outgoing bandwidth */);
             if (nethost == nullptr) {

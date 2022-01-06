@@ -93,7 +93,11 @@ namespace Duel6 {
                     break;
                 }
             }
+            if(!isServer && !gameProxy->peerRunning()){
+                return;
+            }
         }
+
         if ((isServer || !networkGame) && getRound().isOver()) {
             if (!getRound().isLast()) {
                 nextRound();
@@ -101,8 +105,11 @@ namespace Duel6 {
         } else {
             getRound().update(elapsedTime);
         }
-        gameProxy->sendGameStateUpdate(*this);
         chatMessageQueue.update(elapsedTime);
+    }
+
+    void Game::updated() {
+        gameProxy->sendGameStateUpdate(*this);
     }
 
     void Game::announcePeerIsChatting(bool chatOpened) {

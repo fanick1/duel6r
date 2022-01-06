@@ -66,8 +66,9 @@ namespace Duel6 {
 
             virtual void runPeriodicalTasks(Float64 elapsedTime){};
 
-        protected:
             void flush();
+
+        protected:
 
             void setGameReference(Game &game) {
                 this->game = &game;

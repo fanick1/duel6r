@@ -18,6 +18,9 @@ namespace Duel6::net {
         stopRequested = true;
     }
     void Service::flush() {
+        if (!(state == ServiceState::STARTED || state == ServiceState::STARTING || state == ServiceState::STOPPING)) {
+            return;
+        }
         enet_host_flush(serviceHost.get());
     }
     void Service::poll(Float64 elapsedTime, Uint32 timeout) {

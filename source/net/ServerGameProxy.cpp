@@ -105,7 +105,7 @@ namespace Duel6 {
                     pi.id = player.getId();
                     player.unconfirmedInputs[player.tick & xor_128] = player.getControllerState();
                     for (size_t i = 0; i < 64; i++) {
-                        pi.unconfirmedInputs[i] = player.unconfirmedInputs[(game.tick - 63 + i) & xor_128];
+                        pi.unconfirmedInputs[i] = player.unconfirmedInputs[(player.tick - 63 + i) & xor_128];
                     }
                     piu.playersInputs.push_back(pi);
                 }
@@ -508,6 +508,10 @@ namespace Duel6 {
                 peer->sendReliable(r);
                 peer->peerUpdateState = PeerUpdateState::REQUESTED_GAMESTATE;
             }
+        }
+
+        bool ServerGameProxy::peerRunning() {
+            return peers.front()->peerUpdateState == PeerUpdateState::RUNNING;
         }
 
         void loadNetWeapon(Weapon &w, const LyingWeapon &weapon) {

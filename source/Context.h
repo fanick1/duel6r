@@ -76,6 +76,8 @@ namespace Duel6 {
 
         virtual void update(Float32 elapsedTime) = 0;
 
+        virtual void updated() {};
+
         virtual void render() const = 0;
 
         virtual bool isClosed() const final {

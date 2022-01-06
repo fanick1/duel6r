@@ -153,6 +153,8 @@ namespace Duel6 {
 
         void update(Float32 elapsedTime) override;
 
+        void updated() override;
+
         void render() const override;
 
         std::string getGameState() override;

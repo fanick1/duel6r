@@ -374,7 +374,7 @@ namespace Duel6 {
         }
     }
 
-    void Application::syncUpdateAndRender(Context &context) {
+    Float64 Application::syncUpdateAndRender(Context &context) {
         static Uint32 curTime = 0;
         static Float64 accumulatedTime = 0.0f;
         Uint32 lastTime = curTime;
@@ -387,19 +387,26 @@ namespace Duel6 {
         curTime = SDL_GetTicks();
         Float64 elapsedTime = (curTime - lastTime) * 0.001f;
         accumulatedTime += elapsedTime;
-
-        while (accumulatedTime > updateTime) {
-            context.update(Float32(updateTime));
-            accumulatedTime -= updateTime;
-            video->think(updateTime);
+        if(accumulatedTime > updateTime) {
+            while (accumulatedTime > updateTime) {
+                context.update(Float32(updateTime));
+                accumulatedTime -= updateTime;
+                video->think(updateTime);
+                networkFlushCommands();
+            }
+            context.updated();
         }
+        return elapsedTime;
+    }
 
-        Uint32 residual = (updateTime - accumulatedTime) * 1000;
-        if(residual > 3){
-            residual = 3;
-        }
-        netHost->poll(elapsedTime, residual);
-        netClient->poll(elapsedTime, residual);
+    void Application::networkRun(Float64 elapsedTime) {
+        netHost->poll(elapsedTime, 1);
+        netClient->poll(elapsedTime, 1);
+    }
+
+    void Application::networkFlushCommands() {
+        netHost->flush();
+        netClient->flush();
     }
 
     void Application::run() {
@@ -420,7 +427,8 @@ namespace Duel6 {
             }
 
             processEvents(context);
-            syncUpdateAndRender(context);
+            Float64 elapsedTime = syncUpdateAndRender(context);
+            networkRun(elapsedTime);
 
             if (context.isClosed()) {
                 Context::pop();
