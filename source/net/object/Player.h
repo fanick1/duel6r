@@ -111,7 +111,7 @@ namespace Duel6::net {
 
             result &= s & changed;
             result &= s & score.changed;
-            if (changed[NO_CHANGE]) return result;
+            if (changed[NO_CHANGE]) [[unlikely]]  return result;
             S(SCORE, score);
             S(RTT, rtt);
             S(CLIENTLOCALID, clientLocalId);

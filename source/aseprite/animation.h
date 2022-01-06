@@ -85,14 +85,15 @@ public:
         std::vector<Color> result(size);
 
         for (size_t i = 0; i < size; i++) {
-            result[i] = palette.colors[pixels[i]];
-            result[i].a = result[i].a * (opacity / 255.0f);
             if (pixels[i] == transparentIndex) {
                 result[i].r = 0;
                 result[i].g = 0;
                 result[i].b = 0;
                 result[i].a = 0;
+                continue;
             }
+            result[i] = palette.colors[pixels[i]];
+            result[i].a = result[i].a * (opacity / 255.0f);
         }
         return result;
     }

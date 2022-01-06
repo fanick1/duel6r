@@ -68,7 +68,7 @@ namespace Duel6::net {
         template<typename Stream>
         bool serialize(Stream &s) {
             bool result = s & changed;
-               if (changed[NO_CHANGE]) return result;
+               if (changed[NO_CHANGE]) [[unlikely]] return result;
                S(SHOTS, shots);
                S(HITS, hits);
                S(KILLS, kills);

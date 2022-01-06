@@ -69,7 +69,11 @@ namespace Duel6 {
 
     void Game::render() const {
         if(!isRunning) return;
+#if defined(D6_RENDERER_HEADLESS)
+        return;
+#else
         worldRenderer.render();
+#endif
     }
 
     void Game::update(Float32 elapsedTime) {

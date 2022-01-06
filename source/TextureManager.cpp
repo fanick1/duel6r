@@ -55,12 +55,14 @@ namespace Duel6 {
         Texture result = 0;
         return result;
 #else
-        Image list;
-        for (uint16_t f = 0; f < animation.framesCount; f++) {
-            Image frameImage(animation.width, animation.height);
-            for (uint16_t p = 0; p < animation.width * animation.height; p++) {
-                frameImage.at(p).setAlpha(0);
-            }
+        Image list(animation.width, animation.height, animation.framesCount);
+
+        for (size_t p = 0; p < animation.framesCount * animation.width * animation.height; p++) {
+            list.at(p).setAlpha(0);
+        }
+
+        for (size_t f = 0; f < animation.framesCount; f++) {
+            size_t framePos = f * animation.width * animation.height;
 
             for (size_t l = 0; l < animation.layers.size(); l++) {
                 const auto &layer = animation.layers[l];
@@ -78,15 +80,15 @@ namespace Duel6 {
 
                 auto pixels = image.substitute(substitutionTable, layerOpacity * frame.opacity,
                                                animation.transparentIndex);
-                for (uint16_t v = 0; v < height && v + y < animation.height; v++) {
+                for (size_t v = 0; v < height && v + y < animation.height; v++) {
                     if (v + y < 0)
                         continue; // In Aseprite image cel can be placed in a way that it spans beyond the image boundaries (and could crash code below)
-                    for (uint16_t u = 0; u < width && u + x < animation.width; u++) {
+                    for (size_t u = 0; u < width && u + x < animation.width; u++) {
                         if (u + x < 0)
                             continue;
                         //TODO LAYER BLEND MODE
                         const auto &color = pixels[v * width + u];
-                        auto &dstColor = frameImage.at((y + v) * animation.width + u + x);
+                        auto &dstColor = list.at(framePos + (y + v) * animation.width + u + x);
                         bool transparent = dstColor.getRed() == 0 &&
                                            dstColor.getGreen() == 0 &&
                                            dstColor.getBlue() == 0 &&
@@ -120,8 +122,6 @@ namespace Duel6 {
                     }
                 }
             }
-            // frameImage now contains pixels from all layers
-            list.addSlice(frameImage);
         }
         return renderer.createTexture(list, filtering, clamp);
 #endif
