@@ -62,7 +62,7 @@ namespace Duel6 {
         Int32 posY = view.getY() + view.getHeight() - 24;
 
         for (const InfoMessage &msg : messages) {
-            if (player.is(msg.getPlayer())) {
+            if (player.getId() == msg.getPlayerId()) {
                 renderMessage(renderer, posX, posY, msg.getText(), font);
                 posY -= 16;
             }
@@ -74,7 +74,7 @@ namespace Duel6 {
         Int32 posY =  height - offsetY;
 
         for (const InfoMessage &msg : messages) {
-            renderMessage(renderer, posX, posY, msg.getPlayer().getPerson().getName() + ": " + msg.getText(), font);
+            renderMessage(renderer, posX, posY, msg.getPlayerName() + ": " + msg.getText(), font);
             posY -= 16;
         }
     }

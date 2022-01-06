@@ -10,23 +10,23 @@
 namespace Duel6 {
     class ChatMessage {
     public:
+        Float32 remainingTime;
         bool system;
         std::string origin; // I don't know
         std::string text;
-        Float32 remainingTime;
 
     public:
         ChatMessage(const std::string &text, Float32 duration, const std::string &origin = "", bool system = false)
-                : system(system), origin(origin), text(text), remainingTime(duration) {}
+                : remainingTime(duration), system(system), origin(origin), text(text){}
 
         ChatMessage(const ChatMessage &msg)
-                :system(msg.system), origin(msg.origin), text(msg.text), remainingTime(msg.remainingTime) {}
+                : remainingTime(msg.remainingTime), system(msg.system), origin(msg.origin), text(msg.text) {}
 
         ChatMessage &operator=(const ChatMessage &msg) {
+            remainingTime = msg.remainingTime;
             system = msg.system;
             origin = msg.origin;
             text = msg.text;
-            remainingTime = msg.remainingTime;
             return *this;
         }
 

@@ -34,26 +34,32 @@
 namespace Duel6 {
     class InfoMessage {
     public:
-        const Player *player;
+        Int32 playerId;
+        std::string playerName;
         std::string text;
         Float32 remainingTime;
 
     public:
         InfoMessage(const Player &player, const std::string &text, Float32 duration)
-                : player(&player), text(text), remainingTime(duration) {}
+                : playerId(player.getId()), playerName(player.getPerson().getName()), text(text), remainingTime(duration) {}
 
         InfoMessage(const InfoMessage &msg)
-                : player(msg.player), text(msg.text), remainingTime(msg.remainingTime) {}
+                : playerId(msg.playerId), playerName(msg.playerName), text(msg.text), remainingTime(msg.remainingTime) {}
 
         InfoMessage &operator=(const InfoMessage &msg) {
-            player = msg.player;
+            playerId = msg.playerId;
+            playerName = msg.playerName;
             text = msg.text;
             remainingTime = msg.remainingTime;
             return *this;
         }
 
-        const Player &getPlayer() const {
-            return *player;
+        Int32 getPlayerId() const {
+            return playerId;
+        }
+
+        const std::string &getPlayerName() const {
+            return playerName;
         }
 
         const std::string &getText() const {
