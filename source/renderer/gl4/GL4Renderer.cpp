@@ -29,7 +29,7 @@
 #include "../../Exception.h"
 #include "GL4Renderer.h"
 #include "GL4RendererTarget.h"
-
+#include "../../Perf.h"
 namespace Duel6 {
     struct ColorVertex {
         Vector xyz;
@@ -74,6 +74,7 @@ namespace Duel6 {
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
         glEnableVertexAttribArray(0);
 
+        glGenBuffers(1, &colorEbo);
         glGenVertexArrays(1, &materialVao);
         glBindVertexArray(materialVao);
 
@@ -118,11 +119,18 @@ namespace Duel6 {
 
     Texture GL4Renderer::createTexture(const Image &image, TextureFilter filtering, bool clamp) {
         GLuint textureId;
+        performance::traceEvent t("glGenTextures(1, &textureId);");
         glGenTextures(1, &textureId);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, textureId);
+        t.end();
+        {
+            performance::traceEvent t2("glBindTexture(GL_TEXTURE_2D_ARRAY, textureId);");
+            glBindTexture(GL_TEXTURE_2D_ARRAY, textureId);
+        }
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, image.getWidth(), image.getHeight(), image.getDepth(), 0, GL_RGBA, GL_UNSIGNED_BYTE, &image.at(0));
-
+        {
+            performance::traceEvent t3("glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, image.getWidth(), image.getHeight(), image.getDepth(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.getData());");
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, image.getWidth(), image.getHeight(), image.getDepth(), 0, GL_RGBA, GL_UNSIGNED_BYTE, &image.at(0));
+        }
         GLint filter = filtering == TextureFilter::Nearest ? GL_NEAREST : GL_LINEAR;
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, filter);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, filter);
@@ -130,7 +138,7 @@ namespace Duel6 {
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT);
 
-        return textureId;
+       return textureId;
     }
 
     void GL4Renderer::freeTexture(Texture textureId) {
@@ -223,6 +231,45 @@ namespace Duel6 {
         glPointSize(1);
     }
 
+    void GL4Renderer::points(const Vector *positions, Float32 size, const Color &color) {
+        glBindVertexArray(colorVao);
+        context->colorProgram.bind();
+
+        colorPoints[0].xyz = positions[0];
+        colorPoints[1].xyz = positions[1];
+        colorPoints[2].xyz = positions[2];
+        colorPoints[3].xyz = positions[3];
+        updateColorBuffer(4);
+
+        Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
+                                color.getAlpha() / 255.0f};
+        context->colorProgram.color = colorData;
+
+        glPointSize(size);
+        glDrawArrays(GL_POINTS, 0, 4);
+        glPointSize(1);
+    }
+
+    void GL4Renderer::points(const std::vector<Vector> &positions, const std::vector<int>& indices, const int restartIndex, Float32 size, const Color &color) {
+        glEnable(GL_PRIMITIVE_RESTART);
+        glPrimitiveRestartIndex(restartIndex);
+        glBindVertexArray(colorVao);
+        context->colorProgram.bind();
+
+        glBindBuffer(GL_ARRAY_BUFFER, colorVbo);
+        glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(ColorVertex), positions.data(), GL_STATIC_DRAW);
+
+        Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
+                                color.getAlpha() / 255.0f};
+        context->colorProgram.color = colorData;
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, colorEbo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * indices.size(), &indices[0], GL_STATIC_DRAW);
+        glPointSize(size);
+        glDrawElements(GL_POINTS, indices.size(), GL_UNSIGNED_INT, (GLvoid*)0);
+        glPointSize(1);
+    }
+
     inline void GL4Renderer::line(const Vector &from, const Vector &to, Float32 width, const Color &color) {
         glBindVertexArray(colorVao);
         context->colorProgram.bind();
@@ -236,6 +283,43 @@ namespace Duel6 {
         context->colorProgram.color = colorData;
         glLineWidth(width);
         glDrawArrays(GL_LINES, 0, 2);
+        glLineWidth(1.0f);
+    }
+    void GL4Renderer::lines(const Vector positions[4], Float32 width, const Color &color) {
+        glBindVertexArray(colorVao);
+        context->colorProgram.bind();
+
+        colorPoints[0].xyz = positions[0];
+        colorPoints[1].xyz = positions[1];
+        colorPoints[2].xyz = positions[2];
+        colorPoints[3].xyz = positions[3];
+        updateColorBuffer(4);
+
+        Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
+                                color.getAlpha() / 255.0f};
+        context->colorProgram.color = colorData;
+        glLineWidth(width);
+        glDrawArrays(GL_LINE_STRIP, 0, 4);
+        glLineWidth(1.0f);
+    }
+
+    void GL4Renderer::lines(const std::vector<Vector> &positions, const std::vector<int>& indices, const int restartIndex, Float32 width, const Color &color) {
+        glEnable(GL_PRIMITIVE_RESTART);
+        glPrimitiveRestartIndex(restartIndex);
+        glBindVertexArray(colorVao);
+        context->colorProgram.bind();
+
+        glBindBuffer(GL_ARRAY_BUFFER, colorVbo);
+        glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(ColorVertex), positions.data(), GL_STATIC_DRAW);
+
+        Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
+                                color.getAlpha() / 255.0f};
+        context->colorProgram.color = colorData;
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, colorEbo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * indices.size(), &indices[0], GL_STATIC_DRAW);
+        glLineWidth(width);
+        glDrawElements(GL_LINE_STRIP, indices.size(), GL_UNSIGNED_INT, (GLvoid*)0);
         glLineWidth(1.0f);
     }
 

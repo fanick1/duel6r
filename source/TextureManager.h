@@ -54,7 +54,7 @@ namespace Duel6 {
     class TextureManager {
     private:
         Renderer &renderer;
-
+        static Image scratch;
     public:
         typedef std::unordered_map<Color, Color, ColorHash> SubstitutionTable;
 
@@ -70,11 +70,11 @@ namespace Duel6 {
         Texture generateSprite(const animation::Animation& animation,
                                const animation::Animation::AnimationView & animationView,
                                const animation::Palette &substitutionTable,
-                               TextureFilter filtering, bool clamp) const;
+                               TextureFilter filtering, bool clamp) ;
 
         Texture generateSprite(const animation::Animation& animation,
                                const animation::Palette &substitutionTable,
-                               TextureFilter filtering, bool clamp) const;
+                               TextureFilter filtering, bool clamp) ;
 
         Texture loadStack(const std::string &path, TextureFilter filtering, bool clamp,
                           const SubstitutionTable &substitutionTable);

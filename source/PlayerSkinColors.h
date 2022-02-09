@@ -59,11 +59,10 @@ namespace Duel6 {
         bool headBand = false;
     public:
         PlayerSkinColors() = default;
-
+        PlayerSkinColors(Duel6::PlayerSkinColors&&);
+        PlayerSkinColors& operator=(Duel6::PlayerSkinColors&&);
         explicit PlayerSkinColors(const Color &color);
-
         PlayerSkinColors(const PlayerSkinColors &colors);
-
         PlayerSkinColors &operator=(const PlayerSkinColors &colors);
 
         PlayerSkinColors &set(BodyPart bodyPart, const Color &color) {

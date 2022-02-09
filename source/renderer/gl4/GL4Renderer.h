@@ -47,6 +47,7 @@ namespace Duel6 {
     private:
         GLuint colorVao;
         GLuint colorVbo;
+        GLuint colorEbo;
         GLuint materialVbo;
         GLuint materialVao;
 
@@ -100,9 +101,17 @@ namespace Duel6 {
 
         void setModelMatrix(const Matrix &m) override;
 
+        void points(const Vector positions[4], Float32 size, const Color &color) override;
+
         void point(const Vector &position, Float32 size, const Color &color) override;
 
+        void points(const std::vector<Vector> &positions, const std::vector<int>& indices, const int restartIndex, Float32 size, const Color &color) override;
+
         void line(const Vector &from, const Vector &to, Float32 width, const Color &color) override;
+
+        void lines(const Vector *positions, Float32 width, const Color &color) override;
+
+        void lines(const std::vector<Vector> &positions, const std::vector<int>& indices, const int restartIndex, Float32 width, const Color &color) override;
 
         void triangle(const Vector &p1, const Vector &p2, const Vector &p3, const Color &color) override;
 

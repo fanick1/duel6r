@@ -11,6 +11,8 @@
 #include "object/objects.h"
 #include "ClientGameProxy.h"
 #include "ServerGameProxy.h"
+#include "../Perf.h"
+
 namespace Duel6 {
     namespace net {
 
@@ -70,6 +72,7 @@ namespace Duel6 {
         void Peer::handle(EventType eventType, binarystream &s) {
             switch (eventType) {
             case EventType::REQUEST_GAME_STATE: {
+                performance::traceEvent t("Peer::handle REQUEST_GAME_STATE");
                 RequestGameState r;
                 if (!(s >> r)) {
                     D6_THROW(Exception, "Cannot deserialize EventType::REQUEST_GAME_STATE");
@@ -112,6 +115,7 @@ namespace Duel6 {
                 break;
             }
             case EventType::PLAYER_INPUTS_UPDATE: {
+                performance::traceEvent t("Peer::handle PLAYER_INPUTS_UPDATE");
                 PlayerInputsUpdate piu;
                 if (!(s >> piu)) {
                     D6_THROW(Exception, "Cannot deserialize EventType::PLAYER_INPUTS_UPDATE");

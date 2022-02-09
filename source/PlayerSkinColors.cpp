@@ -28,7 +28,7 @@
 #include "json/JsonParser.h"
 #include "PlayerSkinColors.h"
 #include "math/Math.h"
-
+#include "Perf.h"
 namespace Duel6 {
     namespace {
         static Color hairColors[] = {
@@ -54,11 +54,14 @@ namespace Duel6 {
     }
 
     PlayerSkinColors::PlayerSkinColors(const Color &color) {
+        performance::traceEvent t("PlayerSkinColors::PlayerSkinColors(const Color &color)");
         for (Size i = 0; i < 11; i++) {
             this->color[i] = color;
         }
     }
     PlayerSkinColors::PlayerSkinColors(const PlayerSkinColors &colors){
+        performance::traceEvent t("PlayerSkinColors::PlayerSkinColors(const PlayerSkinColors &colors)");
+
         for (Size i = 0; i < 11; i++) {
             this->color[i] = colors.color[i];
         }
@@ -67,6 +70,8 @@ namespace Duel6 {
     }
 
     PlayerSkinColors &PlayerSkinColors::operator=(const PlayerSkinColors &colors) {
+        performance::traceEvent t("PlayerSkinColors &PlayerSkinColors::operator=(const PlayerSkinColors &colors)");
+
         for (Size i = 0; i < 11; i++) {
             this->color[i] = colors.color[i];
         }
@@ -74,7 +79,22 @@ namespace Duel6 {
         this->headBand = colors.headBand;
         return *this;
     }
+    PlayerSkinColors::PlayerSkinColors(PlayerSkinColors &&colors){
+        performance::traceEvent t("PlayerSkinColors::PlayerSkinColors(PlayerSkinColors &&colors)");
 
+        std::swap(this->color,colors.color);
+        this->hair = colors.hair;
+        this->headBand = colors.headBand;
+    }
+
+    PlayerSkinColors &PlayerSkinColors::operator=(PlayerSkinColors &&colors) {
+        performance::traceEvent t("PlayerSkinColors &PlayerSkinColors::operator=(PlayerSkinColors &&colors)");
+
+        std::swap(this->color,colors.color);
+        this->hair = colors.hair;
+        this->headBand = colors.headBand;
+        return *this;
+    }
 
     PlayerSkinColors PlayerSkinColors::load(const std::string &profileRoot, const std::string &file) {
         Json::Parser parser;

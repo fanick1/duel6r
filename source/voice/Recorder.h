@@ -16,6 +16,8 @@ class OpusEncoder;
 namespace Duel6 {
     class Recorder {
         static void forwardCallback(void *userdata, Uint8 *stream, int len) {
+            //  POW:
+            //  https://github.com/mumble-voip/mumble/blob/20cd3350240976e27d6b17d3f5846537d3d0219d/src/mumble/AudioOutputSpeech.cpp#L411
             static_cast<Recorder *>(userdata)->recordAudio(stream, len);
         }
 

@@ -21,7 +21,7 @@ namespace Duel6 {
             GameState s;
             s.tick = game.tick;
             s.players.reserve(game.getPlayers().size());
-            s.playerProfiles.reserve(s.players.size());
+            s.playerProfiles.reserve(game.getPlayers().size());
             auto & bonusList = game.getRound().getWorld().getBonusList();
             s.bonuses.reserve(bonusList.getBonuses().size());
             s.weapons.reserve(bonusList.getLyingWeapons().size());

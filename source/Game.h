@@ -108,9 +108,11 @@ namespace Duel6 {
 
         Int32 currentRound;
         Int32 playedRounds;
-
+// TODO: use std::array or disallow adding more than max allowed players to avoid reallocations
         std::vector<Player> players;
         std::vector<PlayerSkin> skins;
+        Texture auxTextures;
+        Texture doubleJumpTexture;
         const PlayerAnimations & playerAnimations;
         const AuxAnimations & playerAuxAnimations;
         bool displayScoreTab = false;
@@ -131,7 +133,7 @@ namespace Duel6 {
 
         size_t joinPlayer(PlayerDefinition &playerDefinitions);
 
-        void joinPlayers(std::vector<PlayerDefinition> &playerDefinitions);
+        void joinPlayers(std::vector<std::reference_wrapper<PlayerDefinition>> &playerDefinitions);
 
         void disconnectPlayers(const std::vector<Int32> & ids);
 

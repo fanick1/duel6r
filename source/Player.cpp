@@ -42,7 +42,7 @@
 #include "voice/Decoder.h"
 #include "Game.h"
 #include "voice/Recorder.h"
-
+#include "Perf.h"
 namespace Duel6 {
 
     static const float JUMP_FACTOR = -0.7f;
@@ -60,7 +60,7 @@ namespace Duel6 {
                    Recorder * recorder)
             : game(game),
               person(&person),
-              skin(skin),
+              skin(&skin),
               animations(&skin.getAnimations()),
               auxAnimations(&skin.getAuxAnimations()),
               sounds(&sounds),
@@ -98,11 +98,11 @@ namespace Duel6 {
         unconfirmedInputs.fill(0);
         collider.initPosition(Float32(startBlockX), Float32(startBlockY) + 0.0001f);
         confirmedCollider = collider;
-        sprite = world.getSpriteList().add(animations->getStand().get(), skin.getTexture());
+        sprite = world.getSpriteList().add(animations->getStand().get(), skin->getTexture());
         sprite->setPosition(getSpritePosition(), 0.5f);
         this->weapon = weapon;
         gunSprite = weapon.makeSprite(world.getSpriteList());
-        auxSprite = world.getSpriteList().add(auxAnimations->getChat().get(), skin.getAuxTexture());
+        auxSprite = world.getSpriteList().add(auxAnimations->getChat().get(), skin->getAuxTexture());
         flags = FlagHasGun;
         confirmedFlags = flags;
         orientation = Math::random(2) == 0 ? Orientation::Left : Orientation::Right;
@@ -924,7 +924,7 @@ namespace Duel6 {
 
     void Player::switchToOriginalSkin() {
         tempSkinDuration = 0;
-        sprite->setTexture(skin.getTexture());
+        sprite->setTexture(skin->getTexture());
     }
 
     void Player::processShot(Shot &shot, std::vector<Player *> &playersHit, std::vector<Player *> &playersKilled) {
@@ -1047,7 +1047,7 @@ namespace Duel6 {
 
     void Player::onDoubleJumpEffect(Float32 x, Float32 y, Float32 angle) {
         playSample(PlayerSounds::Type::DoubleJump);
-        auto sprite = world->getSpriteList().add(skin.getAuxAnimations().getDoubleJump().get(), skin.getDoubleJumpTexture());
+        auto sprite = world->getSpriteList().add(auxAnimations->getDoubleJump().get(), skin->getDoubleJumpTexture());
         sprite->setPosition(Vector(x, y), 0.4f)
             .setSpeed(1.0f)
             .setZRotation(angle, { 0.5f, 0.5f })

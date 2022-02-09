@@ -67,8 +67,8 @@ namespace Duel6 {
 
     public:
         AuxAnimations(animation::Animation &&animation, animation::Animation &&doubleJumpAnimation);
-        Texture generateAnimationTexture(const TextureManager &textureManager) const;
-        Texture generateDoubleJumpAnimationTexture(const TextureManager &textureManager) const;
+        Texture generateAnimationTexture(TextureManager &textureManager) const;
+        Texture generateDoubleJumpAnimationTexture(TextureManager &textureManager) const;
 
         const AuxAnimation & getChat() const;
         const AuxAnimation & getConsole() const;
@@ -96,7 +96,7 @@ namespace Duel6 {
     public:
         PlayerAnimations(animation::Animation &&animation);
 
-        Texture generateAnimationTexture(const TextureManager &textureManager, const PlayerSkinColors &colors) const;
+        Texture generateAnimationTexture(TextureManager &textureManager, const PlayerSkinColors &colors) const;
 
         const PlayerAnimation &getStand() const;
 

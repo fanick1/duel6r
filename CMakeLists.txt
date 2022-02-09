@@ -280,6 +280,7 @@ set(D6R_SOURCES
         source/WorldRenderer.h
 
         source/aseprite/animation.h
+        source/aseprite/animation.cpp
         source/aseprite/aseprite_to_animation.h
         source/aseprite/aseprite_to_animation.cpp
         source/aseprite/aseprite.cpp
@@ -496,7 +497,7 @@ set(D6R_SOURCES
         source/voice/Decoder.h
         source/voice/Recorder.cpp
         source/voice/Recorder.h
-        source/voice/VoiceSettings.h)
+        source/voice/VoiceSettings.h source/Perf.cpp)
 
 set (D6R_BINARYSTREAM_SOURCES
         source/net/binarystream/BinaryDeserializer.h

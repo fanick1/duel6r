@@ -1,3 +1,4 @@
+#include "allocator/Malloc.cpp"
 #include "Application.cpp"
 #include "Block.cpp"
 #include "Bonus.cpp"
@@ -29,6 +30,7 @@
 #include "Person.cpp"
 #include "PersonList.cpp"
 #include "PersonProfile.cpp"
+#include "Perf.cpp"
 #include "Player.cpp"
 #include "PlayerAnimations.cpp"
 #include "PlayerEventListener.cpp"

@@ -28,7 +28,7 @@
 #include "World.h"
 #include "Game.h"
 #include "Weapon.h"
-
+#include "Perf.h"
 namespace Duel6 {
     World::World(Game &game, std::unique_ptr<Level> && levelData)
             : gameSettings(game.getSettings()), players(game.getPlayers()),
@@ -63,6 +63,8 @@ namespace Duel6 {
     }
 
     void World::updateSprites(Float32 elapsedTime) {
+        performance::traceEvent t("World::updateSprites");
+
         time += elapsedTime;
         redraw |= level->scrapRedraw();
         if(redraw){

@@ -137,7 +137,27 @@ namespace Duel6 {
 
         virtual void point(const Vector &position, Float32 size, const Color &color) = 0;
 
+        virtual void points(const Vector positions[4], Float32 size, const Color &color) {
+            point(positions[0], size, color);
+            point(positions[1], size, color);
+            point(positions[2], size, color);
+            point(positions[3], size, color);
+        };
+
+        virtual void points(const std::vector<Vector> &positions, const std::vector<int>& indices, const int restartIndex, Float32 size, const Color &color) {
+            for(size_t i = 0; i < positions.size(); i++){
+                if(indices[i] == restartIndex){
+                    continue;
+                }
+                point(positions[0], size, color);
+            }
+        };
+
         virtual void line(const Vector &from, const Vector &to, Float32 width, const Color &color) = 0;
+
+        virtual void lines(const Vector positions[4], Float32 width, const Color &color) = 0;
+
+        virtual void lines(const std::vector<Vector> &positions, const std::vector<int>& indices, const int restartIndex, Float32 width, const Color &color) = 0;
 
         virtual void frame(const Vector &position, const Vector &size, Float32 width, const Color &color) = 0;
 

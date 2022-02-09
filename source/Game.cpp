@@ -33,9 +33,9 @@
 #include "GameMode.h"
 #include "json/JsonParser.h"
 #include "json/JsonWriter.h"
-
+#include "Perf.h"
 namespace Duel6 {
-#define INITIAL_PLAYERS_POSITIONS 32 // initial size (we can actually serve much more players (>90))
+#define INITIAL_PLAYERS_POSITIONS 100 // initial size (we can actually serve much more players (>90))
 
     Game::Game(AppService &appService, GameResources &resources, GameSettings &settings)
         : appService(appService),
@@ -43,6 +43,8 @@ namespace Duel6 {
           settings(settings),
           worldRenderer(appService, *this),
           playedRounds(0),
+          auxTextures(resources.getAuxTextures()),
+          doubleJumpTexture(resources.getDoubleJumpTextureTextures()),
           playerAnimations(resources.getPlayerAnimations()),
           playerAuxAnimations(resources.getAuxAnimations()),
           chatMessageQueue(10),
@@ -79,6 +81,7 @@ namespace Duel6 {
     void Game::update(Float32 elapsedTime) {
         if(!isRunning) return;
         tick++;
+        performance::traceEvent t("Game::update");
         if (networkGame) {
             auto &recorder = appService.getRecorder();
             while(recorder.hasEncodedAudioReady()){
@@ -257,25 +260,25 @@ namespace Duel6 {
 
         for (auto &skin : skins) {
             textureManager.dispose(skin.getTexture());
-            textureManager.dispose(skin.getAuxTexture());
         }
         skins.clear();
         gameMode.initializePlayers(playerDefinitions);
         maxPlayerId = 0;
-        //players.reserve(playerDefinitions.size());
 
-        for (const PlayerDefinition &playerDef : playerDefinitions) {
-            console.printLine(Format("...Generating player for person: {0}") << playerDef.getPerson().getName());
-            skins.push_back(PlayerSkin(playerDef.getColors(), textureManager, playerAnimations, playerAuxAnimations));
+        for (const PlayerDefinition &playerDefinition : playerDefinitions) {
+
+            Texture textures = playerAnimations.generateAnimationTexture(textureManager, playerDefinition.getColors());
+            console.printLine(Format("...Generating player for person: {0}") << playerDefinition.getPerson().getName());
+            skins.push_back(PlayerSkin(playerDefinition.getColors(), textures, auxTextures, doubleJumpTexture, playerAnimations, playerAuxAnimations));
             players.emplace_back(this,
-                playerDef.getPerson(),
+                playerDefinition.getPerson(),
                 skins.back(),
-                playerDef.getSounds(),
-                playerDef.getControls(),
+                playerDefinition.getSounds(),
+                playerDefinition.getControls(),
                 maxPlayerId,
-                playerDef.getTeam(), 0, maxPlayerId, maxPlayerId, true,
+                playerDefinition.getTeam(), 0, maxPlayerId, maxPlayerId, true,
                 &appService.getRecorder()
-                );
+            );
             maxPlayerId++;
         }
 
@@ -295,32 +298,34 @@ namespace Duel6 {
             appService.getConsole().printLine("Awaiting server to accept connection.");
         }
     }
-    void Game::joinPlayers(std::vector<PlayerDefinition> &playerDefinitions) {
+    void Game::joinPlayers(std::vector<std::reference_wrapper<PlayerDefinition>> &playerDefinitions) {
         gameMode->initializePlayers(playerDefinitions);
         std::vector<size_t> added;
         added.reserve(playerDefinitions.size());
         for(auto & d : playerDefinitions){
-            added.push_back(joinPlayer(d));
+            added.push_back(joinPlayer(d.get()));
         }
         gameMode->joinPlayers(*this, players, added, this->round->getWorld());
-     //   gameMode->initializePlayerPositions(*this, players, this->round->getWorld() );
         if(isServer){
             gameProxy->playersJoined(playerDefinitions);
         }
     }
 
     size_t Game::joinPlayer(PlayerDefinition &playerDefinition) { // TODO private
+        performance::traceEvent t("Game::joinPlayer");
         Console &console = appService.getConsole();
         TextureManager &textureManager = appService.getTextureManager();
         console.printLine(Format("...Player joined ... Generating player for person: {0}") << playerDefinition.getPerson().getName());
         size_t pos = 0;
         bool authoritative = isServer || !networkGame;
         Int32 playerId = authoritative ? maxPlayerId++ : playerDefinition.getPlayerId();
+
+        Texture textures = playerAnimations.generateAnimationTexture(textureManager, playerDefinition.getColors());
+
         for (const auto &player : players) {
             if (player.isDeleted()) {
                 textureManager.dispose(skins[pos].getTexture());
-                textureManager.dispose(skins[pos].getAuxTexture());
-                skins[pos] = PlayerSkin(playerDefinition.getColors(), textureManager, playerAnimations,  playerAuxAnimations);
+                skins[pos] = PlayerSkin(playerDefinition.getColors(), textures, auxTextures, doubleJumpTexture, playerAnimations,  playerAuxAnimations);
                 players[pos] = {this, playerDefinition.getPerson(),
                     skins[pos],
                     playerDefinition.getSounds(),
@@ -340,7 +345,7 @@ namespace Duel6 {
             }
             pos++;
         }
-        skins.push_back(PlayerSkin(playerDefinition.getColors(), textureManager, playerAnimations, playerAuxAnimations));
+        skins.emplace_back(playerDefinition.getColors(), textures, auxTextures, doubleJumpTexture, playerAnimations,  playerAuxAnimations);
         players.emplace_back(this,
             playerDefinition.getPerson(),
             skins.back(),
@@ -352,14 +357,12 @@ namespace Duel6 {
             playerDefinition.getClientLocalId(),
             pos,
             false);
-
         if(authoritative){
             playerDefinition.setPlayerId(playerId);
         }
         playerDefinition.playerPos = pos;
 
         return pos;
-
     }
 
     void Game::disconnectPlayers(const std::vector<Int32> & ids) {

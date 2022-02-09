@@ -30,7 +30,7 @@
 #include "Game.h"
 #include "GameMode.h"
 #include "Explosion.h"
-
+#include "Perf.h"
 namespace Duel6 {
     WorldRenderer::WorldRenderer(Duel6::AppService &appService, const Duel6::Game &game)
             : font(appService.getFont()), video(appService.getVideo()), game(game), renderer(video.getRenderer()),
@@ -196,7 +196,7 @@ namespace Duel6 {
     }
 
     void WorldRenderer::fpsCounter() const {
-        std::string fpsCount = Format("tick: {0,6} FPS - {1}") << game.tick << Int32(video.getFps());
+        std::string fpsCount = Format("FPS - {0}") << Int32(video.getFps());
         Int32 width = font.getTextWidth(fpsCount, 16);
 
         Int32 x = Int32(video.getScreen().getClientWidth()) - width;
@@ -255,34 +255,43 @@ namespace Duel6 {
 
     void WorldRenderer::youAreHere() const {
         Float32 remainingTime = game.getRound().getRemainingYouAreHere();
-        if (remainingTime <= 0) return;
+        if (remainingTime <= 0) { [[likely]]
+            return;
+        }
 
         renderer.enableDepthTest(false);
 
         Float32 radius = 0.5f + 0.5f * std::abs(D6_YOU_ARE_HERE_DURATION / 2 - remainingTime);
+        const size_t points = 37;
+        std::vector<Vector> positions;
+        std::vector<int> indices;
+        positions.reserve(points * game.getPlayers().size());
+        indices.reserve(points * (game.getPlayers().size() + 1)); // reserve for restart indexes
+        const uint16_t restartIndex = 0xFFFF;
         for (const Player &player : game.getPlayers()) {
             if(player.isDeleted() || !player.isLocal()){
                 continue;
             }
             Vector playerCentre = player.getCentre();
             playerCentre.z = 0.5;
-            Vector lastPoint;
-            for (Int32 u = 0; u < 37; u++) {
-                Float32 spike = (u % 2 == 0) ? 0.95f : 1.05f;
-                Vector pos = playerCentre + spike * radius * Vector::direction(u * 10);
-                if (u > 0) {
-                    renderer.line(lastPoint, pos, 3.0f, Color::YELLOW);
-                }
-                lastPoint = pos;
+            for (Int32 u = 0; u < points; u += 2) {
+                indices.push_back(positions.size());
+                positions.push_back(playerCentre +  0.95f * radius * Vector::direction((u + remainingTime) * 10));
+                indices.push_back(positions.size());
+                positions.push_back(playerCentre +  1.05f * radius * Vector::direction((u + remainingTime + 1) * 10));
             }
+            indices.push_back(restartIndex);
         }
-
+        performance::traceEvent t("renderer.lines");
+        renderer.lines(positions, indices, restartIndex, 3.0f, Color::YELLOW);
         renderer.enableDepthTest(true);
     }
 
     Float32
     WorldRenderer::playerIndicator(const Player &player, const Indicator &indicator, const Color &color, Float32 value,
                                    Float32 xOfs, Float32 yOfs) const {
+        performance::traceEvent t("WorldRenderer::playerIndicator");
+
         Float32 width = value * 0.98f;
         Float32 X = xOfs - 0.5f;
         Float32 Y = yOfs;
@@ -300,6 +309,8 @@ namespace Duel6 {
     }
 
     void WorldRenderer::playerName(const Player &player, const Indicator &indicator, Float32 xOfs, Float32 yOfs) const {
+        performance::traceEvent t("WorldRenderer::playerName");
+
         const std::string &name = Format("{0}") << player.getPerson().getName();
         Float32 width = font.getTextWidth(name, 0.3f);
         Float32 X = xOfs - width / 2;
@@ -321,6 +332,8 @@ namespace Duel6 {
 
     void
     WorldRenderer::bulletIndicator(const Player &player, const Indicator &indicator, Float32 xOfs, Float32 yOfs) const {
+        performance::traceEvent t("WorldRenderer::bulletIndicator");
+
         std::string bulletCount = Format("{0}") << player.getAmmo();
 
         Float32 width = 0.15f * bulletCount.size();
@@ -342,6 +355,8 @@ namespace Duel6 {
 
     void
     WorldRenderer::bonusIndicator(const Player &player, const Indicator &indicator, Float32 xOfs, Float32 yOfs) const {
+        performance::traceEvent t("WorldRenderer::bonusIndicator");
+
         Uint8 alpha = Uint8(255 * indicator.getAlpha());
         auto bonusType = player.getBonus();
         if(bonusType == nullptr){
@@ -437,6 +452,8 @@ namespace Duel6 {
     }
 
     void WorldRenderer::roundKills(const Player &player, Float32 xOfs, Float32 yOfs) const {
+        performance::traceEvent t("WorldRenderer::roundKills");
+
         Float32 width = (2 * player.getRoundKills() - 1) * 0.1f;
         Float32 X = xOfs + 0.05f - width / 2;
         Float32 Y = yOfs + 0.1f;
@@ -447,24 +464,69 @@ namespace Duel6 {
     }
 
     void WorldRenderer::invulRing(const Player &player) const {
-        Vector playerCentre = player.getCentre();
-        Float32 radius = player.getDimensions().length() / 2.0f;
-        Int32 p = Int32(player.getBonusRemainingTime() * 30) % 360;
-
-        for (Int32 uh = p; uh < 360 + p; uh += 15) {
-            Int32 u = uh % 360;
-            Vector pos = playerCentre + radius * Vector::direction(u);
-            renderer.point(Vector(pos.x, pos.y, 0.5f), 2.0f, Color::RED);
-        }
+//        Vector playerCentre = player.getCentre();
+//        Float32 radius = player.getDimensions().length() / 2.0f;
+//        size_t p = size_t(player.getBonusRemainingTime() * 30) % 360;
+//        Vector points[4];
+//        points[0].z = 0.5f;
+//        points[1].z = 0.5f;
+//        points[2].z = 0.5f;
+//        points[3].z = 0.5f;
+//        const auto px = playerCentre.x;
+//        const auto py = playerCentre.y;
+//
+//        for (size_t uh = p; uh < 90 + p; uh += 15) {
+//            const Vector dir = radius * Vector::direction(uh);
+//            const Float32 dx = dir.x;
+//            const Float32 dy = dir.y;
+//            points[0].x = px + dx;
+//            points[0].y = py + dy;
+//            points[1].x = px - dy;
+//            points[1].y = py + dx;
+//            points[2].x = px + dy;
+//            points[2].y = py - dx;
+//            points[3].x = px - dx;
+//            points[3].y = py - dy;
+//
+//            renderer.points(points, 2.0f, Color::RED);
+//        }
     }
 
     void WorldRenderer::invulRings(const std::vector<Player> &players) const {
         renderer.enableDepthTest(false);
+        const uint16_t restartIndex = 0xFFFF;
+
+        const size_t points = 37;
+        std::vector<Vector> positions;
+        std::vector<int> indices;
+        positions.reserve(points * game.getPlayers().size());
+        indices.reserve(points * (game.getPlayers().size() + 1)); // reserve for restart indexes
+
         for (const Player &player : players) {
             if (!player.isDeleted() && player.isInvulnerable()) {
-                invulRing(player);
+                Vector playerCentre = player.getCentre();
+                Float32 radius = player.getDimensions().length() / 2.0f;
+                size_t p = size_t(player.getBonusRemainingTime() * 30) % 360;
+                const auto px = playerCentre.x;
+                const auto py = playerCentre.y;
+                for (size_t uh = p; uh < 90 + p; uh += 15) {
+                    const Vector dir = radius * Vector::direction(uh);
+                    const Float32 dx = dir.x;
+                    const Float32 dy = dir.y;
+                    indices.push_back(positions.size());
+                    positions.push_back(Vector(px + dx, py + dy, 0.5f));
+                    indices.push_back(positions.size());
+                    positions.push_back(Vector(px - dy, py + dx, 0.5f));
+                    indices.push_back(positions.size());
+                    positions.push_back(Vector(px + dy, py - dx, 0.5f));
+                    indices.push_back(positions.size());
+                    positions.push_back(Vector(px - dx, py - dy, 0.5f));
+                    indices.push_back(positions.size());
+                }
+                indices.push_back(restartIndex);
             }
         }
+        renderer.points(positions, indices, restartIndex, 2.0f, Color::RED);
         renderer.enableDepthTest(true);
     }
 
@@ -587,21 +649,45 @@ namespace Duel6 {
     }
 
     void WorldRenderer::view() const {
-        const World &world = game.getRound().getWorld();
-        world.getElevatorList().render(renderer);
-        //world.getUnconfirmedElevatorList().render(renderer);
-        world.getBonusList().render(renderer);
-        world.getSpriteList().render(renderer);
-        invulRings(game.getPlayers());
-        water(world.getLevelRenderData().getWater());
-        youAreHere();
+        performance::traceEvent t("WorldRenderer::view");
 
-        for (const Player &hpPlayer : game.getPlayers()) {
-            playerStatus(hpPlayer);
+        const World &world = game.getRound().getWorld();
+        {
+            performance::traceEvent t("elevators");
+            world.getElevatorList().render(renderer);
+        }
+        //world.getUnconfirmedElevatorList().render(renderer);
+        {
+            performance::traceEvent t("bonuses");
+            world.getBonusList().render(renderer);
+        }
+        {
+            performance::traceEvent t("sprites");
+            world.getSpriteList().render(renderer);
+        }
+        {
+            performance::traceEvent t("invulRings");
+            invulRings(game.getPlayers());
+        }
+        {
+            performance::traceEvent t("water");
+            water(world.getLevelRenderData().getWater());
+        }
+        {
+            performance::traceEvent t("youAreHere");
+            youAreHere();
+        }
+        {
+            performance::traceEvent t("playerStatus");
+            for (const Player &hpPlayer : game.getPlayers()) {
+                playerStatus(hpPlayer);
+            }
         }
         //shotCollisionBox(world.getShotList());
-
-        world.getExplosionList().render(renderer);
+        {
+            performance::traceEvent t("explosions");
+            world.getExplosionList().render(renderer);
+        }
     }
 
     Color WorldRenderer::getGameOverOverlay() const {
@@ -621,6 +707,8 @@ namespace Duel6 {
     }
 
     void WorldRenderer::fullScreen() const {
+        performance::traceEvent t("WorldRenderer::fullScreen");
+
         Float32 remainingTime = game.getRound().getRemainingYouAreHere();
         setView(0, 0, video.getScreen().getClientWidth(), video.getScreen().getClientHeight());
 
@@ -680,6 +768,8 @@ namespace Duel6 {
     }
 
     void WorldRenderer::render() const {
+        performance::traceEvent t("WorldRenderer::render");
+
         const GameSettings &settings = game.getSettings();
 
         if (settings.getScreenMode() == ScreenMode::FullScreen) {

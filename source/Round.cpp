@@ -31,7 +31,7 @@
 #include "GameMode.h"
 #include "Weapon.h"
 #include "PersonProfile.h"
-
+#include "Perf.h"
 namespace Duel6 {
     Round::Round(Game &game, Int32 roundNumber, std::unique_ptr<Level> && level)
             : game(game), roundNumber(roundNumber), world(game, std::move(level)),
@@ -170,6 +170,7 @@ namespace Duel6 {
     }
 
     void Round::update(Float32 elapsedTime) {
+        performance::traceEvent t("Round::update");
         bool playVoice = false;
         const static size_t frameLen = VOICE_FRAME_SIZE * 2 ;//sizeof(opus_int16)
         static Uint8 voiceBuffer[frameLen];
@@ -218,7 +219,7 @@ namespace Duel6 {
         } else {
             gameOverWait = std::max(gameOverWait - elapsedTime, 0.0f);
         }
-
+        performance::traceEvent t2("Round::update players");
         for (Player &player : world.getPlayers()) {
             if(player.isDeleted()){
                 continue;
@@ -271,6 +272,7 @@ namespace Duel6 {
                 }
             }
         }
+        t2.end();
         if(!hasWinner() || gameOverWait > (D6_GAME_OVER_WAIT - D6_ROUND_OVER_WAIT) ){
             world.update(elapsedTime);
         } else {

@@ -245,14 +245,15 @@ namespace Duel6 {
             }
         }
 
-        void ServerGameProxy::playersJoined(std::vector<PlayerDefinition> &playerDefinitions) {
+        void ServerGameProxy::playersJoined(std::vector<std::reference_wrapper<PlayerDefinition>> &playerDefinitions) {
             if(playerDefinitions.size() == 0){
                 return; // avoid troubles !
             }
             PlayersJoined pj;
             pj.playerProfiles.reserve(playerDefinitions.size());
             Int32 clientId = 0;
-            for (auto &player : playerDefinitions) {
+            for (auto &playerRef : playerDefinitions) {
+                auto &player = playerRef.get();
                 PlayerProfile cp;
                 PlayerProfile::Skin &skin = cp.skin;
                 cp.playerId = player.getPlayerId();
@@ -264,8 +265,7 @@ namespace Duel6 {
                 const PlayerSkinColors &colors = player.getColors();
                 skin.hair = (PlayerProfile::Hair) colors.getHair();
                 skin.headBand = colors.hasHeadBand();
-                size_t i = 0;
-                for (auto &c : skin.colors) {
+                for (size_t i = 0; auto &c : skin.colors) {
                     PlayerSkinColors::BodyPart bp = (PlayerSkinColors::BodyPart) i;
                     c.red = colors.get(bp).getRed();
                     c.green = colors.get(bp).getGreen();

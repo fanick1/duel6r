@@ -78,6 +78,8 @@ namespace Duel6 {
 
         static void say(Console &console, const Console::Arguments &args, Game &game);
 
+        static void perf(Console &console, const Console::Arguments &args, Game &game);
+
     public:
         static void registerCommands(Console &console, AppService &appService, Menu &menu, GameSettings &gameSettings);
     };

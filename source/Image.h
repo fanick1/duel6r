@@ -38,13 +38,16 @@ namespace Duel6 {
     private:
         Size dimensions[3];
         std::vector<Color> data;
-
     public:
         Image() : Image(0, 0, (Size)0) {}
 
         Image(Size width, Size height, Size depth = 1);
 
+        Image(Size width, Size height, Size depth, Uint8 alpha);
+
         Image &resize(Size width, Size height, Size depth = 1);
+
+        Image &resize(Size width, Size height, Size depth, Uint8 alpha);
 
         Size getWidth() const {
             return dimensions[0];
@@ -79,6 +82,8 @@ namespace Duel6 {
         static Image loadStack(const std::string &path);
 
         static Image fromSurface(SDL_Surface *surface);
+
+        void zeroOut(Size width, Size height, Size depth);
     };
 }
 

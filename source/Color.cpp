@@ -48,6 +48,7 @@ namespace Duel6 {
     const Color Color::MAGENTA(255, 0, 255);
     const Color Color::YELLOW(255, 255, 0);
     const Color Color::GRAY(180, 180, 180);
+    const Color Color::TRANSPARENT(0,0,0,0);
 
     Color Color::scale(Float32 ratio) const {
         Uint8 r = std::min(Uint8(255), Uint8(red * ratio));
@@ -65,5 +66,32 @@ namespace Duel6 {
 
     Color Color::random() {
         return Color(Uint8(Math::random(0, 255)), Uint8(Math::random(0, 255)), Uint8(Math::random(0, 255)));
+    }
+
+    Color &Color::add(Uint8 red, Uint8 green, Uint8 blue, Uint8 alpha) {
+        if (alpha == 255) {[[likely]]
+            this->red = red;
+            this->green = green;
+            this->blue = blue;
+            this->alpha = 255;
+            return *this;
+        }
+        float alphaSrc = alpha / 255.0f;
+        float alphaDst = this->alpha / 255.0f;
+        float a = alphaDst * (1.0f - alphaSrc);
+        float A = alphaSrc + a;
+        if (A > 1.0f || this->alpha == 1) {
+            A = 1.0f;
+        }
+        float R = (red * alphaSrc + this->red * a) / A;
+        float G = (green * alphaSrc + this->green * a) / A;
+        float B = (blue * alphaSrc + this->blue * a) / A;
+
+        this->red = R;
+        this->green = G;
+        this->blue = B;
+        this->alpha = A * 255.0f;
+
+        return *this;
     }
 }

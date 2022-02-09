@@ -56,7 +56,7 @@ namespace Duel6 {
               dying(animation, "Death"),
               pick(animation, "Pick") {}
 
-    Texture PlayerAnimations::generateAnimationTexture(const TextureManager &textureManager,
+    Texture PlayerAnimations::generateAnimationTexture(TextureManager &textureManager,
                                                        const PlayerSkinColors &colors) const {
         animation::Palette substitution_table(animation.palette);
         int dst[] = {4, 5, 8, 9, 12, 13, 16, 20, 24, 36, 37}; //indexes to palette colors used in the man.ase
@@ -69,7 +69,10 @@ namespace Duel6 {
             substitution[dst[i]].b = color.getBlue();
             substitution[dst[i]].a = color.getAlpha();
         }
-
+        substitution[animation.transparentIndex].r = 0;
+        substitution[animation.transparentIndex].g = 0;
+        substitution[animation.transparentIndex].b = 0;
+        substitution[animation.transparentIndex].a = 0;
         auto view = animation.toView();
 
         view.setLayerVisibility("Hair", colors.getHair() == PlayerSkinColors::Hair::Normal);
@@ -146,13 +149,13 @@ namespace Duel6 {
           doubleJump(doubleJumpAnimation, "Jump"){
     }
 
-    Texture AuxAnimations::generateAnimationTexture(const TextureManager &textureManager) const {
+    Texture AuxAnimations::generateAnimationTexture(TextureManager &textureManager) const {
         auto view = animation.toView();
         animation::Palette substitution_table(animation.palette);
         return textureManager.generateSprite(animation, view, substitution_table, TextureFilter::Nearest, true);
     }
 
-    Texture AuxAnimations::generateDoubleJumpAnimationTexture(const TextureManager &textureManager) const {
+    Texture AuxAnimations::generateDoubleJumpAnimationTexture(TextureManager &textureManager) const {
         auto view = doubleJumpAnimation.toView();
         animation::Palette substitution_table(doubleJumpAnimation.palette);
         return textureManager.generateSprite(doubleJumpAnimation, view, substitution_table, TextureFilter::Nearest, true);

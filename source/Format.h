@@ -47,8 +47,8 @@ namespace Duel6 {
         std::string format;
 
     public:
-        explicit Format(const std::string &format)
-                : paramIndex(0), format(format) {}
+        explicit Format(std::string &&format)
+                : paramIndex(0), format(std::move(format)) {}
 
         template<class T>
         Format &operator<<(const T &val) {

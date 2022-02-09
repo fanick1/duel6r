@@ -37,10 +37,13 @@
 namespace Duel6 {
 
     Image::Image(Size width, Size height, Size depth)
-        :dimensions { width, height, depth },
+        : dimensions { width, height, depth },
           data(width * height * depth) {
     }
-
+    Image::Image(Size width, Size height, Size depth, Uint8 alpha)
+            : dimensions { width, height, depth},
+              data(width * height * depth, Color(0, 0, 0, alpha) ) {
+    }
     Image &Image::resize(Size width, Size height, Size depth) {
         dimensions[0] = width;
         dimensions[1] = height;
@@ -49,7 +52,14 @@ namespace Duel6 {
         data.resize(width * height * depth);
         return *this;
     }
-
+    Image &Image::resize(Size width, Size height, Size depth, Uint8 alpha) {
+        dimensions[0] = width;
+        dimensions[1] = height;
+        dimensions[2] = depth;
+        data.clear();
+        data.resize(width * height * depth, Color(0, 0, 0, alpha));
+        return *this;
+    }
     Image Image::flipY() const {
         auto width = dimensions[0];
         auto height = dimensions[1];
@@ -184,5 +194,14 @@ namespace Duel6 {
         SDL_UnlockSurface(surface);
 
         return image;
+    }
+
+    void Image::zeroOut(Size width, Size height, Size depth) {
+        dimensions[0] = width;
+        dimensions[1] = height;
+        dimensions[2] = depth;
+        size_t oldSize = data.size();
+        data.resize(width * height * depth, Color(0,0,0,0));
+        memset((void *)data.data(), 0, oldSize * sizeof(Color));
     }
 }

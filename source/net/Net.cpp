@@ -8,6 +8,7 @@
 #include "Net.h"
 #include <enet/enet.h>
 #include <iostream> //TODO odjebnout
+#include "../allocator/Malloc.h"
 
 namespace Duel6 {
     namespace net {
@@ -25,7 +26,12 @@ namespace Duel6 {
             if(Net::initialized){
                 return true;
             }
-            if (enet_initialize() != 0)
+            ENetCallbacks cb;
+            memset(&cb, 0, sizeof(ENetCallbacks));
+            cb.free = &Memory::customFree;
+            cb.malloc = &Memory::customMalloc;
+            if (enet_initialize_with_callbacks(enet_linked_version(), &cb) != 0)
+//            if (enet_initialize() != 0)
             {
                 std::cerr << "An error occurred while initializing ENet.\n";
                 return false;

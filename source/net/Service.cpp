@@ -9,6 +9,7 @@
 #include "Message.h"
 #include "Object.h"
 #include "Peer.h"
+#include "../Perf.h"
 namespace Duel6::net {
 
     void Service::setMasterAddressAndPort(const std::string &address, int port){
@@ -27,16 +28,19 @@ namespace Duel6::net {
         if (!(state == ServiceState::STARTED || state == ServiceState::STARTING || state == ServiceState::STOPPING)) {
             return;
         }
-
+        performance::traceEvent t("Service::poll");
         runPeriodicalTasks(elapsedTime);
 
         ENetEvent event;
         ENetHost *netHost = serviceHost.get();
         bool serviced = false;
         do {
+            performance::traceEvent t2("enet_host_service Service::poll");
             // enet_host_service interacts with the socket (receive commands, send waiting commands)
             if (!serviced && enet_host_service(netHost, &event, timeout) <= 0) break;
+            t2.end();
             serviced = true;
+            performance::traceEvent t("loop Service::poll");
             switch (event.type) {
             case ENetEventType::ENET_EVENT_TYPE_NONE:
                 break;
@@ -86,6 +90,7 @@ namespace Duel6::net {
         }
         switch (type) {
         case MessageType::OBJECT: {
+            performance::traceEvent t("msg object");
             ObjectType objectType;
             if (!((bs >> objectType) == true)) {
                 D6_THROW(Exception, "Cannot deserialize MessageType::OBJECT");
@@ -94,6 +99,7 @@ namespace Duel6::net {
             break;
         }
         case MessageType::EVENT: {
+            performance::traceEvent t("msg event");
             EventType eventType;
             if (!(bs >> eventType) == true) {
                 D6_THROW(Exception, "Cannot deserialize MessageType::EVENT");

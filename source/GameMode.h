@@ -51,6 +51,11 @@ namespace Duel6 {
                 initializePlayer(def);
             }
         }
+        void initializePlayers(std::vector<std::reference_wrapper<PlayerDefinition>> &definitions) {
+            for(auto & def: definitions){
+                initializePlayer(def.get());
+            }
+        }
 
         virtual void joinPlayers(Game &game, std::vector<Player> &players, std::vector<size_t> joined, World &world) = 0;
 

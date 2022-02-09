@@ -97,6 +97,8 @@ public:
         }
         return result;
     }
+
+    void substitute(const Palette& palette, std::vector<Color> & result, uint8_t opacity = 255, uint8_t transparentIndex = 0) const;
 };
 
 class Cel {
@@ -143,62 +145,60 @@ public:
         Subtract = 17,
         Divide = 18
     };
-
+    std::vector<Cel> frames;
     BLEND_MODE blendMode = Normal;
     bool visible = true;
     bool isGroupLayer = false; // true -> no frames
     uint8_t opacity;
     std::string name;
-    std::vector<Cel> frames;
     Layer(BLEND_MODE blendMode, bool visible, bool isGroupLayer,
           uint8_t opacity,
           const std::string & name,
           uint32_t framesCount) :
+          frames(isGroupLayer ? 0 : framesCount),
         blendMode(blendMode),
         visible(visible),
         isGroupLayer(isGroupLayer),
         opacity(opacity),
         name(name) {
-        if (!isGroupLayer) {
-            frames.resize(framesCount);
-        }
+
     }
 
     Layer(const Layer & l) :
+        frames(l.frames),
         blendMode(l.blendMode),
         visible(l.visible),
         isGroupLayer(l.isGroupLayer),
         opacity(l.opacity),
-        name(l.name),
-        frames(l.frames) {
+        name(l.name) {
     }
 
     Layer(Layer && l) :
+        frames(std::move(l.frames)),
         blendMode(l.blendMode),
         visible(l.visible),
         isGroupLayer(l.isGroupLayer),
         opacity(l.opacity),
-        name(l.name),
-        frames(std::move(l.frames)) {
+        name(l.name) {
     }
 
     Layer & operator =(const Layer & l) {
+        frames = l.frames;
         blendMode = l.blendMode;
         visible = l.visible;
         isGroupLayer = l.isGroupLayer;
         opacity = l.opacity;
         name = l.name;
-        frames = l.frames;
         return *this;
     }
 
     Layer & operator =(Layer && l) {
+        frames = std::move(l.frames);
         blendMode = l.blendMode;
         visible = l.visible;
         isGroupLayer = l.isGroupLayer;
         opacity = l.opacity;
         name = l.name;
-        frames = std::move(l.frames);
         return *this;
     }
 };
@@ -223,12 +223,13 @@ public:
 
     class AnimationView {
     public:
-        const Animation & animation;
         std::vector<Layer::LayerView> layerViews;
+        const Animation & animation;
+
     public:
-        AnimationView(const Animation & animation) :
-            animation(animation),
-            layerViews(animation.layers.begin(), animation.layers.end()) {
+        AnimationView(const Animation &animation) :
+                layerViews(animation.layers.begin(), animation.layers.end()),
+                animation(animation) {
         }
 
         void setLayerVisibility(const std::string & name, bool visible) {
@@ -258,13 +259,14 @@ public:
     uint16_t width;
     uint16_t height;
     uint16_t framesCount;
+    std::vector<Layer> layers;
+
     uint8_t transparentIndex;
-    Palette palette;
     std::vector<std::vector<int32_t>> animations;
     std::vector<Frame> frames;
-    std::vector<Layer> layers;
     std::vector<Image> images;
     std::vector<Loop> loops;
+    Palette palette;
     std::map<std::string, uint32_t> animationLookup; //index to animations
 
     Animation() = default;

@@ -9,6 +9,7 @@
 #include "../Game.h"
 #include "../PersonProfile.h"
 #include "../Level.h"
+#include "../Perf.h"
 namespace Duel6 {
     namespace net {
 
@@ -340,8 +341,8 @@ namespace Duel6 {
                     w.remainingReloadTime,
                     collider));
             }
-            std::vector<PlayerDefinition> playerDefinitions;
-            playerDefinitions.reserve(sr.players.size());
+            std::vector<std::reference_wrapper<PlayerDefinition>> joiningPlayers;
+            joiningPlayers.reserve(sr.players.size());
 
             for (auto &p : sr.playerProfiles) {
                 if (clientId == p.clientId) { // player local to the client
@@ -362,7 +363,7 @@ namespace Duel6 {
                     Duel6::Color color { c.red, c.green, c.blue, c.alpha };
                     colors.set((PlayerSkinColors::BodyPart) cid++, color);
                 }
-                playerDefinitions.emplace_back(
+                auto & playerDef = playerDefinitions.emplace_back(
                     person,
                     colors,
                     defaultSounds,
@@ -371,11 +372,12 @@ namespace Duel6 {
                     p.playerId,
                     p.clientId,
                     p.playerId);
+                joiningPlayers.emplace_back(playerDef);
             }
-            game->joinPlayers(playerDefinitions);
-            for (auto &d : playerDefinitions) {
-                auto playerId = d.getPlayerId();
-                idmap[playerId] = d.playerPos;
+            game->joinPlayers(joiningPlayers);
+            for (auto &d : joiningPlayers) {
+                auto playerId = d.get().getPlayerId();
+                idmap[playerId] = d.get().playerPos;
             }
 
             for (auto &p : sr.players) {
@@ -455,15 +457,20 @@ namespace Duel6 {
         }
 
         void ClientGameProxy::joinPlayers(std::vector<PlayerProfile> &playerProfiles){
-            std::vector<PlayerDefinition> playerDefinitions;
-            playerDefinitions.reserve(playerProfiles.size());
+            performance::traceEvent t("ClientGameProxy::joinPlayers");
+
+            std::vector<std::reference_wrapper<PlayerDefinition>> joiningPlayers;
+            joiningPlayers.reserve(playerProfiles.size());
 
             for (auto &p : playerProfiles) {
+                performance::traceEvent t("add person");
                 Person &person = persons.emplace_back(p.name, nullptr);
+                t.end();
                 PlayerSkinColors colors;
                 colors.setHair(p.skin.hair);
                 colors.setHeadBand(p.skin.headBand);
                 int cid = 0;
+                performance::traceEvent t2("set up skin colors");
                 for (auto c : p.skin.colors) {
                     if (cid > 10) {
                         return;
@@ -471,7 +478,9 @@ namespace Duel6 {
                     Duel6::Color color { c.red, c.green, c.blue, c.alpha };
                     colors.set((PlayerSkinColors::BodyPart) cid++, color);
                 }
-                playerDefinitions.emplace_back(
+                t2.end();
+                performance::traceEvent t3("playerDefinitions.emplace_back");
+                auto & playerDef = playerDefinitions.emplace_back(
                     person,
                     colors,
                     defaultSounds,
@@ -480,17 +489,23 @@ namespace Duel6 {
                     p.playerId,
                     p.clientId,
                     p.clientLocalId);
+                joiningPlayers.push_back(playerDef);
+                t3.end();
             }
-            game->joinPlayers(playerDefinitions);
-            for (auto &d : playerDefinitions) {
-                idmap[d.getPlayerId()] = d.playerPos;
+            performance::traceEvent t4("game->joinPlayers");
+            game->joinPlayers(joiningPlayers);
+            t4.end();
+            performance::traceEvent t5("set up idmap");
+            for (auto &d : joiningPlayers) {
+                idmap[d.get().getPlayerId()] = d.get().playerPos;
             }
+            t5.end();
         }
 
         //this should only happen on the server side when the client called us with this request
         void ClientGameProxy::handle(Peer &peer, RequestGameState &r) {
             peer.peerUpdateState = PeerUpdateState::REQUESTED_GAMESTATE;
-            for (auto &p : r.connectingPlayers) {
+            for (auto &p: r.connectingPlayers) {
                 p.clientId = peer.getClientID();
             }
             auto countOthers = r.connectingPlayers.size() - 1;
@@ -506,13 +521,19 @@ namespace Duel6 {
                 peer.setDescription(hostToIPaddress(peer.getEnetPeer().address.host, peer.getEnetPeer().address.port));
             }
             std::stringstream ss;
-            ss << peer.getDescription() << (countOthers > 0 ? " are" : " is") << " connecting from " << hostToIPaddress(peer.getEnetPeer().address.host, peer.getEnetPeer().address.port);
+            ss << peer.getDescription() << (countOthers > 0 ? " are" : " is") << " connecting from "
+               << hostToIPaddress(peer.getEnetPeer().address.host, peer.getEnetPeer().address.port);
             game->broadcastChatMessage(ss.str(), false, true, "SERVER");
             joinPlayers(r.connectingPlayers);
 
             //TODO route this somehow through the Game object - connecting peer should be recognized
             // as expecting to be provided the game state
-            sendGameState(peer, *game);
+            //TODO I tried, but run into deadlocking the peerUpdateState logic. I shall try again harder later.
+
+            {
+                performance::traceEvent t("sendGameState");
+                sendGameState(peer, *game);
+            }
         }
 
         bool ClientGameProxy::gameIsServer(){

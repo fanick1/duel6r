@@ -205,13 +205,11 @@ namespace Duel6 {
 
     void Sound::auxBatchSubmit(){
         if(headless) return;
-        auto queued = SDL_GetQueuedAudioSize(auxdevice);
         auto res = SDL_QueueAudio(auxdevice, Sound::voiceMixBuffer, frameLen);
         if(res == -1){
             printf("Failed to queue audio\n");
             return;
         }
-//        printf("Queued %d\n", queued);
         memset(Sound::voiceMixBuffer, 0, frameLen);
     }
     void Sound::auxQueueSilence() {

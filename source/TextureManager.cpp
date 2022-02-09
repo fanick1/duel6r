@@ -30,7 +30,7 @@
 #include "File.h"
 #include "Video.h"
 #include "aseprite/animation.h"
-
+#include "Perf.h"
 namespace Duel6 {
     TextureManager::TextureManager(Renderer &renderer)
             : renderer(renderer) {}
@@ -38,11 +38,12 @@ namespace Duel6 {
     animation::Animation TextureManager::loadAnimation(const std::string &path) {
         return animation::Animation::loadAseImage(path);
     }
+    Image TextureManager::scratch;
 
     Texture TextureManager::generateSprite(const animation::Animation &animation,
                                            const animation::Palette &substitutionTable,
                                            TextureFilter filtering,
-                                           bool clamp) const {
+                                           bool clamp)  {
         return generateSprite(animation, animation.toView(), substitutionTable, filtering, clamp);
     }
 
@@ -50,24 +51,25 @@ namespace Duel6 {
                                            const animation::Animation::AnimationView &animationView,
                                            const animation::Palette &substitutionTable,
                                            TextureFilter filtering,
-                                           bool clamp) const {
+                                           bool clamp)  {
 #if defined(D6_RENDERER_HEADLESS)
         Texture result = 0;
         return result;
 #else
-        Image list(animation.width, animation.height, animation.framesCount);
+        scratch.zeroOut(animation.width, animation.height, animation.framesCount);
 
-        for (size_t p = 0; p < animation.framesCount * animation.width * animation.height; p++) {
-            list.at(p).setAlpha(0);
-        }
+        std::vector<animation::Color> pixels;
+        const size_t framesCount = animation.framesCount;
+        const size_t area = animation.width * animation.height;
+        const size_t layersSize = animation.layers.size();
 
-        for (size_t f = 0; f < animation.framesCount; f++) {
-            size_t framePos = f * animation.width * animation.height;
-
-            for (size_t l = 0; l < animation.layers.size(); l++) {
+        performance::traceEvent t3("TextureManager::generateSprite pixel loop");
+        // framepos always points at the first pixel of frame f
+        for (size_t f = 0, framePos = 0; f < framesCount; f++, framePos += area) {
+            for (size_t l = 0; l < layersSize; l++) {
                 const auto &layer = animation.layers[l];
                 const animation::Cel &frame = layer.frames[f];
-                if (!animationView.layerViews[l].visible || layer.isGroupLayer || frame.opacity == 0) {
+                if (!animationView.layerViews[l].visible || layer.isGroupLayer || frame.opacity == 0) { [[unlikely]]
                     continue;
                 }
 
@@ -78,55 +80,61 @@ namespace Duel6 {
                 const auto width = image.width;
                 const auto height = image.height;
 
-                auto pixels = image.substitute(substitutionTable, layerOpacity * frame.opacity,
-                                               animation.transparentIndex);
+                image.substitute(substitutionTable, pixels, layerOpacity * frame.opacity, animation.transparentIndex);
                 for (size_t v = 0; v < height && v + y < animation.height; v++) {
-                    if (v + y < 0)
-                        continue; // In Aseprite image cel can be placed in a way that it spans beyond the image boundaries (and could crash code below)
-                    for (size_t u = 0; u < width && u + x < animation.width; u++) {
-                        if (u + x < 0)
+                    if (v + y < 0) {
+                        [[unlikely]]
+                        continue; // In Aseprite an image cel can be placed in a way that it spans beyond the image boundaries (and could crash code below)
+                    }
+                    Color *dstColor = &(scratch.at(framePos + (y + v) * animation.width + x));
+                    const animation::Color *color = &pixels[v * width];
+                    for (size_t u = 0; u < width && u + x < animation.width; u++, dstColor++, color++) {
+                        // do not overwrite pixel with empty pixel
+                        // do not write outside the bounds
+                        if (*(uint32_t *)(color) == 0 || u + x < 0)[[unlikely]]
                             continue;
-                        //TODO LAYER BLEND MODE
-                        const auto &color = pixels[v * width + u];
-                        auto &dstColor = list.at(framePos + (y + v) * animation.width + u + x);
-                        bool transparent = dstColor.getRed() == 0 &&
-                                           dstColor.getGreen() == 0 &&
-                                           dstColor.getBlue() == 0 &&
-                                           dstColor.getAlpha() == 0;
-                        if (color.r == 0 && color.g == 0 && color.b == 0 && color.a == 0) {
-                            // do not overwrite pixel with empty pixel
-                            continue;
-                        } else if (transparent) {
+
+                        if (*(uint32_t*)(dstColor) == 0) {
                             // overwrite empty pixel
-                            dstColor.set(color.r, color.g, color.b, color.a);
+                            *dstColor = Color(color->r, color->g, color->b, color->a);
                         } else {
+                            //TODO LAYER BLEND MODE
+                            uint8_t r = color->r;
+                            uint8_t g = color->g;
+                            uint8_t b = color->b;
+                            uint8_t a = color->a;
                             // color mixing //TODO
                             switch (layer.blendMode) {
-                                case animation::Layer::BLEND_MODE::Darken: {
-                                    uint8_t R = std::min(dstColor.getRed(), color.r);
-                                    uint8_t G = std::min(dstColor.getGreen(), color.g);
-                                    uint8_t B = std::min(dstColor.getBlue(), color.b);
-                                    uint8_t A = std::max(dstColor.getAlpha(), color.a);
-                                    R += (R - dstColor.getRed()) * ((255 - color.a) / 255.0f);
-                                    G += (G - dstColor.getGreen()) * ((255 - color.a) / 255.0f);
-                                    B += (B - dstColor.getBlue()) * ((255 - color.a) / 255.0f);
-
-                                    dstColor.set(R, G, B, A);
+                                case animation::Layer::BLEND_MODE::Normal:{
+                                    dstColor->add(r,g,b,a);
                                     break;
                                 }
-                                case animation::Layer::BLEND_MODE::Normal:
+                                case animation::Layer::BLEND_MODE::Darken: {
+                                    double _a = ((255 - a) / 255.0f);
+                                    uint8_t R = std::min(dstColor->getRed(), r);
+                                    uint8_t G = std::min(dstColor->getGreen(), g);
+                                    uint8_t B = std::min(dstColor->getBlue(), b);
+                                    uint8_t A = std::max(dstColor->getAlpha(), a);
+                                    R += (R - dstColor->getRed()) * _a;
+                                    G += (G - dstColor->getGreen()) * _a;
+                                    B += (B - dstColor->getBlue()) * _a;
+
+                                    dstColor->set(R, G, B, A);
+                                    break;
+                                }
                                 default:
-                                    dstColor.add(color.r, color.g, color.b, color.a);
+                                    dstColor->add(r,g,b,a);
                             }
                         }
                     }
                 }
             }
         }
-        return renderer.createTexture(list, filtering, clamp);
+        t3.end();
+
+        return renderer.createTexture(scratch, filtering, clamp);
 #endif
     }
-
     Texture TextureManager::loadStack(const std::string &path, TextureFilter filtering, bool clamp) {
         SubstitutionTable emptySubstitutionTable;
         return loadStack(path, filtering, clamp, emptySubstitutionTable);

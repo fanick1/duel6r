@@ -12,9 +12,10 @@
 #include "Peer.h"
 #include "../Person.h"
 #include "../PlayerSounds.h"
+#include "../PlayerDefinition.h"
 namespace Duel6 {
     class Game;
-    class Player;
+
     namespace net {
         class Peer;
         const uint8_t xor_128 = 127; // % operator yields also negative results
@@ -24,7 +25,13 @@ namespace Duel6 {
 
         class ClientGameProxy: public GameProxy {
             Game *game;
+
+            //TODO: Resources not getting released right here
+            // move these to some suitable place and handle disconnecting players to remove the Person and PlayerDefinition
             std::list<Person> persons;
+            std::list<PlayerDefinition> playerDefinitions;
+            //
+
             std::map<Int32, Int32> idmap; //player mapping
             PlayerSounds defaultSounds;
             Int32 clientId = 0; // will be set upon receiving gamestate from server

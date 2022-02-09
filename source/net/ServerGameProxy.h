@@ -35,7 +35,7 @@ namespace Duel6 {
             void pickWeapon(Duel6::Player &player, unsigned int weaponId);
             void pickBonus(Duel6::Player &player, unsigned int bonusId);
 
-            void playersJoined(std::vector<PlayerDefinition> & playerDefinitions);
+            void playersJoined(std::vector<std::reference_wrapper<PlayerDefinition>> & playerDefinitions);
             void playersDisconnected(const std::vector<Int32> & ids);
             void add(Peer *);
             void remove(Peer *);

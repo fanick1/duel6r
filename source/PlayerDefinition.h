@@ -18,7 +18,7 @@ namespace Duel6 {
         Int32 clientLocalId;
         public:
         Int32 playerPos;
-        PlayerDefinition(Person &person, const PlayerSkinColors &colors, const PlayerSounds &sounds,
+        PlayerDefinition(Person &person, PlayerSkinColors &colors, const PlayerSounds &sounds,
                          const PlayerControls &controls,
                          Int32 team, Int32 playerId,
                          Int32 clientId, Int32 clientLocalId)

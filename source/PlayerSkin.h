@@ -35,6 +35,7 @@
 #include "Color.h"
 #include "console/Console.h"
 #include "aseprite/animation.h"
+#include "Perf.h"
 
 namespace Duel6 {
     class PlayerSkin {
@@ -47,12 +48,13 @@ namespace Duel6 {
         Texture doubleJumpTexture;
 
     public:
-        PlayerSkin(const PlayerSkinColors &colors, const TextureManager &textureManager,
+        PlayerSkin(const PlayerSkinColors &colors,
+                   Texture textures, Texture auxTextures, Texture doubleJumpTexture,
                    const PlayerAnimations &animations, const AuxAnimations &auxAnimations);
-        PlayerSkin(const PlayerSkin&) = default;
-        PlayerSkin(PlayerSkin&&) = default; // for Player move constructor
-        PlayerSkin& operator=(Duel6::PlayerSkin&&) = default;
-        PlayerSkin& operator=(const Duel6::PlayerSkin&) = default;
+        PlayerSkin(const PlayerSkin&) = delete;
+        PlayerSkin(PlayerSkin&&) ; // for Player move constructor
+        PlayerSkin& operator=(Duel6::PlayerSkin&&);
+        PlayerSkin& operator=(const Duel6::PlayerSkin&) = delete;
 
         Texture getTexture() const;
 
@@ -65,7 +67,6 @@ namespace Duel6 {
         const PlayerAnimations &getAnimations() const;
 
         const AuxAnimations &getAuxAnimations() const;
-
     };
 }
 

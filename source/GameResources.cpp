@@ -56,6 +56,9 @@ namespace Duel6 {
         bonusTextures = textureManager.loadStack(D6_TEXTURE_BONUS_PATH, TextureFilter::Linear, true);
         console.printLine(Format("...Loading elevator textures: {0}") << D6_TEXTURE_ELEVATOR_PATH);
         elevatorTextures = textureManager.loadStack(D6_TEXTURE_ELEVATOR_PATH, TextureFilter::Linear, true);
+        console.printLine("...Creating aux textures");
+        auxTextures = auxAnimations->generateAnimationTexture(textureManager);
+        doubleJumpTexture = auxAnimations->generateDoubleJumpAnimationTexture(textureManager);
 
         console.printLine(Format("...Loading background textures: {0}") << D6_TEXTURE_BCG_PATH);
         bcgTextures = textureManager.loadDict(D6_TEXTURE_BCG_PATH, TextureFilter::Linear, true);

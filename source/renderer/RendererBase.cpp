@@ -122,4 +122,38 @@ namespace Duel6 {
         line(p3, p4, width, color);
         line(p4, position, width, color);
     }
+
+    void RendererBase::points(const Vector *positions, Float32 size, const Color &color) {
+        point(positions[0], size, color);
+        point(positions[1], size, color);
+        point(positions[2], size, color);
+        point(positions[3], size, color);
+    }
+
+    void RendererBase::points(const std::vector<Vector> &positions, const std::vector<int> &indices, const int restartIndex, Float32 size, const Color &color) {
+        for(size_t i = 0, j = 0; i < positions.size(); i++, j++){
+            if(indices[j] == restartIndex){
+                j++;
+                continue;
+            }
+            point(positions[i], size, color);
+        }
+    }
+
+    void RendererBase::lines(const Vector *positions, Float32 width, const Color &color) {
+        line(positions[0], positions[1], width, color);
+        line(positions[1], positions[2], width, color);
+        line(positions[2], positions[3], width, color);
+    }
+
+    void RendererBase::lines(const std::vector<Vector> &positions, const std::vector<int> &indices, const int restartIndex, Float32 width, const Color &color) {
+        for(size_t i = 1, j = 1; i < positions.size(); i++, j++){
+            if(indices[j] == restartIndex){
+                j++;
+                continue;
+            }
+            line(positions[i - 1], positions[i], width, color);
+        }
+    }
+
 }

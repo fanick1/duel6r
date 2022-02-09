@@ -31,15 +31,33 @@
 namespace Duel6 {
 
     PlayerSkin::PlayerSkin(const PlayerSkinColors &colors,
-                           const TextureManager &textureManager,
+                           Texture textures, Texture auxTextures, Texture doubleJumpTexture,
                            const PlayerAnimations &animations,
                            const AuxAnimations &auxAnimations)
         : colors(colors),
           animations(&animations),
-          textures(animations.generateAnimationTexture(textureManager, colors)),
+          textures(textures),
           auxAnimations(&auxAnimations),
-          auxTextures(auxAnimations.generateAnimationTexture(textureManager)),
-          doubleJumpTexture(auxAnimations.generateDoubleJumpAnimationTexture(textureManager)){
+          auxTextures(auxTextures),
+          doubleJumpTexture(doubleJumpTexture){
+    }
+    PlayerSkin::PlayerSkin(Duel6::PlayerSkin &&skin):
+        colors(std::move(skin.colors)),
+        animations(std::move(skin.animations)),
+        textures(skin.textures),
+        auxAnimations(std::move(skin.auxAnimations)),
+        auxTextures(skin.auxTextures),
+        doubleJumpTexture(skin.doubleJumpTexture){
+    }
+    PlayerSkin& PlayerSkin::operator=(Duel6::PlayerSkin &&skin){
+        performance::traceEvent t("PlayerSkin& PlayerSkin::operator=(Duel6::PlayerSkin &&skin)");
+        colors = std::move(skin.colors);
+        animations = std::move(skin.animations);
+        textures = skin.textures;
+        auxAnimations = std::move(skin.auxAnimations);
+        auxTextures = skin.auxTextures;
+        doubleJumpTexture = skin.doubleJumpTexture;
+        return *this;
     }
 
     Texture PlayerSkin::getTexture() const {

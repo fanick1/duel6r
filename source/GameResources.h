@@ -51,6 +51,8 @@ namespace Duel6 {
         Texture explosionTextures;
         Texture bonusTextures;
         Texture elevatorTextures;
+        Texture auxTextures;
+        Texture doubleJumpTexture;
         std::unordered_map<Size, Texture> fireTextures;
         Texture burningTexture;
         std::unique_ptr<PlayerAnimations> playerAnimations;
@@ -93,6 +95,14 @@ namespace Duel6 {
 
         Texture getElevatorTextures() const {
             return elevatorTextures;
+        }
+
+        Texture getAuxTextures() const {
+            return auxTextures;
+        }
+
+        Texture getDoubleJumpTextureTextures() const {
+            return doubleJumpTexture;
         }
 
         const std::unordered_map<Size, Texture> &getFireTextures() const {

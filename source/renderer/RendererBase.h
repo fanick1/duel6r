@@ -72,6 +72,14 @@ namespace Duel6 {
                     const Vector &textureSize, const Material &material) override;
 
         void frame(const Vector &position, const Vector &size, Float32 width, const Color &color) override;
+
+        virtual void points(const Vector positions[4], Float32 size, const Color &color) override;
+
+        virtual void points(const std::vector<Vector> &positions, const std::vector<int>& indices, const int restartIndex, Float32 size, const Color &color) override;
+
+        virtual void lines(const Vector positions[4], Float32 width, const Color &color) override;
+
+        virtual void lines(const std::vector<Vector> &positions, const std::vector<int>& indices, const int restartIndex, Float32 width, const Color &color) override;
     };
 }
 

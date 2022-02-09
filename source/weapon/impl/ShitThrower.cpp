@@ -40,7 +40,12 @@ namespace Duel6 {
             : LegacyWeapon(sound, textureManager, ShitThrowerImpl::DEFINITION, 16), playerAnimations(playerAnimations), auxAnimations(auxAnimations) {
         Color brownColor(83, 44, 0);
         PlayerSkinColors skinColors(brownColor);
-        brownSkin = std::make_unique<PlayerSkin>(skinColors, textureManager, playerAnimations, auxAnimations);
+        //TODO extract these somewhere ffs
+        //TODO dispose these textures
+        Texture textures = playerAnimations.generateAnimationTexture(textureManager, skinColors);
+        Texture auxTextures = auxAnimations.generateAnimationTexture(textureManager);
+        Texture doubleJumpTexture = auxAnimations.generateDoubleJumpAnimationTexture(textureManager);
+        brownSkin = std::make_unique<PlayerSkin>(skinColors, textures, auxTextures, doubleJumpTexture, playerAnimations, auxAnimations);
     }
 
     Float32 ShitThrower::getBulletSpeed() const {

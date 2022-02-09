@@ -33,6 +33,7 @@
 #include "ConsoleCommands.h"
 #include "Weapon.h"
 #include "EnumClassHash.h"
+#include "Perf.h"
 
 namespace Duel6 {
     void ConsoleCommands::maxRounds(Console &console, const Console::Arguments &args, GameSettings &gameSettings) {
@@ -299,7 +300,19 @@ namespace Duel6 {
         }
         game.broadcastChatMessage(args.get(1));
     }
-
+    void ConsoleCommands::perf(Console &console, const Console::Arguments &args, Game &game) {
+        if (args.length() == 2) {
+            if (args.get(1) == "start" || args.get(1) == "stop") {
+                if(args.get(1) == "start"){
+                    console.printLine("Performance trace started");
+                    performance::TraceRecorder::INSTANCE.start();
+                } else {
+                    console.printLine("Performance trace stopped");
+                    performance::TraceRecorder::INSTANCE.stop();
+                }
+            }
+        }
+    }
     void ConsoleCommands::registerCommands(Console &console, AppService &appService, Menu &menu,
                                            GameSettings &gameSettings) {
         // Set some console functions
@@ -365,6 +378,10 @@ namespace Duel6 {
 
         console.registerCommand("say", [&menu](Console &con, const Console::Arguments &args) {
             say(con, args, menu.getGame());
+        });
+
+        console.registerCommand("perf", [&menu](Console &con, const Console::Arguments &args) {
+            perf(con, args, menu.getGame());
         });
     }
 

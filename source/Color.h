@@ -51,6 +51,7 @@ namespace Duel6 {
         static const Color MAGENTA;
         static const Color YELLOW;
         static const Color GRAY;
+        static const Color TRANSPARENT;
 
     public:
         Color()
@@ -84,25 +85,7 @@ namespace Duel6 {
             return !(*this == color);
         }
 
-        Color &add(Uint8 red, Uint8 green, Uint8 blue, Uint8 alpha) {
-            float alphaSrc = alpha / 255.0f;
-            float alphaDst = this->alpha / 255.0f;
-            float a = alphaDst * (1.0f - alphaSrc);
-            float A = alphaSrc + a;
-            if (A > 1.0f || this->alpha == 1) {
-                A = 1.0f;
-            }
-            float R = ((red / 255.0f) * alphaSrc + (this->red / 255.0f) * a) / A;
-            float G = ((green / 255.0f) * alphaSrc + (this->green / 255.0f) * a) / A;
-            float B = ((blue / 255.0f) * alphaSrc + (this->blue / 255.0f) * a) / A;
-
-            this->red = R * 255.0f;
-            this->green = G * 255.0f;
-            this->blue = B * 255.0f;
-            this->alpha = A * 255.0f;
-
-            return *this;
-        }
+        Color &add(Uint8 red, Uint8 green, Uint8 blue, Uint8 alpha);
 
         Uint8 getRed() const {
             return red;

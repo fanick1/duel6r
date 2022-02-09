@@ -114,7 +114,7 @@ namespace Duel6 {
         Game *game;
         bool deleted = false;
         Person *person;
-        PlayerSkin skin;
+        const PlayerSkin *skin;
         Camera camera;
         Vector cameraFov;
         Vector cameraTolerance;
@@ -453,7 +453,7 @@ namespace Duel6 {
         }
 
         const PlayerSkin &getSkin() const {
-            return skin;
+            return *skin;
         }
 
         const WaterState &getWaterState() const {

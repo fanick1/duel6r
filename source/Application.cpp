@@ -40,6 +40,8 @@
 #include "net/NetClient.h"
 #include "gamestateintegration/Publisher.h"
 #include "voice/Recorder.h"
+#include "Perf.h"
+#include "allocator/Malloc.h"
 
 namespace Duel6 {
     namespace {
@@ -198,7 +200,7 @@ namespace Duel6 {
         font.reset();
         video.reset();
         recorder.reset();
-
+        Memory::cleanup();
         TTF_Quit();
         SDL_Quit();
     }
@@ -272,6 +274,10 @@ namespace Duel6 {
                 } else {
                     context.keyEvent(event);
                 }
+            }
+
+            if (event.getCode() == SDLK_F8){
+//                performance::TraceRecorder::INSTANCE.flip();
             }
         }
     }
@@ -377,17 +383,23 @@ namespace Duel6 {
     Float64 Application::syncUpdateAndRender(Context &context) {
         static Uint32 curTime = 0;
         static Float64 accumulatedTime = 0.0f;
+        performance::traceEvent t("Application::syncUpdateAndRender");
         Uint32 lastTime = curTime;
 
         if(accumulatedTime < updateTime){
+            performance::traceEvent t("context.render() Application::syncUpdateAndRender");
             context.render();
         }
-        video->screenUpdate(console, *font);
+        {
+            performance::traceEvent t("screenUpdate");
+            video->screenUpdate(console, *font);
+        }
 
         curTime = SDL_GetTicks();
         Float64 elapsedTime = (curTime - lastTime) * 0.001f;
         accumulatedTime += elapsedTime;
         if(accumulatedTime > updateTime) {
+            performance::traceEvent t("update");
             while (accumulatedTime > updateTime) {
                 context.update(Float32(updateTime));
                 accumulatedTime -= updateTime;
@@ -396,15 +408,18 @@ namespace Duel6 {
             }
             context.updated();
         }
+
         return elapsedTime;
     }
 
     void Application::networkRun(Float64 elapsedTime) {
-        netHost->poll(elapsedTime, 1);
-        netClient->poll(elapsedTime, 1);
+        performance::traceEvent t("Application::networkRun");
+        netHost->poll(elapsedTime, 0);
+        netClient->poll(elapsedTime, 0);
     }
 
     void Application::networkFlushCommands() {
+        performance::traceEvent t("Application::networkFlushCommands");
         netHost->flush();
         netClient->flush();
     }
