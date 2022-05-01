@@ -1,0 +1,87 @@
+name: Build for Windows
+
+concurrency:
+    group: foobar2 #must be different from the linux build
+    cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [net_masterserver]
+
+jobs:
+  build_it_on_windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install deps
+        uses: msys2/setup-msys2@v2
+        with:
+           update: true
+#base_devel
+           install: >-
+              base-devel
+              mingw-w64-x86_64-gcc
+              mingw-w64-x86_64-cmake
+              mingw-w64-x86_64-make
+              mingw-w64-x86_64-SDL2
+              mingw-w64-x86_64-SDL2_image
+              mingw-w64-x86_64-SDL2_mixer
+              mingw-w64-x86_64-SDL2_ttf
+              mingw-w64-x86_64-glew
+              mingw-w64-x86_64-mesa
+              mingw-w64-x86_64-enet
+              mingw-w64-x86_64-curl
+              mingw-w64-x86_64-opus
+
+      - name: install liblua 5.3 (instead of 5.4)
+        run: pacman --noconfirm -U https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-lua-5.3.5-1-any.pkg.tar.xz
+
+      - name: Make build directory
+        run: mkdir build && mkdir build-headless && ls -la
+
+      - name: Generate build files (gl4)
+        working-directory: ./build
+        run: pwd && cmake -G "MinGW Makefiles" -D_WIN32=true -DD6R_RENDERER=gl4 ..
+
+      - name: debug print (CMakeCache.txt)
+        working-directory: ./build
+        run: cat ./CMakeCache.txt
+
+      - name: debug print (link.txt)
+        working-directory: ./build
+        run: cat ./CmakeFiles/duel6unity.dir/link.txt
+
+      - name: Make duel6unity (unity build)
+        working-directory: ./build
+        run: mingw32-make -j 2 duel6unity
+#        run: ninja
+
+      - name: Generate build files (headless)
+        working-directory: ./build-headless
+        run: cmake -G "MinGW Makefiles" -D_WIN32=true -DD6R_RENDERER=headless ..
+
+      - name: Make duel6 (unity build headless)
+        working-directory: ./build-headless
+        run: mingw32-make -j 2 duel6unity && cp ./duel6unity.exe ./duel6headless.exe
+
+#      - name: Make duel6 (normal build)
+#        working-directory: ./build
+#        run: make -j 2 duel6r
+
+      - name: Make masterserver
+        working-directory: ./build
+        run: make -j 2 duel6r-masterserver
+
+      - name: zip
+        working-directory: ./build
+        run: tar -czh --file=duel-build_win.tar.gz duel6unity.exe duel6r-masterserver.exe -C ../resources . -C ../build-headless duel6headless.exe
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: duel-build
+          path: build/duel-build_win.tar.gz

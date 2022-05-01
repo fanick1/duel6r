@@ -25,6 +25,9 @@ namespace Duel6 {
                            minor == rhs.minor &&
                            patch == rhs.patch;
                 }
+                bool operator != (const EnetLibVersion &rhs) const {
+                    return !operator == (rhs);
+                }
             };
         private:
             static bool initialized;

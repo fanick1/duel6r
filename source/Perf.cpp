@@ -65,7 +65,7 @@ namespace Duel6::performance {
         if (!running) {
             return;
         }
-        data.push_back({.name = name, .start = (timestampUs - startTs) / 1000.0f, .duration = durationUs / 1000.0f});
+        data.push_back(TraceRecorder::entry(name, (timestampUs - startTs) / 1000.0f, durationUs / 1000.0f));
     }
 
     void TraceRecorder::setCurrent(TraceRecorder::entry *current) {

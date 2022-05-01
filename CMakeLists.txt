@@ -16,15 +16,11 @@ project(Duel6r)
 #########################################################################
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    EXEC_PROGRAM(cat ARGS "/proc/cpuinfo" OUTPUT_VARIABLE CPUINFO)
-
-    STRING(REGEX REPLACE "^.*(arm).*$" "\\1" ARM_THERE ${CPUINFO})
-    STRING(COMPARE EQUAL "arm" "${ARM_THERE}" ARM_TRUE)
-    if (ARM_TRUE)
+	if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "(arm)|(aarch64)")
         set(D6R_PLATFORM "arm")
-    else (ARM_TRUE)
+    else ()
         set(D6R_PLATFORM "x86")
-    endif (ARM_TRUE)
+    endif ()
 else (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(D6R_PLATFORM "x86")
 endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
@@ -76,6 +72,8 @@ set(D6R_WITH_LUA ON)     # Enable/disable lua scripting
 
 # set the list of source files
 set(D6R_SOURCES
+        source/allocator/Malloc.cpp
+
         source/gamestateintegration/Publisher.cpp
         source/gamestateintegration/Publisher.h
 
@@ -660,9 +658,11 @@ target_link_libraries(${D6R_UNITY_BUILD} MasterProtocolLib BinaryStreamLib)
 # External dependencies
 #########################################################################
 
+
 # Platform
 if (MINGW)
     target_link_libraries(${D6R_APP_NAME} mingw32 ws2_32)
+    target_link_libraries(${D6R_UNITY_BUILD} mingw32 ws2_32)
 endif (MINGW)
 
 set (RENDERER_LIBS
@@ -671,7 +671,6 @@ set (RENDERER_LIBS
 # OpenGL
 if (NOT D6R_RENDERER STREQUAL "headless")
 if (WIN32)
-    target_link_libraries(${D6R_APP_NAME} opengl32.lib)
     set (RENDERER_LIBS ${RENDERER_LIBS}
             opengl32.lib
         )
@@ -706,6 +705,7 @@ find_library(LIB_SDL2_TTF SDL2_ttf DOC "Path to SDL2_ttf import library")
 find_library(LIB_SDL2_IMAGE SDL2_image DOC "Path to SDL2_image import library")
 target_link_libraries(${D6R_APP_NAME} ${LIB_SDL2_MAIN} ${LIB_SDL2} ${LIB_SDL2_MIXER} ${LIB_SDL2_TTF} ${LIB_SDL2_IMAGE})
 target_link_libraries(${D6R_UNITY_BUILD} ${LIB_SDL2_MAIN} ${LIB_SDL2} ${LIB_SDL2_MIXER} ${LIB_SDL2_TTF} ${LIB_SDL2_IMAGE})
+
 
 #Opus
 find_library(LIB_OPUS opus DOC "Path to Opus library")

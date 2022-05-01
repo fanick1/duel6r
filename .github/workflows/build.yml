@@ -1,0 +1,59 @@
+name: Build
+
+concurrency:
+    group: foobar
+    cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [net_masterserver]
+
+jobs:
+  build_it:
+    if: false
+    runs-on: ubuntu-18
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -qq libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev liblua5.3-dev libglew-dev libenet-dev libcurl4-nss-dev libopus-dev
+
+      - name: g++-10
+        run: sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 90
+
+      - name: Make build directory
+        run: mkdir build && mkdir build-headless
+
+      - name: Generate build files
+        working-directory: ./build
+        run: cmake .. -DD6R_RENDERER=gl4
+
+      - name: Make duel6 (unity build)
+        working-directory: ./build
+        run: make -j 2 duel6unity
+
+      - name: Generate build files (headless)
+        working-directory: ./build-headless
+        run: cmake .. -DD6R_RENDERER=headless
+
+      - name: Make duel6 (unity build headless)
+        working-directory: ./build-headless
+        run: make -j 2 duel6unity && cp ./duel6unity ./duel6headless
+        
+#      - name: Make duel6 (normal build)
+#        working-directory: ./build
+#        run: make -j 2 duel6r
+
+      - name: Make masterserver
+        working-directory: ./build
+        run: make -j 2 duel6r-masterserver
+
+      - name: zip
+        working-directory: ./build
+        run: tar -czh --file=duel-build.tar.gz duel6unity duel6r-masterserver -C ../resources . -C ../build-headless duel6headless
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: duel-build
+          path: build/duel-build.tar.gz
