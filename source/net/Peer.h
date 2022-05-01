@@ -8,7 +8,6 @@
 #ifndef SOURCE_NET_PEER_H_
 #define SOURCE_NET_PEER_H_
 #include <memory>
-#include <cstring>
 #include <enet/enet.h>
 #include "../Exception.h"
 #include "binarystream/BinaryStream.h"

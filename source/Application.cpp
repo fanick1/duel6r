@@ -414,7 +414,7 @@ namespace Duel6 {
 
     void Application::networkRun(Float64 elapsedTime) {
         performance::traceEvent t("Application::networkRun");
-        netHost->poll(elapsedTime, 0);
+        netHost->poll(elapsedTime, 1);
         netClient->poll(elapsedTime, 0);
     }
 

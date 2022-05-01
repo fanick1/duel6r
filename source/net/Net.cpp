@@ -5,6 +5,7 @@
  *      Author: fanick
  */
 
+#include <cstring>
 #include "Net.h"
 #include <enet/enet.h>
 #include <iostream> //TODO odjebnout
