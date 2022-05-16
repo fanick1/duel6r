@@ -21,26 +21,30 @@ jobs:
       - name: Install deps
         uses: msys2/setup-msys2@v2
         with:
+        # path to .dlls is D:\msys64\mingw64\bin then
+           location: D:\
            update: true
-#base_devel
            install: >-
               base-devel
               mingw-w64-x86_64-gcc
               mingw-w64-x86_64-cmake
               mingw-w64-x86_64-make
-              mingw-w64-x86_64-SDL2
-              mingw-w64-x86_64-SDL2_image
-              mingw-w64-x86_64-SDL2_mixer
-              mingw-w64-x86_64-SDL2_ttf
-              mingw-w64-x86_64-glew
-              mingw-w64-x86_64-mesa
-              mingw-w64-x86_64-enet
-              mingw-w64-x86_64-curl
-              mingw-w64-x86_64-opus
 
+      - name: install deps (2)
+        run: pacman --noconfirm -S --needed --overwrite '*' mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_mixer mingw-w64-x86_64-SDL2_ttf mingw-w64-x86_64-glew mingw-w64-x86_64-mesa mingw-w64-x86_64-enet mingw-w64-x86_64-curl mingw-w64-x86_64-opus
       - name: install liblua 5.3 (instead of 5.4)
         run: pacman --noconfirm -U https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-lua-5.3.5-1-any.pkg.tar.xz
 
+#      - name: list DLLs (debug)
+#        run: pacman -Ql mingw-w64-x86_64-opus mingw-w64-x86_64-curl mingw-w64-x86_64-enet mingw-w64-x86_64-mesa mingw-w64-x86_64-glew mingw-w64-x86_64-SDL2_ttf
+#                       mingw-w64-x86_64-SDL2_mixer mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2
+#                       mingw-w64-x86_64-lua
+#                       mingw-w64-x86_64-brotli mingw-w64-x86_64-libidn2 mingw-w64-x86_64-libiconv mingw-w64-x86_64-libunistring mingw-w64-x86_64-libpsl mingw-w64-x86_64-zlib mingw-w64-x86_64-zstd mingw-w64-x86_64-openssl mingw-w64-x86_64-gcc-libs
+#                       mingw-w64-x86_64-libwinpthread  
+#                       mingw-w64-x86_64-freetype mingw-w64-x86_64-bzip2 mingw-w64-x86_64-libpng 
+#                       mingw-w64-x86_64-libogg mingw-w64-x86_64-libvorbis mingw-w64-x86_64-libmodplug | grep /mingw64/bin/.*.dll 
+      - name: list DLLs (debug)
+        run: ls -la /mingw64/bin
       - name: Make build directory
         run: mkdir build && mkdir build-headless && ls -la
 
@@ -59,7 +63,6 @@ jobs:
       - name: Make duel6unity (unity build)
         working-directory: ./build
         run: mingw32-make -j 2 duel6unity
-#        run: ninja
 
       - name: Generate build files (headless)
         working-directory: ./build-headless
@@ -68,18 +71,52 @@ jobs:
       - name: Make duel6 (unity build headless)
         working-directory: ./build-headless
         run: mingw32-make -j 2 duel6unity && cp ./duel6unity.exe ./duel6headless.exe
-
+#
 #      - name: Make duel6 (normal build)
 #        working-directory: ./build
 #        run: make -j 2 duel6r
-
+#
       - name: Make masterserver
         working-directory: ./build
-        run: make -j 2 duel6r-masterserver
+        run: mingw32-make -j 2 duel6r-masterserver
+
+#     - name: construct dll list
+#       working-directory: ./build
+#       run: echo glew32.dll > dll.txt 
+#           echo libbrotlicommon.dll >> dll.txt
+#           echo libbrotlidec.dll >> dll.txt
+#           echo libcrypto-1_1-x64.dll >> dll.txt
+#           echo libcurl-4.dll >> dll.txt
+#           echo libenet-7.dll >> dll.txt
+#           echo libfreetype-6.dll >> dll.txt
+#           echo libiconv-2.dll >> dll.txt
+#           echo libidn2-0.dll >> dll.txt
+#           echo libintl-8.dll >> dll.txt
+#           echo libmodplug-1.dll >> dll.txt
+#           echo libnghttp2-14.dll >> dll.txt
+#           echo libogg-0.dll >> dll.txt
+#           echo libopus-0.dll >> dll.txt
+#           echo libpng16-16.dll >> dll.txt
+#           echo libpsl-5.dll >> dll.txt
+#           echo libssh2-1.dll >> dll.txt
+#           echo libssl-1_1-x64.dll >> dll.txt
+#           echo libssp-0.dll >> dll.txt
+#           echo libunistring-2.dll >> dll.txt
+#           echo libvorbis-0.dll >> dll.txt
+#           echo libvorbisenc-2.dll >> dll.txt
+#           echo libvorbisfile-3.dll >> dll.txt
+#           echo libwinpthread-1.dll >> dll.txt
+#           echo libzstd.dll >> dll.txt
+#           echo lua53.dll >> dll.txt
+#           echo SDL2.dll >> dll.txt
+#           echo SDL2_image.dll >> dll.txt
+#           echo SDL2_mixer.dll >> dll.txt
+#           echo SDL2_ttf.dll >> dll.txt
+#           echo zlib1.dll >> dll.txt
 
       - name: zip
         working-directory: ./build
-        run: tar -czh --file=duel-build_win.tar.gz duel6unity.exe duel6r-masterserver.exe -C ../resources . -C ../build-headless duel6headless.exe
+        run: tar -czh --verbose --file=duel-build_win.tar.gz duel6unity.exe duel6r-masterserver.exe -C ../resources . -C ../build-headless duel6headless.exe -C /mingw64/bin glew32.dll libbrotlicommon.dll  libbrotlidec.dll  libcrypto-1_1-x64.dll  libcurl-4.dll  libenet-7.dll  libfreetype-6.dll  libiconv-2.dll  libidn2-0.dll  libintl-8.dll  libmodplug-1.dll  libnghttp2-14.dll  libogg-0.dll  libopus-0.dll  libpng16-16.dll  libpsl-5.dll  libssh2-1.dll  libssl-1_1-x64.dll  libssp-0.dll  libunistring-2.dll  libvorbis-0.dll  libvorbisenc-2.dll  libvorbisfile-3.dll  libwinpthread-1.dll  libzstd.dll  lua53.dll  SDL2.dll  SDL2_image.dll  SDL2_mixer.dll  SDL2_ttf.dll  zlib1.dll
 
       - uses: actions/upload-artifact@v3
         with:
