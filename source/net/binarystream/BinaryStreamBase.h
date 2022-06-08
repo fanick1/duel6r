@@ -87,6 +87,11 @@ public:
         return good();
     }
 
+    bool operator >>(size_t & t) {
+        read((char *) &t, 8);
+        return good();
+    }
+
     bool operator >>(float & t) {
         read((char *) &t, 4);
         return good();
@@ -209,6 +214,11 @@ public:
     }
 
     bool operator <<(const int64_t & t) {
+        write((const char *) &t, 8);
+        return good();
+    }
+
+    bool operator <<(const size_t & t) {
         write((const char *) &t, 8);
         return good();
     }

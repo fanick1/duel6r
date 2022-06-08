@@ -32,8 +32,8 @@ jobs:
 
       - name: install deps (2)
         run: pacman --noconfirm -S --needed --overwrite '*' mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_mixer mingw-w64-x86_64-SDL2_ttf mingw-w64-x86_64-glew mingw-w64-x86_64-mesa mingw-w64-x86_64-enet mingw-w64-x86_64-curl mingw-w64-x86_64-opus
-      - name: install liblua 5.3 (instead of 5.4)
-        run: pacman --noconfirm -U https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-lua-5.3.5-1-any.pkg.tar.xz
+      - name: install liblua 5.4 (instead of 5.3)
+        run: pacman --noconfirm -U https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-lua-5.4.3-2-any.pkg.tar.zst
 
 #      - name: list DLLs (debug)
 #        run: pacman -Ql mingw-w64-x86_64-opus mingw-w64-x86_64-curl mingw-w64-x86_64-enet mingw-w64-x86_64-mesa mingw-w64-x86_64-glew mingw-w64-x86_64-SDL2_ttf
@@ -116,7 +116,7 @@ jobs:
 
       - name: zip
         working-directory: ./build
-        run: tar -czh --verbose --file=duel-build_win.tar.gz duel6unity.exe duel6r-masterserver.exe -C ../resources . -C ../build-headless duel6headless.exe -C /mingw64/bin glew32.dll libbrotlicommon.dll  libbrotlidec.dll  libcrypto-1_1-x64.dll  libcurl-4.dll  libenet-7.dll  libfreetype-6.dll  libiconv-2.dll  libidn2-0.dll  libintl-8.dll  libmodplug-1.dll  libnghttp2-14.dll  libogg-0.dll  libopus-0.dll  libpng16-16.dll  libpsl-5.dll  libssh2-1.dll  libssl-1_1-x64.dll  libssp-0.dll  libunistring-2.dll  libvorbis-0.dll  libvorbisenc-2.dll  libvorbisfile-3.dll  libwinpthread-1.dll  libzstd.dll  lua53.dll  SDL2.dll  SDL2_image.dll  SDL2_mixer.dll  SDL2_ttf.dll  zlib1.dll
+        run: tar -czh --verbose --file=duel-build_win.tar.gz duel6unity.exe duel6r-masterserver.exe -C ../resources . -C ../build-headless duel6headless.exe -C /mingw64/bin glew32.dll libbrotlicommon.dll  libbrotlidec.dll  libcrypto-1_1-x64.dll  libcurl-4.dll  libenet-7.dll  libfreetype-6.dll  libiconv-2.dll  libidn2-0.dll  libintl-8.dll  libmodplug-1.dll  libnghttp2-14.dll  libogg-0.dll  libopus-0.dll  libpng16-16.dll  libpsl-5.dll  libssh2-1.dll  libssl-1_1-x64.dll  libssp-0.dll  libunistring-2.dll  libvorbis-0.dll  libvorbisenc-2.dll  libvorbisfile-3.dll  libwinpthread-1.dll  libzstd.dll  lua54.dll  SDL2.dll  SDL2_image.dll  SDL2_mixer.dll  SDL2_ttf.dll  zlib1.dll
 
       - uses: actions/upload-artifact@v3
         with:

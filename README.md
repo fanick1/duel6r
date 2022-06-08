@@ -24,6 +24,26 @@ The game has been tested on the following platforms:
 - **Linux** with GCC 7.1 compiler
 - **Mac OS X** with LLVM/Clang compiler
 
+## Compiling for macOS
+```
+mkdir build
+cd build
+brew install cmake gcc sdl2 sdl2_image sdl2_mixer sdl2_ttf glew mesa enet curl opus lua
+
+cmake .. -D CMAKE_C_COMPILER=gcc-11 -D CMAKE_CXX_COMPILER=g++-11 -D D6R_RENDERER=gl1
+ #fast build
+make -j8 duel6unity
+ #regular build
+make -j8 duel6r
+```
+
+## Running on macOS
+```
+#due to High DPI you need to set env variable SDL_VIDEO_HIGHDPI_DISABLED=1 :
+
+SDL_VIDEO_HIGHDPI_DISABLED=1 ./duel6r
+
+```
 Recommended IDE:
 - **CLion** - Duel 6 Reloaded is supported by [JetBrains](https://www.jetbrains.com/?from=Duel6Reloaded)
 
