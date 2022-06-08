@@ -3,7 +3,10 @@
 #define DUEL6_MALLOC_H
 
 #include <memory>
-#include <malloc.h>
+//#include <malloc.h>
+
+//#include <stdlib.h>
+
 #include <iostream>
 #include <bit>
 #include <array>

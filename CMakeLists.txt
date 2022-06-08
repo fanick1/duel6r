@@ -14,16 +14,16 @@ project(Duel6r)
 #########################################################################
 # Platform detection
 #########################################################################
-
-if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+message("CMAKE_SYSTEM_NAME"  ${CMAKE_SYSTEM_NAME} ${CMAKE_HOST_SYSTEM_PROCESSOR})
+if (CMAKE_SYSTEM_NAME MATCHES "(Linux)|(Darwin)")
 	if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "(arm)|(aarch64)")
         set(D6R_PLATFORM "arm")
     else ()
         set(D6R_PLATFORM "x86")
     endif ()
-else (CMAKE_SYSTEM_NAME MATCHES "Linux")
+else (CMAKE_SYSTEM_NAME MATCHES "(Linux)|(Darwin)")
     set(D6R_PLATFORM "x86")
-endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+endif (CMAKE_SYSTEM_NAME MATCHES "(Linux)|(Darwin)")
 
 #########################################################################
 # Compiler flags
@@ -39,10 +39,10 @@ endif (MSVC)
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O2 -std=c++2a -pthread")
     if (D6R_PLATFORM STREQUAL "x86")
-
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse -msse2")
     elseif (D6R_PLATFORM STREQUAL "arm")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfloat-abi=hard -mlittle-endian -munaligned-access")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -mlittle-endian")
+    #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfloat-abi=hard -mlittle-endian -munaligned-access")
     endif (D6R_PLATFORM STREQUAL "x86")
 endif (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
@@ -56,7 +56,9 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DD6_DEBUG")
 
 # Switches
 set(D6R_RENDERERS gl1 gl4 es2 es3 headless)
-set(D6R_RENDERER "gl4" CACHE STRING "Renderer")  # Renderer: gl1/gl4/es2
+if(NOT DEFINED D6R_RENDERER)
+    set(D6R_RENDERER "gl4" CACHE STRING "Renderer")  # Renderer: gl1/gl4/es2
+endif()
 set_property (CACHE D6R_RENDERER PROPERTY STRINGS ${D6R_RENDERERS})
 set(D6R_WITH_LUA ON)     # Enable/disable lua scripting
 
@@ -594,13 +596,17 @@ if (D6R_WITH_LUA)
             source/script/lua/LuaScriptLoader.h
             source/script/lua/LuaScriptLoader.cpp
             )
+    set (D6R_UNITY_BUILD_SOURCES ${D6R_UNITY_BUILD_SOURCES}
+            source/script/lua/unity.cpp
+        )
+
 endif (D6R_WITH_LUA)
 
 if (WIN32)
     set(D6R_SOURCES ${D6R_SOURCES} source/duel6r.rc)
 endif (WIN32)
 
-set (D6R_UNITY_BUILD_SOURCES
+set (D6R_UNITY_BUILD_SOURCES ${D6R_UNITY_BUILD_SOURCES}
         source/voice/unity.cpp
         source/aseprite/unity.cpp
         source/bonus/unity.cpp
@@ -747,10 +753,13 @@ if (D6R_WITH_LUA)
         find_path(HEADERS_LUA lua.hpp DOC "Path to LUA headers")
         include_directories(${HEADERS_LUA})
     else (WIN32)
-        find_library(LIB_LUA lua5.3 DOC "Path to LUA library")
-        target_link_libraries(${D6R_APP_NAME} ${LIB_LUA})
-        target_link_libraries(${D6R_UNITY_BUILD} ${LIB_LUA})
-        find_path(HEADERS_LUA lua5.3/lua.hpp DOC "Path to LUA headers")
-        include_directories(${HEADERS_LUA}/lua5.3)
+        if(NOT DEFINED LUA_INCLUDE_DIR OR NOT DEFINED LUA_LIBRARIES)
+            find_package(Lua REQUIRED)
+        endif()
+        #find_package(LIB_LUA lua DOC "Path to LUA library")
+        target_link_libraries(${D6R_APP_NAME} ${LUA_LIBRARIES})
+        target_link_libraries(${D6R_UNITY_BUILD} ${LUA_LIBRARIES})
+        #find_path(HEADERS_LUA lua5.3/lua.hpp DOC "Path to LUA headers")
+        include_directories(${LUA_INCLUDE_DIR})
     endif (WIN32)
 endif (D6R_WITH_LUA)

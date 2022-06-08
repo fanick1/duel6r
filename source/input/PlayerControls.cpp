@@ -125,6 +125,10 @@ namespace Duel6 {
                 PlayerControls::keyboardControls("K6: /879", input, SDLK_KP_7, SDLK_KP_9, SDLK_KP_DIVIDE, SDLK_KP_8,
                                                  SDLK_PAGEDOWN,
                                                  SDLK_PAGEUP, SDLK_END, SDLK_HOME));
+        controls.push_back(
+                PlayerControls::keyboardControls("MAC: Arrows", input, SDLK_LEFT, SDLK_RIGHT, SDLK_UP, SDLK_DOWN,
+                                                 SDLK_RALT,
+                                                 SDLK_RSHIFT, SDLK_RETURN, SDLK_BACKSPACE));
         noopControls = PlayerControls::noOpControls("no-op");
     }
 
