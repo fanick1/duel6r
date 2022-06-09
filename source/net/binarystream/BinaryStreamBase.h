@@ -47,12 +47,55 @@ public:
         return good();
     }
 
-    template<class T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
-    bool operator >>(T & t) {
+    bool operator >>(uint8_t & t) {
+        read((char *) &t, 1);
+        return good();
+    }
+
+    bool operator >>(uint16_t & t) {
+        read((char *) &t, 2);
+        return good();
+    }
+
+    bool operator >>(uint32_t & t) {
+        read((char *) &t, 4);
+        return good();
+    }
+
+    bool operator >>(uint64_t & t) {
         read((char *) &t, 8);
         return good();
     }
 
+    bool operator >>(int8_t & t) {
+        read((char *) &t, 1);
+        return good();
+    }
+
+    bool operator >>(int16_t & t) {
+        read((char *) &t, 2);
+        return good();
+    }
+
+    bool operator >>(int32_t & t) {
+        read((char *) &t, 4);
+        return good();
+    }
+
+    bool operator >>(int64_t & t) {
+        read((char *) &t, 8);
+        return good();
+    }
+
+    bool operator >>(size_t & t) {
+        read((char *) &t, 8);
+        return good();
+    }
+    template<class T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
+    bool operator >>(T & t) {
+        read((char *) &t, sizeof(t));
+        return good();
+    }
     bool operator >>(float & t) {
         read((char *) &t, 4);
         return good();
@@ -139,6 +182,50 @@ public:
         return good();
     }
 
+    bool operator <<(const uint8_t & t) {
+        write((const char *) &t, 1);
+        return good();
+    }
+
+    bool operator <<(const uint16_t & t) {
+        write((const char *) &t, 2);
+        return good();
+    }
+
+    bool operator <<(const uint32_t & t) {
+        write((const char *) &t, 4);
+        return good();
+    }
+
+    bool operator <<(const uint64_t & t) {
+        write((const char *) &t, 8);
+        return good();
+    }
+
+    bool operator <<(const int8_t & t) {
+        write((const char *) &t, 1);
+        return good();
+    }
+
+    bool operator <<(const int16_t & t) {
+        write((const char *) &t, 2);
+        return good();
+    }
+
+    bool operator <<(const int32_t & t) {
+        write((const char *) &t, 4);
+        return good();
+    }
+
+    bool operator <<(const int64_t & t) {
+        write((const char *) &t, 8);
+        return good();
+    }
+
+    bool operator <<(const size_t & t) {
+        write((const char *) &t, 8);
+        return good();
+    }
     template<class T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
     bool operator <<(const T & t){
         write( (const char *) &t, sizeof(t));
