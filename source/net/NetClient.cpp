@@ -32,7 +32,12 @@ namespace Duel6 {
                 0 /* assume any amount of incoming bandwidth */,
                 0 /* assume any amount of outgoing bandwidth */);
             if (nethost == nullptr) {
-                D6_THROW(Exception, "Failed to start net client  \\(^^)/ ");
+                console.printLine("Failed to create enet client on given localIPAddress, falling back to 0.0.0.0");
+                enet_address_set_host(&localAddress, "0.0.0.0");
+                nethost = enet_host_create(&localAddress, 4, CHANNELS, 0, 0);
+                if (nethost == nullptr) {
+                    D6_THROW(Exception, "Failed to start net client on given localIPAddress  \\(^^)/ ");
+                }
             }
             enet_host_compress_with_range_coder(nethost);
             // To make connection to master server work

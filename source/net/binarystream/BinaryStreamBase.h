@@ -87,10 +87,6 @@ public:
         return good();
     }
 
-    bool operator >>(size_t & t) {
-        read((char *) &t, 8);
-        return good();
-    }
     template<class T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
     bool operator >>(T & t) {
         read((char *) &t, sizeof(t));
@@ -222,10 +218,6 @@ public:
         return good();
     }
 
-    bool operator <<(const size_t & t) {
-        write((const char *) &t, 8);
-        return good();
-    }
     template<class T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
     bool operator <<(const T & t){
         write( (const char *) &t, sizeof(t));
