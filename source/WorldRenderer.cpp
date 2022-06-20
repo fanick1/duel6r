@@ -186,13 +186,18 @@ namespace Duel6 {
     }
 
     void WorldRenderer::roundsPlayed() const {
-        std::string rounds = Format("Rounds: {0,3}|{1,3}") << game.getCurrentRound() + 1 << game.getSettings().getMaxRounds();
+        std::string roundsLabel = Format("Rounds:");
+        std::string rounds = Format("{0,3}|{1,3}") << game.getCurrentRound() + 1 << game.getSettings().getMaxRounds();
+        int labelWidth = font.getTextWidth(roundsLabel, 16);
         int width = font.getTextWidth(rounds, 16);
-        int x = video.getScreen().getClientWidth() / 2 - width / 2;
+        int x1 = video.getScreen().getClientWidth() / 2 - 200;
+        int x = video.getScreen().getClientWidth() / 2 + 200;
         int y = video.getScreen().getClientHeight() - 20;
 
-        renderer.quadXY(Vector(x - 1, y - 1), Vector(width + 10, 18), Color::BLACK);
-        font.print(x + 8, y, Color::WHITE, rounds);
+        renderer.quadXY(Vector(x1 - 1, y - 25), Vector((x - x1) + width + 20, 55), Color::BLACK);
+        font.print(x1 + 8, y - 18, Color::WHITE, roundsLabel);
+        font.print(x + 8, y - 18, Color::WHITE, rounds);
+
     }
 
     void WorldRenderer::fpsCounter() const {
