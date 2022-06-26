@@ -11,17 +11,19 @@
 #include <SDL2/SDL_audio.h>
 #include "VoiceSettings.h"
 namespace Duel6 {
+    class Console;
+
     class Decoder {
     private:
         // this right here decodes every sound chunk that comes over the wire
         OpusDecoder *opusDecoder;
-
+        Console& console;
         // and we store/buffer the decoded sound in here to be later picked for playing
         SDL_AudioStream *stream;
         static const int decodedBufferMaxLen = VOICE_FRAME_SIZE;  // this must be at least no. of samples returned from SDL_OpenAudioDevice
         static opus_int16 decodedBuffer[decodedBufferMaxLen];
     public:
-        Decoder();
+        Decoder(Console &console);
 
         ~Decoder();
 

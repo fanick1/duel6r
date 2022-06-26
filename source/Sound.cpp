@@ -89,6 +89,18 @@ namespace Duel6 {
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
             D6_THROW(SoundException, Format("SDL_Mixer error: {0}") << SDL_GetError());
         }
+
+
+        int num = SDL_GetNumAudioDevices(SDL_FALSE);
+        printf("Audio devices number: %i\n", num);
+        console.printLine(Format("Audio devices number: {0}") << num);
+
+        for(int i = 0; i < num; i++){
+           auto name = SDL_GetAudioDeviceName(i, SDL_FALSE);
+           printf("DEBUG: SOUND available device %i: %s\n", i, name);
+           console.printLine(Format("DEBUG: SOUND available device {0}: {1}") << i << name);
+        }
+
         auto name = SDL_GetAudioDeviceName(0, 0); //TODO
         SDL_AudioSpec requested, received;
         requested.channels = 1;
@@ -97,7 +109,7 @@ namespace Duel6 {
         requested.samples = 960;//20ms //480;//DEBUG
         requested.callback = nullptr;
 
-        auxdevice = SDL_OpenAudioDevice(name, SDL_FALSE, &requested, &received, SDL_FALSE);
+        auxdevice = SDL_OpenAudioDevice(NULL, SDL_FALSE, &requested, &received, SDL_FALSE);
         if(auxdevice < 2){
             D6_THROW(SoundException, Format("SDL_OpenAudioDevice error: {0}") << SDL_GetError());
         }
@@ -199,8 +211,13 @@ namespace Duel6 {
     }
 
     void Sound::auxBatchMix(Uint8 * buf, int len){
-        if(headless) return;
-        SDL_MixAudioFormat(Sound::voiceMixBuffer, buf, AUDIO_S16LSB, len, SDL_MIX_MAXVOLUME);
+        if(headless) {
+            console.printLine(Format("Sound::auxBatchMix error headless"));
+            return;
+        }
+        SDL_AudioSpec audioSpec;
+        audioSpec.format = AUDIO_S16LSB;
+        SDL_MixAudioFormat(Sound::voiceMixBuffer, buf, audioSpec.format, len, SDL_MIX_MAXVOLUME);
     }
 
     void Sound::auxBatchSubmit(){

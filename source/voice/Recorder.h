@@ -13,7 +13,11 @@
 #include "../Defines.h"
 class OpusEncoder;
 
+
 namespace Duel6 {
+
+    class Console;
+
     class Recorder {
         static void forwardCallback(void *userdata, Uint8 *stream, int len) {
             //  POW:
@@ -25,7 +29,7 @@ namespace Duel6 {
         SDL_AudioDeviceID deviceId;
         SDL_AudioStream *stream;
         OpusEncoder *opusEncoder;
-
+        Console &console;
         bool opened = false;
         std::string name;
         bool paused = true;
@@ -36,8 +40,9 @@ namespace Duel6 {
         // we have to track number of players simultaneously using this device
         // TODO: The voice packet should carry info of all the speaking players.
         std::bitset<D6_MAX_PLAYERS> clients;
+        SDL_AudioSpec captureSpec; // received from system
     public:
-        explicit Recorder(int deviceIndex = 0);
+        explicit Recorder(Console &console, int deviceIndex = 0);
 
         ~Recorder();
 

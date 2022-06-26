@@ -131,8 +131,8 @@ namespace Duel6 {
 
         Console::registerBasicCommands(console);
         console.printLine("\n===Voice initialization==");
-        recorder = std::make_unique<Recorder>();
-
+        recorder = std::make_unique<Recorder>(console);
+        console.printLine(Format("Voice capture device name: {0}") << recorder->getName());
         console.printLine("\n===Video initialization==");
         std::string windowTitle = argv[0];
 
