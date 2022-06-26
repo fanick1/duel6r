@@ -92,6 +92,7 @@ namespace Duel6 {
                 if(!error){
                     broadcastVoice(players[recorder.getOwningPlayerId()].getId(), buffer, len);
                 } else {
+                    appService.getConsole().printLine("Game::update dequeueEncodedAudio error");
                     printf("Game::update dequeueEncodedAudio error\n");
                     break;
                 }

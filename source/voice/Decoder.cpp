@@ -3,25 +3,35 @@
 //
 
 #include "Decoder.h"
-#include "Recorder.h"
+#include "../console/Console.h"
+
 namespace Duel6{
     opus_int16 Decoder::decodedBuffer[decodedBufferMaxLen];
 
-    Decoder::Decoder() {
+    Decoder::Decoder(Console &console):console(console) {
         // AUDIO_S16LSB is used throughout the audio code because it is consumed by opus
-        const SDL_AudioFormat src_format = AUDIO_S16LSB;
+
+        SDL_AudioSpec audioSpec;
+        //REAL WTF RIGHT HERE. YOU HAVE TO PASS THE VALUE FROM THIS STRUCT into SDL_NewAudioStream
+        audioSpec.format = AUDIO_S16LSB; // DO NOT MODIFY !
         const Uint8 src_channels = 1;
         const int src_rate = VOICE_FREQ;
-        const SDL_AudioFormat dst_format = AUDIO_S16LSB;
         const Uint8 dst_channels = 1;
         const int dst_rate = 48000; // TODO must match freq of Sound::auxdevice
         int error;
-        opusDecoder = opus_decoder_create(src_rate, src_channels, &error);
+        opusDecoder = opus_decoder_create(src_rate, 1, &error);
         if (error != OPUS_OK) {
+            console.printLine(Format("Failed to initialize Opus decoder {0}") << error);
             printf("Failed to initialize Opus decoder %d\n", error);
         }
         //todo take input params
-        stream = SDL_NewAudioStream(src_format, src_channels, src_rate, dst_format, dst_channels, dst_rate);
+        //WARNING: the audioSpec.format cannot be replaced by passing the format value by value (AUDIO_S16LSB) when compiling for macOS (SDL reports the format as invalid in runtime)
+        stream = SDL_NewAudioStream(audioSpec.format, src_channels, src_rate, audioSpec.format, dst_channels, dst_rate);
+        if (!stream) {
+            const char *lastError = SDL_GetError();
+            printf("Decoder::Decoder SDL_NewAudioStream failed %s\n", lastError);
+            console.printLine(Format("Decoder::Decoder SDL_NewAudioStream failed {0}") << lastError);
+        }
     }
 
     Decoder::~Decoder() {
@@ -34,7 +44,12 @@ namespace Duel6{
         if(avail < len) {
             return false;
         }
-        SDL_AudioStreamGet(stream, buff, len);
+        int res = SDL_AudioStreamGet(stream, buff, len);
+        if(res == -1){
+            auto lastError = SDL_GetError();
+            printf("Decoder::getAudio SDL_AudioStreamGet error %s\n", lastError);
+            console.printLine(Format("Decoder::getAudio SDL_AudioStreamGet error {0}") << lastError); 
+        }
         return true;
     }
 
@@ -42,8 +57,14 @@ namespace Duel6{
         auto decoded = opus_decode(opusDecoder, buffer, len, decodedBuffer, decodedBufferMaxLen, 0);
         if (decoded < 0) {
             printf("opuse_decode error %i\n", decoded);
+            console.printLine(Format("opuse_decode error {0}") << decoded);
             return;
         }
-        SDL_AudioStreamPut(stream, decodedBuffer, decoded * (sizeof(opus_int16) / sizeof(Uint8)));
+        int res = SDL_AudioStreamPut(stream, decodedBuffer, decoded * (sizeof(opus_int16) / sizeof(Uint8)));
+        if(res == -1){
+            auto lastError = SDL_GetError();
+            printf("Decoder::pushEncodedData SDL_AudioStreamPut error %s\n", lastError);
+            console.printLine(Format("Decoder::pushEncodedData SDL_AudioStreamPut error {0}") << lastError); 
+        }
     }
 }

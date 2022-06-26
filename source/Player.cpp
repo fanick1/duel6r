@@ -81,9 +81,9 @@ namespace Duel6 {
             voiceRecorder = recorder;
 //            (*voiceRecorder)->unpause();
         } else {
-            voiceDecoder = std::make_unique<Decoder>();
+            voiceDecoder = std::make_unique<Decoder>(game->getAppService().getConsole());
         }
-        voiceDecoder = std::make_unique<Decoder>(); //DEBUGGING
+        voiceDecoder = std::make_unique<Decoder>(game->getAppService().getConsole()); //DEBUGGING
 
     }
 
