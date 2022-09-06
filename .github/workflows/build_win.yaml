@@ -116,7 +116,7 @@ jobs:
 
       - name: zip
         working-directory: ./build
-        run: tar -czh --verbose --file=duel-build_win.tar.gz duel6unity.exe duel6r-masterserver.exe -C ../resources . -C ../build-headless duel6headless.exe -C /mingw64/bin glew32.dll libbrotlicommon.dll  libbrotlidec.dll  libcrypto-1_1-x64.dll  libcurl-4.dll  libenet-7.dll  libfreetype-6.dll  libiconv-2.dll  libidn2-0.dll  libintl-8.dll  libmodplug-1.dll  libnghttp2-14.dll  libogg-0.dll  libopus-0.dll  libpng16-16.dll  libpsl-5.dll  libssh2-1.dll  libssl-1_1-x64.dll  libssp-0.dll  libunistring-2.dll  libvorbis-0.dll  libvorbisenc-2.dll  libvorbisfile-3.dll  libwinpthread-1.dll  libzstd.dll  lua54.dll  SDL2.dll  SDL2_image.dll  SDL2_mixer.dll  SDL2_ttf.dll  zlib1.dll
+        run: tar -czh --verbose --file=duel-build_win.tar.gz duel6unity.exe duel6r-masterserver.exe -C ../resources . -C ../build-headless duel6headless.exe -C /mingw64/bin glew32.dll libbrotlicommon.dll  libbrotlidec.dll  libcrypto-1_1-x64.dll  libcurl-4.dll  libenet-7.dll  libfreetype-6.dll  libiconv-2.dll  libidn2-0.dll  libintl-8.dll  libmodplug-1.dll  libnghttp2-14.dll  libogg-0.dll  libopus-0.dll  libpng16-16.dll  libpsl-5.dll  libssh2-1.dll  libssl-1_1-x64.dll  libssp-0.dll  libunistring-2.dll  libvorbis-0.dll  libvorbisenc-2.dll  libvorbisfile-3.dll  libwinpthread-1.dll  libzstd.dll  lua54.dll  SDL2.dll  SDL2_image.dll  SDL2_mixer.dll  SDL2_ttf.dll  zlib1.dll libjpeg-8.dll libturbojpeg.dll libtiff-5.dll libtiffxx-5.dll libwebp-7.dll libwebpdecoder-3.dll libwebpdemux-2.dll libwebpmux-3.dll libFLAC.dll libFLAC++.dll
 
       - uses: actions/upload-artifact@v3
         with:
