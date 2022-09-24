@@ -7,8 +7,18 @@
 #include <opus/opus.h>
 #include "Recorder.h"
 #include "../console/Console.h"
+
+#ifdef D6_RENDERER_HEADLESS
+    #define GUARD(VAL) return VAL;
+    #define GUARD_VOID return;
+#else
+    #define GUARD(VAL) ;
+    #define GUARD_VOID ;
+
+#endif
 namespace Duel6 {
     Recorder::Recorder(Console &console, int deviceIndex):console(console) {
+        GUARD_VOID
         useDevice(deviceIndex);
 
         // AUDIO_S16LSB is used throughout the audio code because it is consumed by opus
@@ -22,7 +32,7 @@ namespace Duel6 {
         const int dst_rate = VOICE_FREQ;
         //todo take input params
         stream = SDL_NewAudioStream(captureSpec.format, captureSpec.channels, captureSpec.freq, dst.format, dst_channels, dst_rate);
-        if(!stream){
+        if(!stream){ // todo headless
             const char * lastError = SDL_GetError();
             printf("SDL_NewAudioStream failed %s\n", lastError);
             console.printLine(Format("SDL_NewAudioStream failed {0}") << lastError);
@@ -34,6 +44,7 @@ namespace Duel6 {
         if (error != OPUS_OK) {
             printf("Failed to initialize Opus encoder %d\n", error);
             console.printLine(Format("Failed to initialize Opus encoder {0}") << error);
+            return;
         }
         error = opus_encoder_ctl(opusEncoder, OPUS_SET_DTX(0));
         if (error != OPUS_OK) {
@@ -55,6 +66,7 @@ namespace Duel6 {
     }
 
     int Recorder::useDevice(int deviceIndex) {
+        GUARD(-1)
         int num = SDL_GetNumAudioDevices(SDL_TRUE);
         console.printLine(Format("Audio devices number: {0}") << num);
 
@@ -70,6 +82,7 @@ namespace Duel6 {
     }
 
     int Recorder::open(int deviceIndex) {
+        GUARD(-1)
         SDL_AudioSpec requested;
 
         requested.channels = 1;
@@ -94,6 +107,7 @@ namespace Duel6 {
 
     void Recorder::close() {
         clients.reset();
+        GUARD_VOID
         if (opened) {
             SDL_CloseAudioDevice(deviceId);
             opened = false;
@@ -102,6 +116,7 @@ namespace Duel6 {
 
     Recorder::~Recorder() {
         close();
+        GUARD_VOID
         SDL_FreeAudioStream(stream);
         opus_encoder_destroy(opusEncoder);
     }
@@ -127,6 +142,7 @@ namespace Duel6 {
     }
 
     void Recorder::pause(bool value) {
+        GUARD_VOID
         paused = value;
         if (opened) {
             SDL_PauseAudioDevice(deviceId, paused ? SDL_TRUE : SDL_FALSE);
@@ -138,6 +154,7 @@ namespace Duel6 {
             owningPlayerId = playerId;
         }
         clients.set(playerId);
+        GUARD_VOID
         unpause();
     }
 
@@ -152,6 +169,7 @@ namespace Duel6 {
         if (len < 1) {
             return;
         }
+        GUARD_VOID
         int err = SDL_AudioStreamPut(stream, buff, len);
         if(err != 0){
            console.printLine(Format("Recorder::recordAudio SDL_AudioStreamPut failed: {0} {1}") << err << SDL_GetError());
@@ -159,6 +177,7 @@ namespace Duel6 {
     }
 
     size_t Recorder::dequeueEncodedAudio(Uint8 *buffer, const size_t maxLen, bool &errorOut) {
+        GUARD(0)
         static opus_int16 soundFrame[VOICE_FRAME_SIZE];
 
         SDL_LockAudioDevice(deviceId); //TODO check if locking is necessary ( check SDL_AudioStream thread safety)
@@ -193,6 +212,7 @@ namespace Duel6 {
     }
 
     bool Recorder::hasEncodedAudioReady() {
+        GUARD(false)
         return SDL_AudioStreamAvailable(stream) * sizeof(opus_int16) >= VOICE_FRAME_SIZE;
     }
 }
