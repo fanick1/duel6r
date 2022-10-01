@@ -29,20 +29,20 @@ jobs:
               mingw-w64-x86_64-gcc
               mingw-w64-x86_64-cmake
               mingw-w64-x86_64-make
-
+              mingw-w64-x86_64-ntldd-git
       - name: install deps (2)
         run: pacman --noconfirm -S --needed --overwrite '*' mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_mixer mingw-w64-x86_64-SDL2_ttf mingw-w64-x86_64-glew mingw-w64-x86_64-mesa mingw-w64-x86_64-enet mingw-w64-x86_64-curl mingw-w64-x86_64-opus
       - name: install liblua 5.4 (instead of 5.3)
         run: pacman --noconfirm -U https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-lua-5.4.3-2-any.pkg.tar.zst
 
-#      - name: list DLLs (debug)
-#        run: pacman -Ql mingw-w64-x86_64-opus mingw-w64-x86_64-curl mingw-w64-x86_64-enet mingw-w64-x86_64-mesa mingw-w64-x86_64-glew mingw-w64-x86_64-SDL2_ttf
-#                       mingw-w64-x86_64-SDL2_mixer mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2
-#                       mingw-w64-x86_64-lua
-#                       mingw-w64-x86_64-brotli mingw-w64-x86_64-libidn2 mingw-w64-x86_64-libiconv mingw-w64-x86_64-libunistring mingw-w64-x86_64-libpsl mingw-w64-x86_64-zlib mingw-w64-x86_64-zstd mingw-w64-x86_64-openssl mingw-w64-x86_64-gcc-libs
-#                       mingw-w64-x86_64-libwinpthread  
-#                       mingw-w64-x86_64-freetype mingw-w64-x86_64-bzip2 mingw-w64-x86_64-libpng 
-#                       mingw-w64-x86_64-libogg mingw-w64-x86_64-libvorbis mingw-w64-x86_64-libmodplug | grep /mingw64/bin/.*.dll 
+      - name: list DLLs (debug)
+        run: pacman -Ql mingw-w64-x86_64-opus mingw-w64-x86_64-curl mingw-w64-x86_64-enet mingw-w64-x86_64-mesa mingw-w64-x86_64-glew mingw-w64-x86_64-SDL2_ttf
+                       mingw-w64-x86_64-SDL2_mixer mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2
+                       mingw-w64-x86_64-lua
+                       mingw-w64-x86_64-brotli mingw-w64-x86_64-libidn2 mingw-w64-x86_64-libiconv mingw-w64-x86_64-libunistring mingw-w64-x86_64-libpsl mingw-w64-x86_64-zlib mingw-w64-x86_64-zstd mingw-w64-x86_64-openssl mingw-w64-x86_64-gcc-libs
+                       mingw-w64-x86_64-libwinpthread  
+                       mingw-w64-x86_64-freetype mingw-w64-x86_64-bzip2 mingw-w64-x86_64-libpng 
+                       mingw-w64-x86_64-libogg mingw-w64-x86_64-libvorbis mingw-w64-x86_64-libmodplug | grep /mingw64/bin/.*.dll
       - name: list DLLs (debug)
         run: ls -la /mingw64/bin
       - name: Make build directory
@@ -113,6 +113,9 @@ jobs:
 #           echo SDL2_mixer.dll >> dll.txt
 #           echo SDL2_ttf.dll >> dll.txt
 #           echo zlib1.dll >> dll.txt
+      - name: ntldd (debug)
+        working-directory: ./build
+        run: ntldd -R duel6unity.exe
 
       - name: zip
         working-directory: ./build
