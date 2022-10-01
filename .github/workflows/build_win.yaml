@@ -47,7 +47,9 @@ jobs:
         run: ls -la /mingw64/bin
       - name: Make build directory
         run: mkdir build && mkdir build-headless && ls -la
-
+      - name: ldd1 (debug)
+        working-directory: ./build
+        run: ldd --help
       - name: Generate build files (gl4)
         working-directory: ./build
         run: pwd && cmake -G "MinGW Makefiles" -D_WIN32=true -DD6R_RENDERER=gl4 ..
@@ -80,46 +82,79 @@ jobs:
         working-directory: ./build
         run: mingw32-make -j 2 duel6r-masterserver
 
-#     - name: construct dll list
-#       working-directory: ./build
-#       run: echo glew32.dll > dll.txt 
-#           echo libbrotlicommon.dll >> dll.txt
-#           echo libbrotlidec.dll >> dll.txt
-#           echo libcrypto-1_1-x64.dll >> dll.txt
-#           echo libcurl-4.dll >> dll.txt
-#           echo libenet-7.dll >> dll.txt
-#           echo libfreetype-6.dll >> dll.txt
-#           echo libiconv-2.dll >> dll.txt
-#           echo libidn2-0.dll >> dll.txt
-#           echo libintl-8.dll >> dll.txt
-#           echo libmodplug-1.dll >> dll.txt
-#           echo libnghttp2-14.dll >> dll.txt
-#           echo libogg-0.dll >> dll.txt
-#           echo libopus-0.dll >> dll.txt
-#           echo libpng16-16.dll >> dll.txt
-#           echo libpsl-5.dll >> dll.txt
-#           echo libssh2-1.dll >> dll.txt
-#           echo libssl-1_1-x64.dll >> dll.txt
-#           echo libssp-0.dll >> dll.txt
-#           echo libunistring-2.dll >> dll.txt
-#           echo libvorbis-0.dll >> dll.txt
-#           echo libvorbisenc-2.dll >> dll.txt
-#           echo libvorbisfile-3.dll >> dll.txt
-#           echo libwinpthread-1.dll >> dll.txt
-#           echo libzstd.dll >> dll.txt
-#           echo lua53.dll >> dll.txt
-#           echo SDL2.dll >> dll.txt
-#           echo SDL2_image.dll >> dll.txt
-#           echo SDL2_mixer.dll >> dll.txt
-#           echo SDL2_ttf.dll >> dll.txt
-#           echo zlib1.dll >> dll.txt
       - name: ntldd (debug)
         working-directory: ./build
         run: ntldd -R duel6unity.exe
 
+      - name: ldd (debug)
+        working-directory: ./build
+        run: ldd duel6unity.exe
+
       - name: zip
         working-directory: ./build
-        run: tar -czh --verbose --file=duel-build_win.tar.gz duel6unity.exe duel6r-masterserver.exe -C ../resources . -C ../build-headless duel6headless.exe -C /mingw64/bin glew32.dll libbrotlicommon.dll  libbrotlidec.dll  libcrypto-1_1-x64.dll  libcurl-4.dll  libenet-7.dll  libfreetype-6.dll  libiconv-2.dll  libidn2-0.dll  libintl-8.dll  libmodplug-1.dll  libnghttp2-14.dll  libogg-0.dll  libopus-0.dll  libpng16-16.dll  libpsl-5.dll  libssh2-1.dll  libssl-1_1-x64.dll  libssp-0.dll  libunistring-2.dll  libvorbis-0.dll  libvorbisenc-2.dll  libvorbisfile-3.dll  libwinpthread-1.dll  libzstd.dll  lua54.dll  SDL2.dll  SDL2_image.dll  SDL2_mixer.dll  SDL2_ttf.dll  zlib1.dll libjpeg-8.dll libturbojpeg.dll libtiff-5.dll libtiffxx-5.dll libwebp-7.dll libwebpdecoder-3.dll libwebpdemux-2.dll libwebpmux-3.dll libFLAC.dll libFLAC++.dll
+        run: >
+            tar -czh --verbose --file=duel-build_win.tar.gz duel6unity.exe duel6r-masterserver.exe \
+             -C ../resources . \
+             -C ../build-headless duel6headless.exe \
+             -C /mingw64/bin \
+                glew32.dll \
+                libbrotlicommon.dll \
+                libbrotlidec.dll \
+                libbrotlienc.dll \
+                libbz2-1.dll \
+                libcrypto-1_1-x64.dll \
+                libcurl-4.dll \
+                libdeflate.dll \
+                libenet-7.dll \
+                libFLAC.dll \
+                libFLAC++.dll \
+                libfreetype-6.dll \
+                libglib-2.0-0.dll \
+                libgraphite2.dll \
+                libharfbuzz-0.dll \
+                libhwy.dll \
+                libiconv-2.dll \
+                libidn2-0.dll \
+                libintl-8.dll \
+                libjbig-0.dll \
+                libjpeg-8.dll \
+                libjxl.dll \
+                liblcms2-2.dll \
+                libLerc.dll \
+                libmodplug-1.dll \
+                libmpg123-0.dll \
+                libnghttp2-14.dll \
+                libogg-0.dll \
+                libopus-0.dll \
+                libopusfile-0.dll \
+                libpcre2-8-0.dll \
+                libpng16-16.dll \
+                libpsl-5.dll \
+                libssh2-1.dll \
+                libssl-1_1-x64.dll \
+                libssp-0.dll \
+                libtiff-5.dll \
+                libtiffxx-5.dll \
+                libturbojpeg.dll \
+                libunistring-2.dll \
+                libvorbis-0.dll \
+                libvorbisenc-2.dll \
+                libvorbisfile-3.dll \
+                libwebp-7.dll \
+                libwebpdecoder-3.dll \
+                libwebpdemux-2.dll \
+                libwebpmux-3.dll \
+                libwinpthread-1.dll \
+                liblzma-5.dll \
+                libzstd.dll \
+                lua54.dll \
+                SDL2.dll \
+                SDL2_image.dll \
+                SDL2_mixer.dll \
+                SDL2_ttf.dll \
+                zlib1.dll \
+                libgcc_s_seh-1.dll \
+                libstdc++-6.dll \
 
       - uses: actions/upload-artifact@v3
         with:
