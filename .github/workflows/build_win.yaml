@@ -31,7 +31,17 @@ jobs:
               mingw-w64-x86_64-make
               mingw-w64-x86_64-ntldd-git
       - name: install deps (2)
-        run: pacman --noconfirm -S --needed --overwrite '*' mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_mixer mingw-w64-x86_64-SDL2_ttf mingw-w64-x86_64-glew mingw-w64-x86_64-mesa mingw-w64-x86_64-enet mingw-w64-x86_64-curl mingw-w64-x86_64-opus
+        run: >-
+          pacman --noconfirm -S --needed --overwrite '*'
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL2_image
+            mingw-w64-x86_64-SDL2_mixer
+            mingw-w64-x86_64-SDL2_ttf
+            mingw-w64-x86_64-glew
+            mingw-w64-x86_64-mesa
+            mingw-w64-x86_64-enet
+            mingw-w64-x86_64-curl
+            mingw-w64-x86_64-opus
       - name: install liblua 5.4 (instead of 5.3)
         run: pacman --noconfirm -U https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-lua-5.4.3-2-any.pkg.tar.zst
 
