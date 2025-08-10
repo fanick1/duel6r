@@ -54,10 +54,10 @@ namespace Duel6 {
         glContext = createContext(completeScreen, console);
         screen = readScreenParameters(completeScreen, console);
 
-        GLenum err = glewInit();
-        if (GLEW_OK != err) {
-            D6_THROW(VideoException, (const char *) glewGetErrorString(err));
-        }
+//        GLenum err = glewInit();
+//        if (GLEW_OK != err) {
+//            D6_THROW(VideoException, (const char *) glewGetErrorString(err));
+//        }
 #endif
         renderer = createRenderer();
 

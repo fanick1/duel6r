@@ -46,7 +46,7 @@ namespace Duel6 {
 
     void LevelRenderData::update(Float32 elapsedTime) {
         animWait += elapsedTime;
-        if (animWait > animationSpeed) {
+        if (animWait > 1) [[unlikely]] {
             animWait = 0;
             walls.nextFrame();
             sprites.nextFrame();

@@ -276,7 +276,7 @@ namespace Duel6 {
             }
 
             if (event.getCode() == SDLK_F8){
-//                performance::TraceRecorder::INSTANCE.flip();
+                performance::TraceRecorder::INSTANCE.flip();
             }
         }
     }
@@ -385,13 +385,15 @@ namespace Duel6 {
         performance::traceEvent t("Application::syncUpdateAndRender");
         Uint32 lastTime = curTime;
 
+        bool needsRedraw = false;
+
         if(accumulatedTime < updateTime){
-            performance::traceEvent t("context.render() Application::syncUpdateAndRender");
-            context.render();
+//            performance::traceEvent t("context.render() Application::syncUpdateAndRender");
+//            context.render();
         }
         {
-            performance::traceEvent t("screenUpdate");
-            video->screenUpdate(console, *font);
+//            performance::traceEvent t("screenUpdate");
+//            video->screenUpdate(console, *font);
         }
 
         curTime = SDL_GetTicks();
@@ -404,8 +406,19 @@ namespace Duel6 {
                 accumulatedTime -= updateTime;
                 video->think(updateTime);
                 networkFlushCommands();
+                needsRedraw = true;
             }
             context.updated();
+        }
+
+        if(needsRedraw){
+            performance::traceEvent t("context.render() Application::syncUpdateAndRender");
+            context.render();
+            {
+                performance::traceEvent t("screenUpdate");
+                video->screenUpdate(console, *font);
+            }
+
         }
 
         return elapsedTime;

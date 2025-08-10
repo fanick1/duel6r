@@ -26,7 +26,7 @@ namespace Duel6 {
         }
 
     private:
-        SDL_AudioDeviceID deviceId;
+        SDL_AudioDeviceID deviceId = 0;
         SDL_AudioStream *stream;
         OpusEncoder *opusEncoder;
         Console &console;
