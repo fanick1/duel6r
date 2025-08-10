@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.10)
 
 ############################################################################
 #
@@ -57,7 +57,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DD6_DEBUG")
 # Switches
 set(D6R_RENDERERS gl1 gl4 es2 es3 headless)
 if(NOT DEFINED D6R_RENDERER)
-    set(D6R_RENDERER "gl4" CACHE STRING "Renderer")  # Renderer: gl1/gl4/es2
+    set(D6R_RENDERER "es3" CACHE STRING "Renderer")  # Renderer: gl1/gl4/es2
 endif()
 set_property (CACHE D6R_RENDERER PROPERTY STRINGS ${D6R_RENDERERS})
 set(D6R_WITH_LUA ON)     # Enable/disable lua scripting
