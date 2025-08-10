@@ -49,7 +49,7 @@ namespace Duel6 {
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 8);
         glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -78,13 +78,8 @@ namespace Duel6 {
     }
 
     void GLES3RendererTarget::record(RenderCallback renderCallback) {
-//        renderer.clearBuffers();
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        renderCallback();
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        callback = renderCallback;
+        rerender();
     }
 
     void GLES3RendererTarget::apply(const Color &modulateColor) {
@@ -101,7 +96,7 @@ namespace Duel6 {
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
                           GL_NEAREST);
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+//        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     }
 
     void GLES3RendererTarget::blitDepth() {
@@ -118,5 +113,13 @@ namespace Duel6 {
     void GLES3RendererTarget::resize(Int32 width, Int32 height) {
         this->width = width;
         this->height = height;
+    }
+
+    void GLES3RendererTarget::rerender() {
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        renderer.clearBuffers();
+        callback();
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 }

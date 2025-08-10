@@ -142,7 +142,7 @@ namespace Duel6::performance {
     }
 
     void TraceRecorder::entry::output(std::ofstream &os) {
-        os << "{ \"pid\":1, \"tid\":1, \"ts\":" << start << ", \"dur\":" << duration << ", \"ph\":\"X\", \"name\":\"" << name << "\", \"args\":{ \"start\": "
+        os << R"({ "pid":1, "tid":1, "ts":)" << start << ", \"dur\":" << duration << R"(, "ph":"X", "name":")" << name << R"(", "args":{ "start": )"
            << start << ", \"end\": " << start + duration << " } },\n";
         for (auto &entry: children) {
             entry.output(os);

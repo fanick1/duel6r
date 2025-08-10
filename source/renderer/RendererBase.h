@@ -44,6 +44,8 @@ namespace Duel6 {
     public:
         RendererBase();
 
+        virtual ~RendererBase() = default;
+
         void setProjectionMatrix(const Matrix &m) override;
 
         Matrix getProjectionMatrix() const override;

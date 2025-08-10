@@ -30,6 +30,7 @@
 #include "GL4Renderer.h"
 #include "GL4RendererTarget.h"
 #include "../../Perf.h"
+#include "../RendererException.h"
 namespace Duel6 {
     struct ColorVertex {
         Vector xyz;
@@ -42,6 +43,13 @@ namespace Duel6 {
         Uint32 flags = 0;
     };
     static MaterialVertex materialPoints[4];
+
+    GlewHelper::GlewHelper() {
+        GLenum err = glewInit();
+        if (GLEW_OK != err) {
+            D6_THROW(RendererException, (const char *) glewGetErrorString(err));
+        }
+    }
 
     GL4Renderer::GL4Renderer()
             : RendererBase(),

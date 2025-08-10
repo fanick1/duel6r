@@ -1171,6 +1171,7 @@ namespace Duel6 {
     }
 
     std::string Menu::getRandomSplashText() {
+        // splash texts
         std::vector<std::string> texts = {
             "As seen on TV!",
             "CLASSIFIED",
@@ -1253,7 +1254,7 @@ namespace Duel6 {
             "Tell your friends!",
             "NP is not in P!",
             "Livestreamed!",
-            "Tesla Model 3 compatible!"
+            "Tesla Model 3 compatible!",
             "Haunted!",
             "Polynomial!",
             "Terrestrial!",

@@ -43,6 +43,11 @@ namespace Duel6 {
         GL4MaterialProgramWrapper &materialProgram;
     };
 
+    class GlewHelper {
+    public:
+        GlewHelper();
+    };
+
     class GL4Renderer : public RendererBase {
     private:
         GLuint colorVao;
@@ -51,6 +56,7 @@ namespace Duel6 {
         GLuint materialVbo;
         GLuint materialVao;
 
+        GlewHelper glewHelper; // Must be first
         GL4Shader colorVertexShader;
         GL4Shader colorFragmentShader;
         GL4Shader materialVertexShader;
@@ -143,6 +149,8 @@ namespace Duel6 {
 
         void enableBloomContext();
     private:
+        GL4Renderer(bool glewInit);
+
         void enableOption(GLenum option, bool enable);
 
         void updateColorBuffer(Int32 vertexCount);

@@ -29,10 +29,16 @@
 #include "GL1Renderer.h"
 #include "GL1Buffer.h"
 #include "GL1RendererTarget.h"
-
+#include "../RendererException.h"
 namespace Duel6 {
     namespace {
         std::unordered_map<GLuint, std::vector<GLuint>> textureIdMap;
+    }
+    GlewHelper::GlewHelper() {
+        GLenum err = glewInit();
+        if (GLEW_OK != err) {
+            D6_THROW(RendererException, (const char *) glewGetErrorString(err));
+        }
     }
 
     GL1Renderer::GL1Renderer()

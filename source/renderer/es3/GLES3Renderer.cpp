@@ -65,6 +65,7 @@ namespace Duel6 {
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
         glEnableVertexAttribArray(0);
 
+        glGenBuffers(1, &colorEbo);
         glGenVertexArrays(1, &materialVao);
         glBindVertexArray(materialVao);
 
@@ -146,7 +147,7 @@ namespace Duel6 {
     }
 
     void GLES3Renderer::enableWireframe(bool enable) {
-        glPolygonMode(GL_FRONT_AND_BACK, enable ? GL_LINE : GL_FILL);
+//        glPolygonMode(GL_FRONT_AND_BACK, enable ? GL_LINE : GL_FILL); // TODO: not working on GLES3
     }
 
     void GLES3Renderer::enableDepthTest(bool enable) {
@@ -204,11 +205,63 @@ namespace Duel6 {
         Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
                                 color.getAlpha() / 255.0f};
         colorProgram.setUniform("color", colorData);
+        colorProgram.setUniform("pointSize", size);
+        colorProgram.setUniform("isPoint", 1);
 
-        glPointSize(size);
+//        glPointSize(size);    // TODO: not working on GLES3
         glDrawArrays(GL_POINTS, 0, 1);
-        glPointSize(1);
+        colorProgram.setUniform("pointSize", 1);
+        colorProgram.setUniform("isPoint", 0 );
+
+//        glPointSize(1);       // TODO: not working on GLES3
     }
+
+
+
+
+    void GLES3Renderer::points(const Vector *positions, Float32 size, const Color &color) {
+        glBindVertexArray(colorVao);
+//        context->colorProgram.bind();
+        colorProgram.bind();
+        colorPoints[0].xyz = positions[0];
+        colorPoints[1].xyz = positions[1];
+        colorPoints[2].xyz = positions[2];
+        colorPoints[3].xyz = positions[3];
+        updateColorBuffer(4);
+
+        Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
+                                color.getAlpha() / 255.0f};
+//        context->colorProgram.color = colorData;
+        colorProgram.setUniform("color", colorData);
+        colorProgram.setUniform("pointSize", size);
+
+//        glPointSize(size);
+        glDrawArrays(GL_POINTS, 0, 4);
+        colorProgram.setUniform("pointSize", 1);
+
+//        glPointSize(1);
+    }
+//
+//    void GLES3Renderer::points(const std::vector<Vector> &positions, const std::vector<int>& indices, const int restartIndex, Float32 size, const Color &color) {
+//        glEnable(GL_PRIMITIVE_RESTART);
+//        glPrimitiveRestartIndex(restartIndex);
+//        glBindVertexArray(colorVao);
+//        context->colorProgram.bind();
+//
+//        glBindBuffer(GL_ARRAY_BUFFER, colorVbo);
+//        glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(ColorVertex), positions.data(), GL_STATIC_DRAW);
+//
+//        Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
+//                                color.getAlpha() / 255.0f};
+//        context->colorProgram.color = colorData;
+//
+//        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, colorEbo);
+//        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * indices.size(), &indices[0], GL_STATIC_DRAW);
+//        glPointSize(size);
+//        glDrawElements(GL_POINTS, indices.size(), GL_UNSIGNED_INT, (GLvoid*)0);
+//        glPointSize(1);
+//    }
+
 
     void GLES3Renderer::line(const Vector &from, const Vector &to, Float32 width, const Color &color) {
         glBindVertexArray(colorVao);
@@ -226,6 +279,46 @@ namespace Duel6 {
         glDrawArrays(GL_LINES, 0, 2);
         glLineWidth(1.0f);
     }
+
+    void GLES3Renderer::lines(const Vector positions[4], Float32 width, const Color &color) {
+        glBindVertexArray(colorVao);
+//        context->colorProgram.bind();
+        colorProgram.bind();
+        colorPoints[0].xyz = positions[0];
+        colorPoints[1].xyz = positions[1];
+        colorPoints[2].xyz = positions[2];
+        colorPoints[3].xyz = positions[3];
+        updateColorBuffer(4);
+
+        Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
+                                color.getAlpha() / 255.0f};
+//        context->colorProgram.color = colorData;
+        colorProgram.setUniform("color", colorData);
+        glLineWidth(width);
+        glDrawArrays(GL_LINE_STRIP, 0, 4);
+        glLineWidth(1.0f);
+    }
+//
+//    void GLES3Renderer::lines(const std::vector<Vector> &positions, const std::vector<int>& indices, const int restartIndex, Float32 width, const Color &color) {
+//        glEnable(GL_PRIMITIVE_RESTART);
+//        glPrimitiveRestartIndex(restartIndex);
+//        glBindVertexArray(colorVao);
+//        context->colorProgram.bind();
+//
+//        glBindBuffer(GL_ARRAY_BUFFER, colorVbo);
+//        glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(ColorVertex), positions.data(), GL_STATIC_DRAW);
+//
+//        Float32 colorData[4] = {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f,
+//                                color.getAlpha() / 255.0f};
+//        context->colorProgram.color = colorData;
+//
+//        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, colorEbo);
+//        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * indices.size(), &indices[0], GL_STATIC_DRAW);
+//        glLineWidth(width);
+//        glDrawElements(GL_LINE_STRIP, indices.size(), GL_UNSIGNED_INT, (GLvoid*)0);
+//        glLineWidth(1.0f);
+//    }
+
 
     void GLES3Renderer::triangle(const Vector &p1, const Vector &p2, const Vector &p3, const Color &color) {
         glBindVertexArray(colorVao);
@@ -353,5 +446,84 @@ namespace Duel6 {
         colorProgram.setUniform("mvp", mvpMatrix);
         materialProgram.bind(); // Required for INTEL
         materialProgram.setUniform("mvp", mvpMatrix);
+    }
+
+    // copy paste from GL4Renderer
+    void GLES3Renderer::stencil(StencilMode mode) const {
+        static const GLint CLEAR_VALUE = 0;
+        static const GLint WRITABLE_VALUE = 1;
+        /**
+         * Main use case in gui rendering:
+         *  CLEAR
+         *
+         *  WRITE
+         *   - render rectangle into which we want to render
+         *  TEST
+         *   - now render the graphics. Anything outside the rectangle from previous step gets cropped.
+         *  ERASE
+         *   - re-render the rectangle from step 'WRITE' to patch the stencil buffer into pristine state without the need to
+         *   erase whole stencil buffer. This leaves the stencil buffer reusable for next gui component to be rendered.
+         */
+
+        switch (mode) {
+            case StencilMode::DISABLE: {
+                glDisable(GL_STENCIL_TEST);
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+                break;
+            }
+            case StencilMode::CLEAR: {
+                glClearStencil(CLEAR_VALUE);
+                glClear( GL_STENCIL_BUFFER_BIT);  // (it is not that expensive, but let's not misuse it)
+                break;
+            }
+            case StencilMode::WRITE: {
+                glEnable(GL_STENCIL_TEST);
+                glStencilFunc(GL_NOTEQUAL, WRITABLE_VALUE, 0xffffffff);
+                glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);   // when a pixel is rendered, 1 gets written into the stencil buffer
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+                break;
+            }
+            case StencilMode::ERASE: {
+                glStencilFunc(GL_NOTEQUAL, CLEAR_VALUE, 0xffffffff); // clean up
+                glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);  // when a pixel is rendered, 0 gets written into the stencil buffer
+                glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+                break;
+            }
+            case StencilMode::TEST: {
+                glEnable(GL_STENCIL_TEST);
+                glStencilFunc(GL_NOTEQUAL, CLEAR_VALUE, 0xffffffff);  // enable rendering only to pixels having 1 in the stencil buffer
+                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);  // do not modify the stencil buffer
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+                break;
+            }
+        }
+    }
+//    void GL4Renderer::enableRenderContext() {
+//        context = &contextRender;
+//        updateMvpUniform();
+//    }
+//
+//    void GL4Renderer::enableBloomContext() {
+//        context = &contextBloom;
+//        updateMvpUniform();
+//    }
+
+    bool GLES3Renderer::setScissorTest(bool value) const {
+        GLboolean originalValue;
+        glGetBooleanv(GL_SCISSOR_TEST, &originalValue);
+        if(value == originalValue){
+            return originalValue;
+        }
+        if(value){
+            glEnable(GL_SCISSOR_TEST);
+        } else {
+            glDisable(GL_SCISSOR_TEST);
+        }
+        return originalValue;
+    }
+
+    void GLES3Renderer::scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const {
+        glScissor(x, y, width, height);
     }
 }

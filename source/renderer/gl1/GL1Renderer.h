@@ -32,6 +32,12 @@
 #include "GL1Types.h"
 
 namespace Duel6 {
+
+    class GlewHelper {
+    public:
+        GlewHelper();
+    };
+
     class GL1Renderer
             : public RendererBase {
     private:

@@ -1,7 +1,7 @@
 #version 300 es
 
 precision highp float;
-uniform sampler2DArray textureUnit;
+uniform mediump sampler2DArray textureUnit;
 uniform bool alphaTest;
 uniform vec4 modulateColor;
 

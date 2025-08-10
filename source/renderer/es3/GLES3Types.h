@@ -29,6 +29,7 @@
 #define DUEL6_RENDERER_GLES3_TYPES_H
 
 #include <GLES3/gl31.h>
+//#include <GL/glew.h>
 
 namespace Duel6 {
     typedef GLuint Texture;
