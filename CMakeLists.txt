@@ -595,6 +595,10 @@ if (D6R_RENDERER STREQUAL "vulkan")
             source/renderer/vulkan/VulkanSurface.h
             source/renderer/vulkan/VulkanSwapchain.h
             source/renderer/vulkan/VulkanTypes.h
+            source/renderer/vulkan/VulkanShader.h
+            source/renderer/vulkan/VulkanShader.cpp
+            source/renderer/vulkan/VulkanPipeline.h
+            source/renderer/vulkan/VulkanPipeline.cpp
             source/renderer/vulkan/unity.cpp
             )
 endif (D6R_RENDERER STREQUAL "vulkan")
@@ -697,6 +701,69 @@ if (D6R_RENDERER STREQUAL "vulkan")
                 ${Vulkan_LIBRARIES}
             )
         include_directories(${Vulkan_INCLUDE_DIRS})
+        
+        # Find shader compiler - try glslangValidator first, then glslc
+        find_program(GLSLANG_VALIDATOR 
+            NAMES glslangValidator glslc
+            HINTS ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE}
+            PATH_SUFFIXES bin
+            DOC "Vulkan GLSL compiler"
+        )
+        
+        if(NOT GLSLANG_VALIDATOR)
+            message(FATAL_ERROR "Could not find glslangValidator or glslc. Please install Vulkan SDK with shader tools.")
+        endif()
+        
+        # Function to compile Vulkan shaders
+        function(compile_vulkan_shaders)
+            set(SHADER_SOURCE_DIR "${CMAKE_SOURCE_DIR}/resources/shaders/vulkan")
+            set(SHADER_BINARY_DIR "${CMAKE_BINARY_DIR}/shaders")
+            
+            # Create output directory
+            file(MAKE_DIRECTORY ${SHADER_BINARY_DIR})
+            
+            # Find all .glsl files
+            file(GLOB_RECURSE SHADER_SOURCES "${SHADER_SOURCE_DIR}/*.glsl")
+            
+            set(SPIRV_SHADERS "")
+            
+            foreach(SHADER_SOURCE ${SHADER_SOURCES})
+                get_filename_component(SHADER_NAME ${SHADER_SOURCE} NAME_WE)
+                get_filename_component(SHADER_EXT ${SHADER_SOURCE} EXT)
+                
+                # Determine output filename based on input
+                if(SHADER_SOURCE MATCHES "\\.vert\\.glsl$")
+                    set(SPIRV_OUTPUT "${SHADER_BINARY_DIR}/${SHADER_NAME}.vert.spv")
+                elseif(SHADER_SOURCE MATCHES "\\.frag\\.glsl$")
+                    set(SPIRV_OUTPUT "${SHADER_BINARY_DIR}/${SHADER_NAME}.frag.spv")
+                else()
+                    set(SPIRV_OUTPUT "${SHADER_BINARY_DIR}/${SHADER_NAME}.spv")
+                endif()
+                
+                # Add compilation command
+                add_custom_command(
+                    OUTPUT ${SPIRV_OUTPUT}
+                    COMMAND ${GLSLANG_VALIDATOR} -V ${SHADER_SOURCE} -o ${SPIRV_OUTPUT}
+                    DEPENDS ${SHADER_SOURCE}
+                    COMMENT "Compiling Vulkan shader: ${SHADER_SOURCE}"
+                )
+                
+                list(APPEND SPIRV_SHADERS ${SPIRV_OUTPUT})
+            endforeach()
+            
+            # Create target for all shaders
+            add_custom_target(vulkan_shaders ALL DEPENDS ${SPIRV_SHADERS})
+            
+            # Make main target depend on shaders
+            add_dependencies(duel6r vulkan_shaders)
+        endfunction()
+        
+        # Compile shaders if any exist
+        if(EXISTS "${CMAKE_SOURCE_DIR}/resources/shaders/vulkan")
+            compile_vulkan_shaders()
+            message(STATUS "Vulkan shader compilation enabled")
+        endif()
+        
     else()
         message(FATAL_ERROR "Vulkan not found. Please install Vulkan SDK.")
     endif()

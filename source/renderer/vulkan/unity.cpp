@@ -38,3 +38,5 @@
 #include "VulkanBuffer.cpp"
 #include "VulkanResourceManager.cpp"
 #include "VulkanSync.cpp"
+#include "VulkanPipeline.cpp"
+#include "VulkanShader.cpp"
