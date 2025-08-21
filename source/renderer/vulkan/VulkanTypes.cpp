@@ -172,12 +172,12 @@ namespace Duel6 {
 
     // Standard vertex format descriptions
     namespace VertexFormats {
-        VertexInputDescription PositionVertex::getDescription() {
+        VertexInputDescription ColorVertex::getDescription() {
             VertexInputDescription description;
 
             VkVertexInputBindingDescription binding{};
             binding.binding = 0;
-            binding.stride = sizeof(PositionVertex);
+            binding.stride = sizeof(ColorVertex);
             binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
             description.bindings.push_back(binding);
 
@@ -185,8 +185,52 @@ namespace Duel6 {
             attribute.binding = 0;
             attribute.location = 0;
             attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-            attribute.offset = 0;
+            attribute.offset = offsetof(ColorVertex, position);
             description.attributes.push_back(attribute);
+
+            return description;
+        }
+
+        VertexInputDescription MaterialVertex::getDescription() {
+            VertexInputDescription description;
+
+            VkVertexInputBindingDescription binding{};
+            binding.binding = 0;
+            binding.stride = sizeof(MaterialVertex);
+            binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            description.bindings.push_back(binding);
+
+            // Position
+            VkVertexInputAttributeDescription posAttribute{};
+            posAttribute.binding = 0;
+            posAttribute.location = 0;
+            posAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+            posAttribute.offset = offsetof(MaterialVertex, position);
+            description.attributes.push_back(posAttribute);
+
+            // Texture coordinates (u, v)
+            VkVertexInputAttributeDescription texAttribute{};
+            texAttribute.binding = 0;
+            texAttribute.location = 1;
+            texAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+            texAttribute.offset = offsetof(MaterialVertex, textureCoord);
+            description.attributes.push_back(texAttribute);
+
+            // Texture index (z component of textureCoord)
+            VkVertexInputAttributeDescription texIndexAttribute{};
+            texIndexAttribute.binding = 0;
+            texIndexAttribute.location = 2;
+            texIndexAttribute.format = VK_FORMAT_R32_SFLOAT;
+            texIndexAttribute.offset = offsetof(MaterialVertex, textureCoord) + 2 * sizeof(float);
+            description.attributes.push_back(texIndexAttribute);
+
+            // Flags
+            VkVertexInputAttributeDescription flagsAttribute{};
+            flagsAttribute.binding = 0;
+            flagsAttribute.location = 3;
+            flagsAttribute.format = VK_FORMAT_R32_UINT;
+            flagsAttribute.offset = offsetof(MaterialVertex, flags);
+            description.attributes.push_back(flagsAttribute);
 
             return description;
         }

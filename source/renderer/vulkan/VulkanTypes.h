@@ -31,6 +31,8 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 #include "../RendererTypes.h"
+#include "../../math/Vector.h"
+#include "../../math/Matrix.h"
 
 namespace Duel6 {
     // Forward declarations
@@ -112,11 +114,77 @@ namespace Duel6 {
     
     // Standard vertex formats
     namespace VertexFormats {
-        // Position only (3D)
-        struct PositionVertex {
-            float x, y, z;
+        // Position only (3D) - for color shaders
+        struct ColorVertex {
+            Vector position;
             
             static VertexInputDescription getDescription();
+
+            static VkVertexInputBindingDescription getBindingDescription() {
+                VkVertexInputBindingDescription bindingDescription{};
+                bindingDescription.binding = 0;
+                bindingDescription.stride = sizeof(ColorVertex);
+                bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+                return bindingDescription;
+            }
+
+            static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
+                std::vector<VkVertexInputAttributeDescription> attributeDescriptions(1);
+                
+                attributeDescriptions[0].binding = 0;
+                attributeDescriptions[0].location = 0;
+                attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+                attributeDescriptions[0].offset = offsetof(ColorVertex, position);
+
+                return attributeDescriptions;
+            }
+        };
+
+        // Position + texture coords + texture index + flags - for material shaders  
+        struct MaterialVertex {
+            Vector position;     // 3D position
+            Vector textureCoord; // UV coordinates (using z for texture index)
+            uint32_t flags;      // Vertex flags (water wave, etc.)
+            
+            static VertexInputDescription getDescription();
+
+            static VkVertexInputBindingDescription getBindingDescription() {
+                VkVertexInputBindingDescription bindingDescription{};
+                bindingDescription.binding = 0;
+                bindingDescription.stride = sizeof(MaterialVertex);
+                bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+                return bindingDescription;
+            }
+
+            static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
+                std::vector<VkVertexInputAttributeDescription> attributeDescriptions(4);
+                
+                // Position
+                attributeDescriptions[0].binding = 0;
+                attributeDescriptions[0].location = 0;
+                attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+                attributeDescriptions[0].offset = offsetof(MaterialVertex, position);
+
+                // Texture coordinates (u, v)
+                attributeDescriptions[1].binding = 0;
+                attributeDescriptions[1].location = 1;
+                attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+                attributeDescriptions[1].offset = offsetof(MaterialVertex, textureCoord);
+
+                // Texture index (z component)
+                attributeDescriptions[2].binding = 0;
+                attributeDescriptions[2].location = 2;
+                attributeDescriptions[2].format = VK_FORMAT_R32_SFLOAT;
+                attributeDescriptions[2].offset = offsetof(MaterialVertex, textureCoord) + 2 * sizeof(float);
+
+                // Flags
+                attributeDescriptions[3].binding = 0;
+                attributeDescriptions[3].location = 3;
+                attributeDescriptions[3].format = VK_FORMAT_R32_UINT;
+                attributeDescriptions[3].offset = offsetof(MaterialVertex, flags);
+
+                return attributeDescriptions;
+            }
         };
         
         // Position + Color
@@ -142,6 +210,43 @@ namespace Duel6 {
             float u, v;
             
             static VertexInputDescription getDescription();
+        };
+    }
+
+    // Uniform Buffer Objects for Vulkan shaders
+    namespace UBO {
+        // UBO for color shaders (vertex shader)
+        struct ColorVertexUBO {
+            alignas(16) Matrix mvp;
+        };
+
+        // UBO for color fragment shader
+        struct ColorFragmentUBO {
+            alignas(16) Vector color;
+            alignas(4) float padding; // Align to vec4
+        };
+
+        // UBO for material shaders (vertex shader)
+        struct MaterialVertexUBO {
+            alignas(16) Matrix mvp;
+            alignas(4) float globalTime;
+            float padding[3]; // Align to 16 bytes
+        };
+
+        // UBO for material fragment shader
+        struct MaterialFragmentUBO {
+            alignas(4) uint32_t alphaTest;
+            alignas(16) Vector modulateColor;
+            alignas(4) float globalTime;
+            float padding[3]; // Align to 16 bytes
+        };
+
+        // UBO for bloom filter fragment shader
+        struct BloomFilterFragmentUBO {
+            alignas(4) uint32_t alphaTest;
+            alignas(16) Vector modulateColor;
+            alignas(4) float globalTime;
+            float padding[3]; // Align to 16 bytes
         };
     }
 }
