@@ -6,6 +6,8 @@
     #include "gl1/unity.cpp"
 #elif D6_RENDERER_HEADLESS
     #include "headless/unity.cpp"
+#elif D6_RENDERER_VULKAN
+    #include "vulkan/unity.cpp"
 #endif
 
 #include "RendererBase.cpp"

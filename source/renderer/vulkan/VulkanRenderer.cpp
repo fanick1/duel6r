@@ -38,7 +38,7 @@ namespace Duel6 {
             surface->initialize(*context, window);
             device->initialize(*context, surface->getSurface());
             swapchain->initialize(*device, *surface);
-            memoryManager->initialize(*device);
+            memoryManager->initialize(*device, context->getInstance());
 
             initialized = true;
             console->printLine("...Vulkan renderer initialized successfully");
@@ -135,7 +135,7 @@ namespace Duel6 {
     Texture VulkanRenderer::createTexture(const Image &image, TextureFilter filtering, bool clamp) {
         // TODO: Implement texture creation
         console->printLine("Warning: VulkanRenderer::createTexture not yet implemented");
-        return VK_NULL_HANDLE;
+        return INVALID_TEXTURE_ID;
     }
 
     void VulkanRenderer::freeTexture(Texture textureId) {

@@ -55,4 +55,232 @@ namespace Duel6 {
                 return VK_BLEND_FACTOR_ONE;
         }
     }
+
+    VkBlendOp toVulkanBlendOp(BlendFunc blendFunc) {
+        // For now, always use additive blending
+        return VK_BLEND_OP_ADD;
+    }
+
+    VkPrimitiveTopology toVulkanTopology(int primitiveType) {
+        // Map from OpenGL-style primitive types
+        switch (primitiveType) {
+            case 0: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+            case 1: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            case 2: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+            case 3: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            case 4: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+            case 5: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+            default: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        }
+    }
+
+    VkFormat toVulkanFormat(int componentCount, bool normalized) {
+        if (normalized) {
+            switch (componentCount) {
+                case 1: return VK_FORMAT_R8_UNORM;
+                case 2: return VK_FORMAT_R8G8_UNORM;
+                case 3: return VK_FORMAT_R8G8B8_UNORM;
+                case 4: return VK_FORMAT_R8G8B8A8_UNORM;
+                default: return VK_FORMAT_R32G32B32A32_SFLOAT;
+            }
+        } else {
+            switch (componentCount) {
+                case 1: return VK_FORMAT_R32_SFLOAT;
+                case 2: return VK_FORMAT_R32G32_SFLOAT;
+                case 3: return VK_FORMAT_R32G32B32_SFLOAT;
+                case 4: return VK_FORMAT_R32G32B32A32_SFLOAT;
+                default: return VK_FORMAT_R32G32B32A32_SFLOAT;
+            }
+        }
+    }
+
+    uint32_t getFormatSize(VkFormat format) {
+        switch (format) {
+            case VK_FORMAT_R8_UNORM:
+            case VK_FORMAT_R8_UINT:
+            case VK_FORMAT_R8_SINT:
+                return 1;
+            case VK_FORMAT_R8G8_UNORM:
+            case VK_FORMAT_R8G8_UINT:
+            case VK_FORMAT_R8G8_SINT:
+            case VK_FORMAT_R16_SFLOAT:
+            case VK_FORMAT_R16_UINT:
+            case VK_FORMAT_R16_SINT:
+                return 2;
+            case VK_FORMAT_R8G8B8_UNORM:
+            case VK_FORMAT_R8G8B8_UINT:
+            case VK_FORMAT_R8G8B8_SINT:
+                return 3;
+            case VK_FORMAT_R8G8B8A8_UNORM:
+            case VK_FORMAT_R8G8B8A8_UINT:
+            case VK_FORMAT_R8G8B8A8_SINT:
+            case VK_FORMAT_R16G16_SFLOAT:
+            case VK_FORMAT_R16G16_UINT:
+            case VK_FORMAT_R16G16_SINT:
+            case VK_FORMAT_R32_SFLOAT:
+            case VK_FORMAT_R32_UINT:
+            case VK_FORMAT_R32_SINT:
+                return 4;
+            case VK_FORMAT_R16G16B16_SFLOAT:
+            case VK_FORMAT_R16G16B16_UINT:
+            case VK_FORMAT_R16G16B16_SINT:
+                return 6;
+            case VK_FORMAT_R16G16B16A16_SFLOAT:
+            case VK_FORMAT_R16G16B16A16_UINT:
+            case VK_FORMAT_R16G16B16A16_SINT:
+            case VK_FORMAT_R32G32_SFLOAT:
+            case VK_FORMAT_R32G32_UINT:
+            case VK_FORMAT_R32G32_SINT:
+                return 8;
+            case VK_FORMAT_R32G32B32_SFLOAT:
+            case VK_FORMAT_R32G32B32_UINT:
+            case VK_FORMAT_R32G32B32_SINT:
+                return 12;
+            case VK_FORMAT_R32G32B32A32_SFLOAT:
+            case VK_FORMAT_R32G32B32A32_UINT:
+            case VK_FORMAT_R32G32B32A32_SINT:
+                return 16;
+            default:
+                return 4; // Default fallback
+        }
+    }
+
+    bool isDepthFormat(VkFormat format) {
+        switch (format) {
+            case VK_FORMAT_D16_UNORM:
+            case VK_FORMAT_D32_SFLOAT:
+            case VK_FORMAT_D16_UNORM_S8_UINT:
+            case VK_FORMAT_D24_UNORM_S8_UINT:
+            case VK_FORMAT_D32_SFLOAT_S8_UINT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    bool isStencilFormat(VkFormat format) {
+        switch (format) {
+            case VK_FORMAT_S8_UINT:
+            case VK_FORMAT_D16_UNORM_S8_UINT:
+            case VK_FORMAT_D24_UNORM_S8_UINT:
+            case VK_FORMAT_D32_SFLOAT_S8_UINT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    // Standard vertex format descriptions
+    namespace VertexFormats {
+        VertexInputDescription PositionVertex::getDescription() {
+            VertexInputDescription description;
+
+            VkVertexInputBindingDescription binding{};
+            binding.binding = 0;
+            binding.stride = sizeof(PositionVertex);
+            binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            description.bindings.push_back(binding);
+
+            VkVertexInputAttributeDescription attribute{};
+            attribute.binding = 0;
+            attribute.location = 0;
+            attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+            attribute.offset = 0;
+            description.attributes.push_back(attribute);
+
+            return description;
+        }
+
+        VertexInputDescription PositionColorVertex::getDescription() {
+            VertexInputDescription description;
+
+            VkVertexInputBindingDescription binding{};
+            binding.binding = 0;
+            binding.stride = sizeof(PositionColorVertex);
+            binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            description.bindings.push_back(binding);
+
+            // Position attribute
+            VkVertexInputAttributeDescription posAttr{};
+            posAttr.binding = 0;
+            posAttr.location = 0;
+            posAttr.format = VK_FORMAT_R32G32B32_SFLOAT;
+            posAttr.offset = 0;
+            description.attributes.push_back(posAttr);
+
+            // Color attribute
+            VkVertexInputAttributeDescription colorAttr{};
+            colorAttr.binding = 0;
+            colorAttr.location = 1;
+            colorAttr.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            colorAttr.offset = sizeof(float) * 3;
+            description.attributes.push_back(colorAttr);
+
+            return description;
+        }
+
+        VertexInputDescription PositionTexVertex::getDescription() {
+            VertexInputDescription description;
+
+            VkVertexInputBindingDescription binding{};
+            binding.binding = 0;
+            binding.stride = sizeof(PositionTexVertex);
+            binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            description.bindings.push_back(binding);
+
+            // Position attribute
+            VkVertexInputAttributeDescription posAttr{};
+            posAttr.binding = 0;
+            posAttr.location = 0;
+            posAttr.format = VK_FORMAT_R32G32B32_SFLOAT;
+            posAttr.offset = 0;
+            description.attributes.push_back(posAttr);
+
+            // Texture coordinate attribute
+            VkVertexInputAttributeDescription texAttr{};
+            texAttr.binding = 0;
+            texAttr.location = 1;
+            texAttr.format = VK_FORMAT_R32G32_SFLOAT;
+            texAttr.offset = sizeof(float) * 3;
+            description.attributes.push_back(texAttr);
+
+            return description;
+        }
+
+        VertexInputDescription PositionColorTexVertex::getDescription() {
+            VertexInputDescription description;
+
+            VkVertexInputBindingDescription binding{};
+            binding.binding = 0;
+            binding.stride = sizeof(PositionColorTexVertex);
+            binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            description.bindings.push_back(binding);
+
+            // Position attribute
+            VkVertexInputAttributeDescription posAttr{};
+            posAttr.binding = 0;
+            posAttr.location = 0;
+            posAttr.format = VK_FORMAT_R32G32B32_SFLOAT;
+            posAttr.offset = 0;
+            description.attributes.push_back(posAttr);
+
+            // Color attribute
+            VkVertexInputAttributeDescription colorAttr{};
+            colorAttr.binding = 0;
+            colorAttr.location = 1;
+            colorAttr.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            colorAttr.offset = sizeof(float) * 3;
+            description.attributes.push_back(colorAttr);
+
+            // Texture coordinate attribute
+            VkVertexInputAttributeDescription texAttr{};
+            texAttr.binding = 0;
+            texAttr.location = 2;
+            texAttr.format = VK_FORMAT_R32G32_SFLOAT;
+            texAttr.offset = sizeof(float) * 7;
+            description.attributes.push_back(texAttr);
+
+            return description;
+        }
+    }
 }

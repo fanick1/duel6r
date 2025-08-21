@@ -37,12 +37,12 @@ namespace Duel6 {
     VulkanMemoryManager::~VulkanMemoryManager() {
     }
 
-    void VulkanMemoryManager::initialize(const VulkanDevice& device) {
-        console->printLine("...Vulkan memory manager initialized");
+    void VulkanMemoryManager::initialize(const VulkanDevice& device, VkInstance instance) {
+        console->printLine("...Vulkan memory manager initialized with manual allocation");
     }
 
     void VulkanMemoryManager::cleanup(const VulkanDevice& device) {
-        // Memory cleanup is handled per-buffer/image
+        // Nothing to cleanup for manual allocation
     }
 
     VulkanBuffer VulkanMemoryManager::createBuffer(const VulkanDevice& device, VkDeviceSize size, 
@@ -82,8 +82,7 @@ namespace Duel6 {
 
     void VulkanMemoryManager::destroyBuffer(const VulkanDevice& device, VulkanBuffer& buffer) {
         if (buffer.mapped != nullptr) {
-            vkUnmapMemory(device.getLogicalDevice(), buffer.memory);
-            buffer.mapped = nullptr;
+            unmapBuffer(device, buffer);
         }
 
         if (buffer.buffer != VK_NULL_HANDLE) {

@@ -29,11 +29,22 @@
 #define DUEL6_RENDERER_VULKANTYPES_H
 
 #include <vulkan/vulkan.h>
+#include <vector>
 #include "../RendererTypes.h"
 
 namespace Duel6 {
-    // Texture handle for Vulkan renderer
-    using Texture = VkDescriptorSet;
+    // Forward declarations
+    class VulkanTexture;
+    class VulkanResourceManager;
+
+    // Resource handle types
+    using TextureId = uint32_t;
+    using BufferId = uint32_t;
+    constexpr TextureId INVALID_TEXTURE_ID = 0;
+    constexpr BufferId INVALID_BUFFER_ID = 0;
+    
+    // Texture handle for Vulkan renderer (using resource ID instead of VkDescriptorSet)
+    using Texture = TextureId;
 
     // Texture filtering modes
     enum class TextureFilter {
@@ -48,10 +59,91 @@ namespace Duel6 {
         SrcColor
     };
 
-    // Convert from Vulkan format to internal texture filter
+    // Vertex attribute descriptions
+    struct VertexAttribute {
+        uint32_t location;
+        VkFormat format;
+        uint32_t offset;
+    };
+
+    struct VertexInputDescription {
+        std::vector<VkVertexInputBindingDescription> bindings;
+        std::vector<VkVertexInputAttributeDescription> attributes;
+    };
+
+    // Pipeline state
+    struct PipelineState {
+        VkPrimitiveTopology topology;
+        bool depthTestEnable;
+        bool depthWriteEnable;
+        VkCompareOp depthCompareOp;
+        bool blendEnable;
+        VkBlendFactor srcColorBlendFactor;
+        VkBlendFactor dstColorBlendFactor;
+        VkBlendOp colorBlendOp;
+        bool wireframe;
+        VkCullModeFlags cullMode;
+        
+        PipelineState() 
+            : topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+            , depthTestEnable(false)
+            , depthWriteEnable(false)
+            , depthCompareOp(VK_COMPARE_OP_LESS)
+            , blendEnable(false)
+            , srcColorBlendFactor(VK_BLEND_FACTOR_SRC_ALPHA)
+            , dstColorBlendFactor(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+            , colorBlendOp(VK_BLEND_OP_ADD)
+            , wireframe(false)
+            , cullMode(VK_CULL_MODE_NONE) {}
+    };
+
+    // Conversion functions
     VkFilter toVulkanFilter(TextureFilter filter);
     VkSamplerAddressMode toVulkanAddressMode(bool clamp);
     VkBlendFactor toVulkanBlendFactor(BlendFunc blendFunc);
+    VkBlendOp toVulkanBlendOp(BlendFunc blendFunc);
+    VkPrimitiveTopology toVulkanTopology(int primitiveType);
+    VkFormat toVulkanFormat(int componentCount, bool normalized = false);
+    
+    // Utility functions
+    uint32_t getFormatSize(VkFormat format);
+    bool isDepthFormat(VkFormat format);
+    bool isStencilFormat(VkFormat format);
+    
+    // Standard vertex formats
+    namespace VertexFormats {
+        // Position only (3D)
+        struct PositionVertex {
+            float x, y, z;
+            
+            static VertexInputDescription getDescription();
+        };
+        
+        // Position + Color
+        struct PositionColorVertex {
+            float x, y, z;
+            float r, g, b, a;
+            
+            static VertexInputDescription getDescription();
+        };
+        
+        // Position + Texture coordinates
+        struct PositionTexVertex {
+            float x, y, z;
+            float u, v;
+            
+            static VertexInputDescription getDescription();
+        };
+        
+        // Position + Color + Texture coordinates
+        struct PositionColorTexVertex {
+            float x, y, z;
+            float r, g, b, a;
+            float u, v;
+            
+            static VertexInputDescription getDescription();
+        };
+    }
 }
 
 #endif

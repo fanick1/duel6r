@@ -66,7 +66,7 @@ namespace Duel6 {
         VulkanMemoryManager(const VulkanMemoryManager&) = delete;
         VulkanMemoryManager& operator=(const VulkanMemoryManager&) = delete;
 
-        void initialize(const VulkanDevice& device);
+        void initialize(const VulkanDevice& device, VkInstance instance);
         void cleanup(const VulkanDevice& device);
 
         // Buffer management
