@@ -55,9 +55,9 @@ endif (MINGW)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DD6_DEBUG")
 
 # Switches
-set(D6R_RENDERERS gl1 gl4 es2 es3 headless)
+set(D6R_RENDERERS gl1 gl4 es2 es3 headless vulkan)
 if(NOT DEFINED D6R_RENDERER)
-    set(D6R_RENDERER "es3" CACHE STRING "Renderer")  # Renderer: gl1/gl4/es2
+    set(D6R_RENDERER "es3" CACHE STRING "Renderer")  # Renderer: gl1/gl4/es2/es3/headless/vulkan
 endif()
 set_property (CACHE D6R_RENDERER PROPERTY STRINGS ${D6R_RENDERERS})
 set(D6R_WITH_LUA ON)     # Enable/disable lua scripting
@@ -584,6 +584,21 @@ if (D6R_RENDERER STREQUAL "headless")
             source/renderer/headless/HeadlessTypes.h
             )
 endif (D6R_RENDERER STREQUAL "headless")
+
+if (D6R_RENDERER STREQUAL "vulkan")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_RENDERER_VULKAN")
+    set(D6R_SOURCES ${D6R_SOURCES}
+            source/renderer/vulkan/VulkanContext.h
+            source/renderer/vulkan/VulkanDevice.h
+            source/renderer/vulkan/VulkanMemory.h
+            source/renderer/vulkan/VulkanRenderer.h
+            source/renderer/vulkan/VulkanSurface.h
+            source/renderer/vulkan/VulkanSwapchain.h
+            source/renderer/vulkan/VulkanTypes.h
+            source/renderer/vulkan/unity.cpp
+            )
+endif (D6R_RENDERER STREQUAL "vulkan")
+
 if (D6R_WITH_LUA)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_SCRIPTING_LUA")
     set(D6R_SOURCES ${D6R_SOURCES}
@@ -674,8 +689,21 @@ endif (MINGW)
 set (RENDERER_LIBS
 )
 
+# Vulkan
+if (D6R_RENDERER STREQUAL "vulkan")
+    find_package(Vulkan REQUIRED)
+    if (Vulkan_FOUND)
+        set (RENDERER_LIBS ${RENDERER_LIBS}
+                ${Vulkan_LIBRARIES}
+            )
+        include_directories(${Vulkan_INCLUDE_DIRS})
+    else()
+        message(FATAL_ERROR "Vulkan not found. Please install Vulkan SDK.")
+    endif()
+endif (D6R_RENDERER STREQUAL "vulkan")
+
 # OpenGL
-if (NOT D6R_RENDERER STREQUAL "headless")
+if (NOT D6R_RENDERER STREQUAL "headless" AND NOT D6R_RENDERER STREQUAL "vulkan")
 if (WIN32)
     set (RENDERER_LIBS ${RENDERER_LIBS}
             opengl32.lib
@@ -691,7 +719,7 @@ else (WIN32) # Linux GCC
             ${LIB_OPEN_GL}
         )
 endif (WIN32)
-endif (NOT D6R_RENDERER STREQUAL "headless")
+endif (NOT D6R_RENDERER STREQUAL "headless" AND NOT D6R_RENDERER STREQUAL "vulkan")
 
 # libcurl
 find_library(LIB_CURL curl DOC "Path to curl library")
@@ -727,8 +755,8 @@ find_library(LIB_ENET NAMES enet enet_static libenet libenet_static DOC "Path to
 target_link_libraries(${D6R_APP_NAME} ${LIB_ENET})
 target_link_libraries(${D6R_UNITY_BUILD} ${LIB_ENET})
 target_link_libraries(${D6R_MASTERSERVER_NAME} PRIVATE ${LIB_ENET})
-# GLEW
-if (NOT D6R_RENDERER STREQUAL "headless")
+# GLEW (not needed for Vulkan or headless)
+if (NOT D6R_RENDERER STREQUAL "headless" AND NOT D6R_RENDERER STREQUAL "vulkan")
 if (WIN32)
     find_library(LIB_GLEW glew32 DOC "Path to GLEW library")
 else (WIN32)
@@ -737,12 +765,16 @@ endif (WIN32)
     set (RENDERER_LIBS ${RENDERER_LIBS}
              ${LIB_GLEW}
         )
-endif (NOT D6R_RENDERER STREQUAL "headless")
+endif (NOT D6R_RENDERER STREQUAL "headless" AND NOT D6R_RENDERER STREQUAL "vulkan")
 
 target_link_libraries(${D6R_APP_NAME} ${RENDERER_LIBS})
 target_link_libraries(${D6R_UNITY_BUILD} ${RENDERER_LIBS})
+
+# GLEW headers (not needed for Vulkan or headless)
+if (NOT D6R_RENDERER STREQUAL "headless" AND NOT D6R_RENDERER STREQUAL "vulkan")
 find_path(HEADERS_GLEW GL/glew.h DOC "Path to GLEW headers")
 include_directories(${HEADERS_GLEW})
+endif (NOT D6R_RENDERER STREQUAL "headless" AND NOT D6R_RENDERER STREQUAL "vulkan")
 
 # LUA
 if (D6R_WITH_LUA)

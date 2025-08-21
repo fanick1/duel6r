@@ -53,6 +53,7 @@ namespace Duel6 {
         ViewParameters view;
         std::unique_ptr<Renderer> renderer;
         std::vector<resizeCallback_t> resizeCallbacks;
+        Console* console;
 
         bool isMaximizing = false;
         float maximizingCooldown;

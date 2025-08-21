@@ -38,6 +38,8 @@
 #include "gl4/GL4Types.h"
 #elif defined(D6_RENDERER_HEADLESS)
 #include "headless/HeadlessTypes.h"
+#elif defined(D6_RENDERER_VULKAN)
+#include "vulkan/VulkanTypes.h"
 #endif
 
 #endif

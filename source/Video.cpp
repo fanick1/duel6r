@@ -38,19 +38,24 @@
 #include "renderer/gl4/GL4Renderer.h"
 #elif defined(D6_RENDERER_HEADLESS)
 #include "renderer/headless/HeadlessRenderer.h"
+#elif defined(D6_RENDERER_VULKAN)
+#include "renderer/vulkan/VulkanRenderer.h"
 #endif
 
 namespace Duel6 {
-    Video::Video(const std::string &name, const std::string &icon, Console &console, const ScreenParameters &requestedScreen) {
+    Video::Video(const std::string &name, const std::string &icon, Console &console, const ScreenParameters &requestedScreen)
+        : console(&console) {
         // Get current video mode
 
         // Set graphics mode
         view = ViewParameters(1.0f, 40.0f, 65.0f);
 #if !defined(D6_RENDERER_HEADLESS)
         ScreenParameters completeScreen = completeScreenParameters(requestedScreen);
+        window = createWindow(name, icon, completeScreen, console);
+        
+#if !defined(D6_RENDERER_VULKAN)
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
         SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-        window = createWindow(name, icon, completeScreen, console);
         glContext = createContext(completeScreen, console);
         screen = readScreenParameters(completeScreen, console);
 
@@ -58,6 +63,13 @@ namespace Duel6 {
 //        if (GLEW_OK != err) {
 //            D6_THROW(VideoException, (const char *) glewGetErrorString(err));
 //        }
+#else
+        // For Vulkan, just get the screen parameters from the window
+        screen = ScreenParameters(completeScreen.isFullScreen(), 
+                                  completeScreen.getClientWidth(), 
+                                  completeScreen.getClientHeight(), 
+                                  32, 24, completeScreen.getAntiAlias());
+#endif
 #endif
         renderer = createRenderer();
 
@@ -68,7 +80,9 @@ namespace Duel6 {
 
     Video::~Video() {
 #ifndef D6_RENDERER_HEADLESS
+#ifndef D6_RENDERER_VULKAN
         SDL_GL_DeleteContext(glContext);
+#endif
         SDL_DestroyWindow(window);
 #endif
     }
@@ -86,7 +100,10 @@ namespace Duel6 {
 
     void Video::swapBuffers() {
 #ifndef D6_RENDERER_HEADLESS
+#ifndef D6_RENDERER_VULKAN
         SDL_GL_SwapWindow(window);
+#endif
+        // For Vulkan, swapBuffers is handled by the renderer itself
 #endif
         calculateFps();
     }
@@ -107,7 +124,11 @@ namespace Duel6 {
                                     Console &console) {
         Uint32 flags = 0;
 
+#if defined(D6_RENDERER_VULKAN)
+        flags = SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*|    SDL_WINDOW_ALLOW_HIGHDPI*/ /*| SDL_WINDOW_INPUT_GRABBED*/;
+#else
         flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE /*|    SDL_WINDOW_ALLOW_HIGHDPI*/ /*| SDL_WINDOW_INPUT_GRABBED*/;
+#endif
         if (params.isFullScreen()) {
             flags |= SDL_WINDOW_FULLSCREEN;
         }
@@ -216,6 +237,8 @@ namespace Duel6 {
         return std::make_unique<GL4Renderer>();
 #elif defined(D6_RENDERER_HEADLESS)
         return std::make_unique<HeadlessRenderer>();
+#elif defined(D6_RENDERER_VULKAN)
+        return std::make_unique<VulkanRenderer>(window, *console);
 #endif
 
         D6_THROW(VideoException, "Invalid renderer");
