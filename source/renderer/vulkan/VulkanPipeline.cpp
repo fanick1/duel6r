@@ -28,6 +28,7 @@
 #include "VulkanPipeline.h"
 #include "VulkanDevice.h"
 #include "VulkanShader.h"
+#include "VulkanTypes.h"
 #include "../../Exception.h"
 #include "../../VideoException.h"
 #include <array>
@@ -383,6 +384,74 @@ namespace Duel6 {
             pipelineCache = VK_NULL_HANDLE;
         }
         cachedPipelines.clear();
+    }
+
+    /**
+     * Pipeline Presets - Common pipeline configurations
+     */
+    namespace PipelinePresets {
+
+        std::unique_ptr<VulkanPipeline> createColorPipeline(const VulkanDevice& device, 
+                                                            VkRenderPass renderPass,
+                                                            VkDescriptorSetLayout uniformLayout) {
+            VulkanPipelineBuilder builder(device, renderPass);
+            
+            // For now, create a basic pipeline without shaders - they will be added later
+            // when the shader system is more integrated
+            return builder
+                .setVertexInput<VertexFormats::ColorVertex>()
+                .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                .setDepthTest(true, true, VK_COMPARE_OP_LESS_OR_EQUAL)
+                .setCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+                .addDescriptorSetLayout(uniformLayout)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .build();
+        }
+
+        std::unique_ptr<VulkanPipeline> createMaterialPipeline(const VulkanDevice& device, 
+                                                               VkRenderPass renderPass,
+                                                               VkDescriptorSetLayout uniformLayout,
+                                                               VkDescriptorSetLayout textureLayout,
+                                                               VkDescriptorSetLayout materialUniformLayout) {
+            VulkanPipelineBuilder builder(device, renderPass);
+            
+            return builder
+                .setVertexInput<VertexFormats::MaterialVertex>()
+                .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                .setDepthTest(true, true, VK_COMPARE_OP_LESS_OR_EQUAL)
+                .setCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+                .addDescriptorSetLayout(uniformLayout)
+                .addDescriptorSetLayout(textureLayout)
+                .addDescriptorSetLayout(materialUniformLayout)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .build();
+        }
+
+        std::unique_ptr<VulkanPipeline> createBloomFilterPipeline(const VulkanDevice& device, 
+                                                                  VkRenderPass renderPass,
+                                                                  VkDescriptorSetLayout uniformLayout,
+                                                                  VkDescriptorSetLayout textureLayout,
+                                                                  VkDescriptorSetLayout bloomUniformLayout) {
+            VulkanPipelineBuilder builder(device, renderPass);
+            
+            return builder
+                .setVertexInput<VertexFormats::ColorVertex>()  // Simple vertex for fullscreen quad
+                .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                .setDepthTest(false, false, VK_COMPARE_OP_ALWAYS)
+                .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+                .setBlending(true, 
+                            VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
+                            VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD)
+                .addDescriptorSetLayout(uniformLayout)
+                .addDescriptorSetLayout(textureLayout)
+                .addDescriptorSetLayout(bloomUniformLayout)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .build();
+        }
+
     }
 
 }

@@ -35,6 +35,11 @@ namespace Duel6 {
         std::unique_ptr<VulkanRenderPass> renderPass;
         std::unique_ptr<VulkanCommandBufferManager> commandBufferManager;
         
+        // Pipeline cache
+        std::unique_ptr<VulkanPipelineCache> pipelineCache;
+        VulkanPipeline* colorPipeline; // Pipeline for colored geometry
+        VulkanPipeline* texturePipeline; // Pipeline for textured geometry
+        
         // Current frame state
         uint32_t currentFrame;
 
@@ -97,6 +102,9 @@ namespace Duel6 {
         void initialize();
         void cleanup();
         void recreateSwapchain();
+        void createPipelines();
+        VulkanPipeline* getColorPipeline();
+        VulkanPipeline* getTexturePipeline();
     };
 }
 

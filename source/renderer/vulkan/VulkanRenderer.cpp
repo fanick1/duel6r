@@ -52,6 +52,12 @@ namespace Duel6 {
             
             commandBufferManager = std::make_unique<VulkanCommandBufferManager>(*device, 2);
             
+            // Initialize pipeline cache and create basic pipelines
+            pipelineCache = std::make_unique<VulkanPipelineCache>(*device);
+            colorPipeline = nullptr;
+            texturePipeline = nullptr;
+            createPipelines();
+            
             currentFrame = 0;
 
             initialized = true;
@@ -73,6 +79,9 @@ namespace Duel6 {
         }
 
         // Cleanup rendering components
+        colorPipeline = nullptr;
+        texturePipeline = nullptr;
+        pipelineCache.reset();
         commandBufferManager.reset();
         renderPass.reset();
         batchRenderer.reset();
@@ -256,9 +265,9 @@ namespace Duel6 {
         };
 
         ColorVertex vertices[3] = {
-            {{p1.x, p1.y, p1.z}, {color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()}},
-            {{p2.x, p2.y, p2.z}, {color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()}},
-            {{p3.x, p3.y, p3.z}, {color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()}}
+            {{p1.x, p1.y, p1.z}, {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f}},
+            {{p2.x, p2.y, p2.z}, {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f}},
+            {{p3.x, p3.y, p3.z}, {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f}}
         };
 
         // Create draw command
@@ -272,9 +281,13 @@ namespace Duel6 {
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
 
-        // TODO: Create or get appropriate pipeline for colored triangles
-        // For now, skip adding to batch renderer as we need pipelines
-        console->printLine("Triangle rendering not yet implemented - need pipeline creation");
+        // Get color pipeline and add to batch renderer
+        VulkanPipeline* pipeline = getColorPipeline();
+        if (pipeline) {
+            batchRenderer->addDrawCommand(pipeline, cmd);
+        } else {
+            console->printLine("Warning: Color pipeline not available for triangle rendering");
+        }
     }
 
     void VulkanRenderer::triangle(const Vector &p1, const Vector &t1,
@@ -336,5 +349,47 @@ namespace Duel6 {
         // TODO: Implement render target creation
         console->printLine("Warning: VulkanRenderer::makeTarget not yet implemented");
         return nullptr;
+    }
+
+    void VulkanRenderer::createPipelines() {
+        if (!initialized || !pipelineCache || !renderPass || !descriptorManager) {
+            return;
+        }
+
+        try {
+            // Create uniform descriptor layout (TODO: implement proper uniform descriptors)
+            VkDescriptorSetLayout uniformLayout = VK_NULL_HANDLE; // Simplified for now
+            
+            // Create color pipeline for simple colored geometry using preset
+            auto colorPipelinePtr = PipelinePresets::createColorPipeline(
+                *device, 
+                renderPass->getHandle(),
+                uniformLayout
+            );
+
+            if (colorPipelinePtr) {
+                // Store in cache
+                size_t hash = std::hash<std::string>{}("color_pipeline");
+                colorPipeline = pipelineCache->getOrCreatePipeline(hash, 
+                    [&]() { return std::move(colorPipelinePtr); });
+                console->printLine("...Created color pipeline");
+            }
+        } catch (const std::exception& e) {
+            console->printLine(Format("Failed to create color pipeline: {0}") << e.what());
+        }
+    }
+
+    VulkanPipeline* VulkanRenderer::getColorPipeline() {
+        if (!colorPipeline) {
+            createPipelines();
+        }
+        return colorPipeline;
+    }
+
+    VulkanPipeline* VulkanRenderer::getTexturePipeline() {
+        if (!texturePipeline) {
+            createPipelines();
+        }
+        return texturePipeline;
     }
 }
