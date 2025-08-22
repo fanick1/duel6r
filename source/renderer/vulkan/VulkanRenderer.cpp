@@ -258,16 +258,11 @@ namespace Duel6 {
             return;
         }
 
-        // Create vertex data for colored triangle
-        struct ColorVertex {
-            Float32 position[3];
-            Float32 color[4];
-        };
-
-        ColorVertex vertices[3] = {
-            {{p1.x, p1.y, p1.z}, {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f}},
-            {{p2.x, p2.y, p2.z}, {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f}},
-            {{p3.x, p3.y, p3.z}, {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f}}
+        // Create vertex data for colored triangle using proper VertexFormats
+        VertexFormats::ColorVertex vertices[3] = {
+            {p1, {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f}},
+            {p2, {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f}},
+            {p3, {color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f}}
         };
 
         // Create draw command

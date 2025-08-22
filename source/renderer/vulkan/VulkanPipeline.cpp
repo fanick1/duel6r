@@ -396,9 +396,14 @@ namespace Duel6 {
                                                             VkDescriptorSetLayout uniformLayout) {
             VulkanPipelineBuilder builder(device, renderPass);
             
-            // For now, create a basic pipeline without shaders - they will be added later
-            // when the shader system is more integrated
+            // Load vertex and fragment shaders for colored geometry
+            VulkanShaderManager shaderManager(device, "shaders");
+            auto vertexShader = shaderManager.loadShader("color.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("color.frag", VulkanShader::Type::Fragment);
+            
             return builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
                 .setVertexInput<VertexFormats::ColorVertex>()
                 .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                 .setDepthTest(true, true, VK_COMPARE_OP_LESS_OR_EQUAL)
@@ -416,7 +421,14 @@ namespace Duel6 {
                                                                VkDescriptorSetLayout materialUniformLayout) {
             VulkanPipelineBuilder builder(device, renderPass);
             
+            // Load vertex and fragment shaders for textured geometry
+            VulkanShaderManager shaderManager(device, "shaders");
+            auto vertexShader = shaderManager.loadShader("material.vert.spv", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("material.frag.spv", VulkanShader::Type::Fragment);
+            
             return builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
                 .setVertexInput<VertexFormats::MaterialVertex>()
                 .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                 .setDepthTest(true, true, VK_COMPARE_OP_LESS_OR_EQUAL)
@@ -436,7 +448,14 @@ namespace Duel6 {
                                                                   VkDescriptorSetLayout bloomUniformLayout) {
             VulkanPipelineBuilder builder(device, renderPass);
             
+            // Load vertex and fragment shaders for bloom filter post-processing
+            VulkanShaderManager shaderManager(device, "shaders");
+            auto vertexShader = shaderManager.loadShader("color.vert.spv", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("bloom_filter.frag.spv", VulkanShader::Type::Fragment);
+            
             return builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
                 .setVertexInput<VertexFormats::ColorVertex>()  // Simple vertex for fullscreen quad
                 .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                 .setDepthTest(false, false, VK_COMPARE_OP_ALWAYS)

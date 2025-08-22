@@ -114,9 +114,10 @@ namespace Duel6 {
     
     // Standard vertex formats
     namespace VertexFormats {
-        // Position only (3D) - for color shaders
+        // Position + color (RGBA) - for color shaders
         struct ColorVertex {
             Vector position;
+            Float32 color[4];  // RGBA color
             
             static VertexInputDescription getDescription();
 
@@ -129,12 +130,17 @@ namespace Duel6 {
             }
 
             static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
-                std::vector<VkVertexInputAttributeDescription> attributeDescriptions(1);
+                std::vector<VkVertexInputAttributeDescription> attributeDescriptions(2);
                 
                 attributeDescriptions[0].binding = 0;
                 attributeDescriptions[0].location = 0;
                 attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
                 attributeDescriptions[0].offset = offsetof(ColorVertex, position);
+
+                attributeDescriptions[1].binding = 0;
+                attributeDescriptions[1].location = 1;
+                attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+                attributeDescriptions[1].offset = offsetof(ColorVertex, color);
 
                 return attributeDescriptions;
             }
