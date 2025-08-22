@@ -40,3 +40,5 @@
 #include "VulkanSync.cpp"
 #include "VulkanPipeline.cpp"
 #include "VulkanShader.cpp"
+#include "VulkanRenderPass.cpp"
+#include "VulkanBatchRenderer.cpp"

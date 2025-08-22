@@ -83,6 +83,7 @@ namespace Duel6 {
         VkSemaphore getRenderFinishedSemaphore() const { return renderFinishedSemaphores[currentFrame]; }
         VkFence getInFlightFence() const { return inFlightFences[currentFrame]; }
         uint32_t getCurrentImageIndex() const { return imageIndex; }
+        const std::vector<VkImageView>& getImageViews() const { return swapchainImageViews; }
 
     private:
         void createSwapchain(const VulkanDevice& device, const VulkanSurface& surface);

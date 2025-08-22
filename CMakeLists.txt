@@ -597,6 +597,7 @@ if (D6R_RENDERER STREQUAL "vulkan")
             source/renderer/vulkan/VulkanTypes.h
             source/renderer/vulkan/VulkanShader.h
             source/renderer/vulkan/VulkanPipeline.h
+            source/renderer/vulkan/VulkanRenderPass.h
             source/renderer/vulkan/unity.cpp
             )
 endif (D6R_RENDERER STREQUAL "vulkan")

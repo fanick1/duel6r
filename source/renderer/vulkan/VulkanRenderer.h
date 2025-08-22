@@ -8,6 +8,9 @@
 #include "VulkanSurface.h"
 #include "VulkanSwapchain.h"
 #include "VulkanMemory.h"
+#include "VulkanBatchRenderer.h"
+#include "VulkanDescriptor.h"
+#include "VulkanRenderPass.h"
 #include <SDL2/SDL.h>
 #include <memory>
 
@@ -25,6 +28,14 @@ namespace Duel6 {
         std::unique_ptr<VulkanSurface> surface;
         std::unique_ptr<VulkanSwapchain> swapchain;
         std::unique_ptr<VulkanMemoryManager> memoryManager;
+        
+        // Rendering components
+        std::unique_ptr<VulkanDescriptorManager> descriptorManager;
+        std::unique_ptr<VulkanBatchRenderer> batchRenderer;
+        std::unique_ptr<VulkanRenderPass> renderPass;
+        
+        // Current frame state
+        uint32_t currentFrame;
 
     public:
         explicit VulkanRenderer(SDL_Window* window, Console& console);
