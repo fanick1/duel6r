@@ -20,10 +20,10 @@ namespace Duel6 {
         , currentFrame(0) {
         
         // Initialize vertex buffer with reasonable size (1MB)
-        vertexBuffer.create(device, memoryManager, 1024 * 1024, true);
+        vertexBuffer.create(device, memoryManager, 1024 * 1024, false);
         
         // Initialize index buffer with reasonable size (256KB)
-        indexBuffer.create(device, memoryManager, 256 * 1024, true);
+        indexBuffer.create(device, memoryManager, 256 * 1024, false);
         
         stats.reset();
     }
@@ -226,7 +226,7 @@ namespace Duel6 {
             
             // Create new buffer
             VulkanVertexBuffer newBuffer(console);
-            newBuffer.create(device, memoryManager, newSize, true);
+            newBuffer.create(device, memoryManager, newSize, false);
             
             // Copy existing data if any
             if (vertexBufferOffset > 0) {
@@ -246,7 +246,7 @@ namespace Duel6 {
             
             // Create new buffer
             VulkanIndexBuffer newBuffer(console, VK_INDEX_TYPE_UINT16);
-            newBuffer.create(device, memoryManager, newSize, true);
+            newBuffer.create(device, memoryManager, newSize, false);
             
             // Copy existing data if any
             if (indexBufferOffset > 0) {
