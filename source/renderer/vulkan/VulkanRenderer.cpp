@@ -40,6 +40,20 @@ namespace Duel6 {
             swapchain->initialize(*device, *surface);
             memoryManager->initialize(*device, context->getInstance());
 
+            // Initialize rendering components
+            descriptorManager = std::make_unique<VulkanDescriptorManager>(*console);
+            batchRenderer = std::make_unique<VulkanBatchRenderer>(*device, *memoryManager, *console);
+            
+            // Create render pass with default configuration
+            RenderPassConfig renderPassConfig;
+            renderPassConfig.colorFormat = swapchain->getImageFormat();
+            renderPassConfig.clearColorValue = {{0.0f, 0.0f, 0.2f, 1.0f}}; // Dark blue
+            renderPass = std::make_unique<VulkanRenderPass>(*device, renderPassConfig);
+            
+            commandBufferManager = std::make_unique<VulkanCommandBufferManager>(*device, 2);
+            
+            currentFrame = 0;
+
             initialized = true;
             console->printLine("...Vulkan renderer initialized successfully");
         } catch (const VulkanException& e) {
@@ -57,6 +71,12 @@ namespace Duel6 {
         if (device) {
             device->waitIdle();
         }
+
+        // Cleanup rendering components
+        commandBufferManager.reset();
+        renderPass.reset();
+        batchRenderer.reset();
+        descriptorManager.reset();
 
         if (memoryManager) {
             memoryManager->cleanup(*device);
@@ -150,8 +170,15 @@ namespace Duel6 {
     }
 
     void VulkanRenderer::setViewport(Int32 x, Int32 y, Int32 width, Int32 height) {
-        // TODO: Implement viewport setting
-        console->printLine("Warning: VulkanRenderer::setViewport not yet implemented");
+        if (!initialized) {
+            return;
+        }
+        
+        // Store viewport parameters - they'll be used in command recording
+        // For now, just log the viewport change
+        console->printLine(Format("Viewport set to {0}x{1} at ({2},{3})") << width << height << x << y);
+        
+        // TODO: Update viewport state for rendering
     }
 
     void VulkanRenderer::enableWireframe(bool enable) {
@@ -184,20 +211,70 @@ namespace Duel6 {
             return;
         }
 
-        // TODO: Implement buffer clearing - for now just handle swapchain
+        // Handle swapchain recreation if needed
         if (framebufferResized || !swapchain->acquireNextImage(*device)) {
             recreateSwapchain();
             return;
         }
 
-        // TODO: Begin render pass and clear
+        // Begin frame in batch renderer
+        batchRenderer->beginFrame(currentFrame);
+        
+        // Begin command recording
+        commandBufferManager->beginFrame();
+        VkCommandBuffer commandBuffer = commandBufferManager->getCurrentCommandBuffer();
+        
+        // Begin render pass with clear
+        uint32_t framebufferIndex = swapchain->getCurrentImageIndex();
+        renderPass->begin(commandBuffer, framebufferIndex);
+        
+        // Flush any pending draw commands
+        batchRenderer->flush(commandBuffer, renderPass->getHandle());
+        
+        // End render pass
+        renderPass->end(commandBuffer);
+        
+        // End command recording and submit
+        commandBufferManager->endFrame();
+        batchRenderer->endFrame();
         
         swapchain->present(*device);
+        currentFrame = (currentFrame + 1) % 2; // Assuming MAX_FRAMES_IN_FLIGHT = 2
+        commandBufferManager->nextFrame();
     }
 
-    // Geometry rendering - placeholder implementations
+    // Geometry rendering - implementations
     void VulkanRenderer::triangle(const Vector &p1, const Vector &p2, const Vector &p3, const Color &color) {
-        // TODO: Implement triangle rendering
+        if (!initialized || !batchRenderer) {
+            return;
+        }
+
+        // Create vertex data for colored triangle
+        struct ColorVertex {
+            Float32 position[3];
+            Float32 color[4];
+        };
+
+        ColorVertex vertices[3] = {
+            {{p1.x, p1.y, p1.z}, {color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()}},
+            {{p2.x, p2.y, p2.z}, {color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()}},
+            {{p3.x, p3.y, p3.z}, {color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()}}
+        };
+
+        // Create draw command
+        DrawCommand cmd;
+        cmd.type = DrawCommand::TRIANGLES;
+        cmd.vertexCount = 3;
+        cmd.vertices = vertices;
+        cmd.vertexDataSize = sizeof(vertices);
+        cmd.projectionMatrix = getProjectionMatrix();
+        cmd.viewMatrix = getViewMatrix();
+        cmd.modelMatrix = getModelMatrix();
+        cmd.color = color;
+
+        // TODO: Create or get appropriate pipeline for colored triangles
+        // For now, skip adding to batch renderer as we need pipelines
+        console->printLine("Triangle rendering not yet implemented - need pipeline creation");
     }
 
     void VulkanRenderer::triangle(const Vector &p1, const Vector &t1,

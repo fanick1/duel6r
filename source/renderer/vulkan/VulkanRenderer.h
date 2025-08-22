@@ -33,6 +33,7 @@ namespace Duel6 {
         std::unique_ptr<VulkanDescriptorManager> descriptorManager;
         std::unique_ptr<VulkanBatchRenderer> batchRenderer;
         std::unique_ptr<VulkanRenderPass> renderPass;
+        std::unique_ptr<VulkanCommandBufferManager> commandBufferManager;
         
         // Current frame state
         uint32_t currentFrame;
