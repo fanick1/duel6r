@@ -57,6 +57,8 @@ namespace Duel6 {
     class VulkanMemoryManager {
     private:
         Console* console;
+        std::vector<VulkanBuffer> allocatedBuffers;
+        std::vector<VulkanImage> allocatedImages;
 
     public:
         explicit VulkanMemoryManager(Console& console);

@@ -31,6 +31,7 @@
 #include "../../Exception.h"
 #include "../../VideoException.h"
 #include <array>
+#include <iostream>
 
 namespace Duel6 {
 
@@ -449,6 +450,7 @@ namespace Duel6 {
 
     void VulkanCommandBufferManager::cleanup() {
         if (commandPool != VK_NULL_HANDLE && device != nullptr) {
+            std::cerr << "VulkanCommandBufferManager: Destroying command pool: " << commandPool << std::endl;
             vkDestroyCommandPool(device->getLogicalDevice(), commandPool, nullptr);
             commandPool = VK_NULL_HANDLE;
         }

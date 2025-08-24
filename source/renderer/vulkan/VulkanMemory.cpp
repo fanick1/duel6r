@@ -28,6 +28,7 @@
 #include "VulkanMemory.h"
 #include "../../Format.h"
 #include <cstring>
+#include <algorithm>
 
 namespace Duel6 {
     VulkanMemoryManager::VulkanMemoryManager(Console& console)
@@ -42,7 +43,37 @@ namespace Duel6 {
     }
 
     void VulkanMemoryManager::cleanup(const VulkanDevice& device) {
-        // Nothing to cleanup for manual allocation
+        // Destroy all tracked buffers
+        console->printLine(Format("...Cleaning up {0} allocated buffers") << allocatedBuffers.size());
+        for (auto& buffer : allocatedBuffers) {
+            if (buffer.mapped != nullptr) {
+                unmapBuffer(device, buffer);
+            }
+            if (buffer.buffer != VK_NULL_HANDLE) {
+                vkDestroyBuffer(device.getLogicalDevice(), buffer.buffer, nullptr);
+            }
+            if (buffer.memory != VK_NULL_HANDLE) {
+                vkFreeMemory(device.getLogicalDevice(), buffer.memory, nullptr);
+            }
+        }
+        allocatedBuffers.clear();
+
+        // Destroy all tracked images  
+        console->printLine(Format("...Cleaning up {0} allocated images") << allocatedImages.size());
+        for (auto& image : allocatedImages) {
+            if (image.view != VK_NULL_HANDLE) {
+                vkDestroyImageView(device.getLogicalDevice(), image.view, nullptr);
+            }
+            if (image.image != VK_NULL_HANDLE) {
+                vkDestroyImage(device.getLogicalDevice(), image.image, nullptr);
+            }
+            if (image.memory != VK_NULL_HANDLE) {
+                vkFreeMemory(device.getLogicalDevice(), image.memory, nullptr);
+            }
+        }
+        allocatedImages.clear();
+
+        console->printLine("...Vulkan memory manager cleaned up");
     }
 
     VulkanBuffer VulkanMemoryManager::createBuffer(const VulkanDevice& device, VkDeviceSize size, 
@@ -77,6 +108,9 @@ namespace Duel6 {
 
         vkBindBufferMemory(device.getLogicalDevice(), buffer.buffer, buffer.memory, 0);
 
+        // Track the created buffer for automatic cleanup
+        allocatedBuffers.push_back(buffer);
+
         return buffer;
     }
 
@@ -93,6 +127,13 @@ namespace Duel6 {
         if (buffer.memory != VK_NULL_HANDLE) {
             vkFreeMemory(device.getLogicalDevice(), buffer.memory, nullptr);
             buffer.memory = VK_NULL_HANDLE;
+        }
+
+        // Remove from tracking list
+        auto it = std::find_if(allocatedBuffers.begin(), allocatedBuffers.end(),
+                               [&buffer](const VulkanBuffer& b) { return b.buffer == buffer.buffer; });
+        if (it != allocatedBuffers.end()) {
+            allocatedBuffers.erase(it);
         }
 
         buffer.size = 0;
@@ -187,6 +228,9 @@ namespace Duel6 {
             D6_THROW(VulkanException, Format("Failed to create image view, error: {0}") << result);
         }
 
+        // Track the created image for automatic cleanup
+        allocatedImages.push_back(image);
+
         return image;
     }
 
@@ -204,6 +248,13 @@ namespace Duel6 {
         if (image.memory != VK_NULL_HANDLE) {
             vkFreeMemory(device.getLogicalDevice(), image.memory, nullptr);
             image.memory = VK_NULL_HANDLE;
+        }
+
+        // Remove from tracking list
+        auto it = std::find_if(allocatedImages.begin(), allocatedImages.end(),
+                               [&image](const VulkanImage& img) { return img.image == image.image; });
+        if (it != allocatedImages.end()) {
+            allocatedImages.erase(it);
         }
 
         image.format = VK_FORMAT_UNDEFINED;

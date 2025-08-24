@@ -28,6 +28,7 @@
 #include "VulkanDevice.h"
 #include "../../Format.h"
 #include <set>
+#include <iostream>
 
 namespace Duel6 {
     VulkanDevice::VulkanDevice(Console& console)
@@ -64,15 +65,22 @@ namespace Duel6 {
         if (logicalDevice != VK_NULL_HANDLE) {
             vkDeviceWaitIdle(logicalDevice);
 
+            // Store the original graphics command pool handle before nullifying it
+            VkCommandPool originalGraphicsCommandPool = graphicsCommandPool;
+            
             if (graphicsCommandPool != VK_NULL_HANDLE) {
+                std::cerr << "VulkanDevice: Destroying graphics command pool: " << graphicsCommandPool << std::endl;
                 vkDestroyCommandPool(logicalDevice, graphicsCommandPool, nullptr);
                 graphicsCommandPool = VK_NULL_HANDLE;
             }
 
-            if (transferCommandPool != VK_NULL_HANDLE) {
+            if (transferCommandPool != VK_NULL_HANDLE && transferCommandPool != originalGraphicsCommandPool) {
+                std::cerr << "VulkanDevice: Destroying transfer command pool: " << transferCommandPool << std::endl;
                 vkDestroyCommandPool(logicalDevice, transferCommandPool, nullptr);
-                transferCommandPool = VK_NULL_HANDLE;
+            } else if (transferCommandPool != VK_NULL_HANDLE) {
+                std::cerr << "VulkanDevice: Skipping transfer command pool destruction (same as graphics)" << std::endl;
             }
+            transferCommandPool = VK_NULL_HANDLE;
 
             vkDestroyDevice(logicalDevice, nullptr);
             logicalDevice = VK_NULL_HANDLE;

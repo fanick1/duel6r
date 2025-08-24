@@ -32,6 +32,7 @@
 #include "../../Exception.h"
 #include "../../VideoException.h"
 #include <array>
+#include <algorithm>
 #include <fstream>
 #include <functional>
 
@@ -159,7 +160,10 @@ namespace Duel6 {
     }
 
     VulkanPipelineBuilder& VulkanPipelineBuilder::addDynamicState(VkDynamicState state) {
-        dynamicStates.push_back(state);
+        // Prevent duplicates
+        if (std::find(dynamicStates.begin(), dynamicStates.end(), state) == dynamicStates.end()) {
+            dynamicStates.push_back(state);
+        }
         return *this;
     }
 
@@ -299,9 +303,7 @@ namespace Duel6 {
         frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         wireframe = false;
 
-        // Default dynamic states
-        dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-        dynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR);
+        // Default dynamic states removed - they will be added by setViewportDynamic/setScissorDynamic calls
     }
 
     // VulkanPipelineCache implementation

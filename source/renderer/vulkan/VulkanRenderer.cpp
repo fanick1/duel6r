@@ -45,6 +45,7 @@ namespace Duel6 {
 
             // Initialize rendering components
             descriptorManager = std::make_unique<VulkanDescriptorManager>(*console);
+            descriptorManager->initialize();
             batchRenderer = std::make_unique<VulkanBatchRenderer>(*device, *memoryManager, *console);
             
             // Create render pass with default configuration
@@ -88,7 +89,10 @@ namespace Duel6 {
         commandBufferManager.reset();
         renderPass.reset();
         batchRenderer.reset();
-        descriptorManager.reset();
+        if (descriptorManager) {
+            descriptorManager->cleanup(*device);
+            descriptorManager.reset();
+        }
 
         if (memoryManager) {
             memoryManager->cleanup(*device);
@@ -355,8 +359,8 @@ namespace Duel6 {
         }
 
         try {
-            // Create uniform descriptor layout (TODO: implement proper uniform descriptors)
-            VkDescriptorSetLayout uniformLayout = VK_NULL_HANDLE; // Simplified for now
+            // Get proper uniform buffer layout from descriptor manager
+            VkDescriptorSetLayout uniformLayout = descriptorManager->getUniformBufferLayout(*device);
             
             // Create color pipeline for simple colored geometry using preset
             auto colorPipelinePtr = PipelinePresets::createColorPipeline(
