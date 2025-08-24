@@ -154,10 +154,18 @@ namespace Duel6 {
             queueCreateInfos.push_back(queueCreateInfo);
         }
 
+        // Query available device features
+        VkPhysicalDeviceFeatures availableFeatures;
+        vkGetPhysicalDeviceFeatures(physicalDevice, &availableFeatures);
+        
         VkPhysicalDeviceFeatures deviceFeatures{};
-        // Enable basic features we need
-        deviceFeatures.samplerAnisotropy = VK_TRUE;
-        deviceFeatures.fillModeNonSolid = VK_TRUE;
+        // Enable features only if available
+        if (availableFeatures.samplerAnisotropy) {
+            deviceFeatures.samplerAnisotropy = VK_TRUE;
+        }
+        if (availableFeatures.fillModeNonSolid) {
+            deviceFeatures.fillModeNonSolid = VK_TRUE;
+        }
 
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -169,16 +177,10 @@ namespace Duel6 {
         createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
         createInfo.ppEnabledExtensionNames = extensions.data();
 
-        // Validation layers for device (legacy compatibility)
-        if (context.hasValidationLayers()) {
-            const std::vector<const char*> validationLayers = {
-                "VK_LAYER_KHRONOS_validation"
-            };
-            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-            createInfo.ppEnabledLayerNames = validationLayers.data();
-        } else {
-            createInfo.enabledLayerCount = 0;
-        }
+        // Device-level validation layers are deprecated since Vulkan 1.0.13
+        // Validation is now only set up at the instance level
+        createInfo.enabledLayerCount = 0;
+        createInfo.ppEnabledLayerNames = nullptr;
 
         VkResult result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &logicalDevice);
         if (result != VK_SUCCESS) {

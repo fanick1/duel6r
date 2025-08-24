@@ -29,12 +29,13 @@
 #include "../../Format.h"
 #include <set>
 #include <cstring>
+#include <iostream>
 
 namespace Duel6 {
     VulkanContext::VulkanContext(Console& console)
         : instance(VK_NULL_HANDLE)
         , debugMessenger(VK_NULL_HANDLE)
-        , enableValidationLayers(false)
+        , enableValidationLayers(true) // Enable debug
         , console(&console) {
         
         validationLayers = {
@@ -75,11 +76,13 @@ namespace Duel6 {
 
     void VulkanContext::setupValidationLayers() {
         if (enableValidationLayers && !checkValidationLayerSupport()) {
+            std::cerr << "Warning: Validation layers requested but not available";
             console->printLine("Warning: Validation layers requested but not available");
             enableValidationLayers = false;
         }
 
         if (enableValidationLayers) {
+            std::cerr << "...Vulkan validation layers enabled";
             console->printLine("...Vulkan validation layers enabled");
         }
     }
@@ -325,6 +328,7 @@ namespace Duel6 {
         }
 
         if (console) {
+            std::cerr << prefix << " " << pCallbackData->pMessage << "\n";
             console->printLine(Format("{0} {1}") << prefix << pCallbackData->pMessage);
         }
 
