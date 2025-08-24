@@ -716,7 +716,7 @@ if (D6R_RENDERER STREQUAL "vulkan")
         # Function to compile Vulkan shaders
         function(compile_vulkan_shaders)
             set(SHADER_SOURCE_DIR "${CMAKE_SOURCE_DIR}/resources/shaders/vulkan")
-            set(SHADER_BINARY_DIR "${CMAKE_BINARY_DIR}/shaders")
+            set(SHADER_BINARY_DIR "${CMAKE_BINARY_DIR}/shaders/vulkan")
             
             # Create output directory
             file(MAKE_DIRECTORY ${SHADER_BINARY_DIR})

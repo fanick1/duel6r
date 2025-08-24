@@ -397,7 +397,7 @@ namespace Duel6 {
             VulkanPipelineBuilder builder(device, renderPass);
             
             // Load vertex and fragment shaders for colored geometry
-            VulkanShaderManager shaderManager(device, "shaders");
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
             auto vertexShader = shaderManager.loadShader("color.vert", VulkanShader::Type::Vertex);
             auto fragmentShader = shaderManager.loadShader("color.frag", VulkanShader::Type::Fragment);
             
@@ -422,9 +422,9 @@ namespace Duel6 {
             VulkanPipelineBuilder builder(device, renderPass);
             
             // Load vertex and fragment shaders for textured geometry
-            VulkanShaderManager shaderManager(device, "shaders");
-            auto vertexShader = shaderManager.loadShader("material.vert.spv", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("material.frag.spv", VulkanShader::Type::Fragment);
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
+            auto vertexShader = shaderManager.loadShader("material.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("material.frag", VulkanShader::Type::Fragment);
             
             return builder
                 .addShader(*vertexShader)
@@ -449,9 +449,9 @@ namespace Duel6 {
             VulkanPipelineBuilder builder(device, renderPass);
             
             // Load vertex and fragment shaders for bloom filter post-processing
-            VulkanShaderManager shaderManager(device, "shaders");
-            auto vertexShader = shaderManager.loadShader("color.vert.spv", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("bloom_filter.frag.spv", VulkanShader::Type::Fragment);
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
+            auto vertexShader = shaderManager.loadShader("color.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("bloom_filter.frag", VulkanShader::Type::Fragment);
             
             return builder
                 .addShader(*vertexShader)

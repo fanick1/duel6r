@@ -11,7 +11,10 @@ namespace Duel6 {
         , device(nullptr)
         , surface(nullptr)
         , swapchain(nullptr)
-        , memoryManager(nullptr) {
+        , memoryManager(nullptr)
+        , projectionMatrix(Matrix::IDENTITY)
+        , viewMatrix(Matrix::IDENTITY)
+        , modelMatrix(Matrix::IDENTITY) {
         
         initialize();
     }
@@ -386,5 +389,29 @@ namespace Duel6 {
             createPipelines();
         }
         return texturePipeline;
+    }
+
+    void VulkanRenderer::setProjectionMatrix(const Matrix &m) {
+        projectionMatrix = m;
+    }
+
+    Matrix VulkanRenderer::getProjectionMatrix() const {
+        return projectionMatrix;
+    }
+
+    void VulkanRenderer::setViewMatrix(const Matrix &m) {
+        viewMatrix = m;
+    }
+
+    Matrix VulkanRenderer::getViewMatrix() const {
+        return viewMatrix;
+    }
+
+    void VulkanRenderer::setModelMatrix(const Matrix &m) {
+        modelMatrix = m;
+    }
+
+    Matrix VulkanRenderer::getModelMatrix() const {
+        return modelMatrix;
     }
 }
