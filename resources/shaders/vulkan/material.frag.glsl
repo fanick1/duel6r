@@ -8,13 +8,13 @@ layout(binding = 2) uniform MaterialUniform {
     float globalTime;
 } materialUbo;
 
-layout(location = 0) in vec3 uv;
+layout(location = 0) in vec3 texCoord;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 brightColor;
 
 void main() {
-    vec4 color = texture(textureUnit, uv);
+    vec4 color = texture(textureUnit, texCoord);
     if (materialUbo.alphaTest && color.w < 1.0) {
         discard;
     }
