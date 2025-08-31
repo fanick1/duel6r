@@ -73,6 +73,7 @@ namespace Duel6 {
         }
 
         void Desktop::draw(const Font &font) const {
+            renderer.clearBuffers();
             renderer.quadXY(Vector(0, 0), Vector(screenWidth, screenHeight), DesktopImpl::bcgColor);
             renderer.setViewMatrix(Matrix::translate(Float32(trX), Float32(trY), 0));
 

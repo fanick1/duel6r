@@ -11,6 +11,7 @@
 #include "VulkanBatchRenderer.h"
 #include "VulkanDescriptor.h"
 #include "VulkanRenderPass.h"
+#include "VulkanRendererTarget.h"
 #include <SDL2/SDL.h>
 #include <memory>
 
@@ -71,6 +72,7 @@ namespace Duel6 {
         void setBlendFunc(BlendFunc func) override;
         void setGlobalTime(Float32 time) override;
         void clearBuffers() override;
+        void swapBuffers();
         
         // Matrix methods
         void setProjectionMatrix(const Matrix &m) override;

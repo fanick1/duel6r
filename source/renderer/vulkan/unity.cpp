@@ -29,6 +29,7 @@
 #include "VulkanDevice.cpp" 
 #include "VulkanMemory.cpp"
 #include "VulkanRenderer.cpp"
+#include "VulkanRendererTarget.cpp"
 #include "VulkanSurface.cpp"
 #include "VulkanSwapchain.cpp"
 #include "VulkanTypes.cpp"

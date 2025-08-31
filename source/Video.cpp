@@ -102,8 +102,10 @@ namespace Duel6 {
 #ifndef D6_RENDERER_HEADLESS
 #ifndef D6_RENDERER_VULKAN
         SDL_GL_SwapWindow(window);
+#else
+        // For Vulkan, call the renderer's swapBuffers method
+        static_cast<VulkanRenderer*>(renderer.get())->swapBuffers();
 #endif
-        // For Vulkan, swapBuffers is handled by the renderer itself
 #endif
         calculateFps();
     }

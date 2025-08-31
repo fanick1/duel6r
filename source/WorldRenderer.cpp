@@ -498,6 +498,15 @@ namespace Duel6 {
     }
 
     void WorldRenderer::invulRings(const std::vector<Player> &players) const {
+//        bool invul = false;
+//        for (const Player &player : players) {
+//            if (!player.isDeleted() && player.isInvulnerable()) [[unlikely]] {
+//                invul = true;
+//                break;
+//            }
+//        }
+//        if(!invul) [[likely]] return;
+
         renderer.enableDepthTest(false);
         const uint16_t restartIndex = 0xFFFF;
 
