@@ -7,3 +7,7 @@ build-headless
 .cproject
 .settings
 
+
+build_rpi_gles3
+build-gles3
+build-vulkan
