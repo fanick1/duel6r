@@ -1,5 +1,6 @@
 #include "VulkanRenderer.h"
 #include "../../Format.h"
+#include <iostream>
 
 namespace Duel6 {
     VulkanRenderer::VulkanRenderer(SDL_Window* window, Console& console)
@@ -53,6 +54,9 @@ namespace Duel6 {
             renderPassConfig.colorFormat = swapchain->getImageFormat();
             renderPassConfig.clearColorValue = {{0.0f, 0.0f, 0.2f, 1.0f}}; // Dark blue
             renderPass = std::make_unique<VulkanRenderPass>(*device, renderPassConfig);
+            
+            // Create framebuffers for the render pass
+            renderPass->createFramebuffers(*swapchain);
             
             commandBufferManager = std::make_unique<VulkanCommandBufferManager>(*device, 2);
             
@@ -250,8 +254,22 @@ namespace Duel6 {
         // End render pass
         renderPass->end(commandBuffer);
         
-        // End command recording and submit
+        // End command recording 
         commandBufferManager->endFrame();
+        
+        // Submit command buffer with proper semaphores
+        std::vector<VkSemaphore> waitSemaphores = {swapchain->getImageAvailableSemaphore()};
+        std::vector<VkPipelineStageFlags> waitStages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        std::vector<VkSemaphore> signalSemaphores = {swapchain->getRenderFinishedSemaphore()};
+        VkFence fence = swapchain->getInFlightFence();
+        
+        std::cerr << "[DEBUG] Render Submit: imageIndex=" << swapchain->getCurrentImageIndex()
+                  << ", waitSemaphore=" << waitSemaphores[0] 
+                  << ", signalSemaphore=" << signalSemaphores[0] 
+                  << ", fence=" << fence << std::endl;
+        
+        commandBufferManager->submit(device->getGraphicsQueue(), waitSemaphores, waitStages, signalSemaphores, fence);
+        
         batchRenderer->endFrame();
         
         swapchain->present(*device);
@@ -417,5 +435,17 @@ namespace Duel6 {
 
     Matrix VulkanRenderer::getModelMatrix() const {
         return modelMatrix;
+    }
+
+    void VulkanRenderer::swapBuffers() {
+        if (!initialized) {
+            return;
+        }
+        
+        // For Vulkan, the presentation is handled in the render() method
+        // This method is called by the legacy OpenGL interface but is not needed for Vulkan
+        // since Vulkan uses a different rendering paradigm where presentation is part of the render loop
+        // 
+        // Leaving this empty to avoid double presentation calls
     }
 }

@@ -79,8 +79,10 @@ namespace Duel6 {
         VkExtent2D getExtent() const { return swapchainExtent; }
         VkRenderPass getRenderPass() const { return renderPass; }
         VkFramebuffer getCurrentFramebuffer() const { return swapchainFramebuffers[imageIndex]; }
+        // Use currentFrame for acquisition semaphore (before we know imageIndex)
         VkSemaphore getImageAvailableSemaphore() const { return imageAvailableSemaphores[currentFrame]; }
-        VkSemaphore getRenderFinishedSemaphore() const { return renderFinishedSemaphores[currentFrame]; }
+        // Use imageIndex for render finished semaphore (after we know imageIndex)  
+        VkSemaphore getRenderFinishedSemaphore() const { return renderFinishedSemaphores[imageIndex]; }
         VkFence getInFlightFence() const { return inFlightFences[currentFrame]; }
         uint32_t getCurrentImageIndex() const { return imageIndex; }
         const std::vector<VkImageView>& getImageViews() const { return swapchainImageViews; }

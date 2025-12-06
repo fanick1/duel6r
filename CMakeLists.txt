@@ -861,3 +861,18 @@ if (D6R_WITH_LUA)
         include_directories(${LUA_INCLUDE_DIR})
     endif (WIN32)
 endif (D6R_WITH_LUA)
+
+
+#########################################################################
+# Debug target for investigating crashes
+#########################################################################
+
+if (UNIX AND NOT APPLE)
+    # Add a target to debug the last core dump
+    add_custom_target(debug_crash
+        COMMAND ${CMAKE_COMMAND} -E env 
+            sh -c "coredumpctl debug --debugger-arguments='-batch -ex bt' -1"
+        COMMENT "Debugging the last core dump with backtrace"
+        VERBATIM
+    )
+endif()

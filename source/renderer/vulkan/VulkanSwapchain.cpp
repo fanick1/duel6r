@@ -28,6 +28,7 @@
 #include "VulkanSwapchain.h"
 #include "../../Format.h"
 #include <algorithm>
+#include <iostream>
 
 namespace Duel6 {
     VulkanSwapchain::VulkanSwapchain(Console& console)
@@ -59,14 +60,22 @@ namespace Duel6 {
         device.waitIdle();
         cleanupSwapchain(device);
 
-        // Cleanup sync objects
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            if (renderFinishedSemaphores[i] != VK_NULL_HANDLE) {
-                vkDestroySemaphore(device.getLogicalDevice(), renderFinishedSemaphores[i], nullptr);
-            }
+        // Cleanup image available semaphores (per-frame)
+        for (size_t i = 0; i < imageAvailableSemaphores.size(); i++) {
             if (imageAvailableSemaphores[i] != VK_NULL_HANDLE) {
                 vkDestroySemaphore(device.getLogicalDevice(), imageAvailableSemaphores[i], nullptr);
             }
+        }
+        
+        // Cleanup render finished semaphores (per-image)
+        for (size_t i = 0; i < renderFinishedSemaphores.size(); i++) {
+            if (renderFinishedSemaphores[i] != VK_NULL_HANDLE) {
+                vkDestroySemaphore(device.getLogicalDevice(), renderFinishedSemaphores[i], nullptr);
+            }
+        }
+        
+        // Cleanup fences (per-frame)
+        for (size_t i = 0; i < inFlightFences.size(); i++) {
             if (inFlightFences[i] != VK_NULL_HANDLE) {
                 vkDestroyFence(device.getLogicalDevice(), inFlightFences[i], nullptr);
             }
@@ -243,8 +252,12 @@ namespace Duel6 {
     }
 
     void VulkanSwapchain::createSyncObjects(const VulkanDevice& device) {
+        // Image available semaphores: per-frame in flight (we don't know imageIndex during acquisition)
         imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        // Render finished semaphores: per-image (prevents reuse conflicts)
+        renderFinishedSemaphores.resize(swapchainImages.size());
+        
+        // Keep fences per frame in flight for CPU-GPU synchronization
         inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
         imagesInFlight.resize(swapchainImages.size(), VK_NULL_HANDLE);
 
@@ -255,13 +268,27 @@ namespace Duel6 {
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
+        // Create image available semaphores for each frame in flight
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            VkResult result1 = vkCreateSemaphore(device.getLogicalDevice(), &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]);
-            VkResult result2 = vkCreateSemaphore(device.getLogicalDevice(), &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]);
-            VkResult result3 = vkCreateFence(device.getLogicalDevice(), &fenceInfo, nullptr, &inFlightFences[i]);
-
-            if (result1 != VK_SUCCESS || result2 != VK_SUCCESS || result3 != VK_SUCCESS) {
-                D6_THROW(VulkanException, Format("Failed to create sync objects for frame {0}") << i);
+            VkResult result = vkCreateSemaphore(device.getLogicalDevice(), &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]);
+            if (result != VK_SUCCESS) {
+                D6_THROW(VulkanException, Format("Failed to create image available semaphore for frame {0}") << i);
+            }
+        }
+        
+        // Create render finished semaphores for each swapchain image
+        for (size_t i = 0; i < swapchainImages.size(); i++) {
+            VkResult result = vkCreateSemaphore(device.getLogicalDevice(), &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]);
+            if (result != VK_SUCCESS) {
+                D6_THROW(VulkanException, Format("Failed to create render finished semaphore for image {0}") << i);
+            }
+        }
+        
+        // Create fences for each frame in flight
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            VkResult result = vkCreateFence(device.getLogicalDevice(), &fenceInfo, nullptr, &inFlightFences[i]);
+            if (result != VK_SUCCESS) {
+                D6_THROW(VulkanException, Format("Failed to create fence for frame {0}") << i);
             }
         }
     }
@@ -269,14 +296,26 @@ namespace Duel6 {
     bool VulkanSwapchain::acquireNextImage(const VulkanDevice& device) {
         vkWaitForFences(device.getLogicalDevice(), 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
-        VkResult result = vkAcquireNextImageKHR(device.getLogicalDevice(), swapchain, UINT64_MAX, 
+        // Use a reasonable timeout (1 second) instead of infinite wait
+        const uint64_t timeout = 1000000000; // 1 second in nanoseconds
+        
+        std::cerr << "[DEBUG] Acquiring image with currentFrame=" << currentFrame 
+                  << ", semaphore=" << imageAvailableSemaphores[currentFrame] << std::endl;
+        
+        VkResult result = vkAcquireNextImageKHR(device.getLogicalDevice(), swapchain, timeout, 
                                                imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             return false; // Swapchain needs recreation
+        } else if (result == VK_TIMEOUT) {
+            // Timeout occurred - try again
+            return false; // Return false to indicate we should try again
         } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
             D6_THROW(VulkanException, Format("Failed to acquire swap chain image, error: {0}") << result);
         }
+
+        std::cerr << "[DEBUG] Acquired imageIndex=" << imageIndex 
+                  << ", currentFrame=" << currentFrame << std::endl;
 
         if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
             vkWaitForFences(device.getLogicalDevice(), 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
@@ -289,7 +328,11 @@ namespace Duel6 {
     }
 
     void VulkanSwapchain::present(const VulkanDevice& device) {
-        VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
+        VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[imageIndex]};
+
+        std::cerr << "[DEBUG] Present: imageIndex=" << imageIndex 
+                  << ", currentFrame=" << currentFrame 
+                  << ", waiting on semaphore=" << renderFinishedSemaphores[imageIndex] << std::endl;
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
