@@ -159,6 +159,15 @@ namespace Duel6 {
         return *this;
     }
 
+    VulkanPipelineBuilder& VulkanPipelineBuilder::addPushConstantRange(VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size) {
+        VkPushConstantRange range{};
+        range.stageFlags = stageFlags;
+        range.offset = offset;
+        range.size = size;
+        pushConstantRanges.push_back(range);
+        return *this;
+    }
+
     VulkanPipelineBuilder& VulkanPipelineBuilder::addDynamicState(VkDynamicState state) {
         // Prevent duplicates
         if (std::find(dynamicStates.begin(), dynamicStates.end(), state) == dynamicStates.end()) {
@@ -184,6 +193,8 @@ namespace Duel6 {
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
         pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
+        pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size());
+        pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
 
         VkResult result = vkCreatePipelineLayout(device->getLogicalDevice(), &pipelineLayoutInfo, nullptr, &pipeline->pipelineLayout);
         if (result != VK_SUCCESS) {
@@ -411,6 +422,29 @@ namespace Duel6 {
                 .setDepthTest(true, true, VK_COMPARE_OP_LESS_OR_EQUAL)
                 .setCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
                 .addDescriptorSetLayout(uniformLayout)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .build();
+        }
+
+        std::unique_ptr<VulkanPipeline> createSimpleColorPipeline(const VulkanDevice& device, 
+                                                                   VkRenderPass renderPass) {
+            VulkanPipelineBuilder builder(device, renderPass);
+            
+            // Load simple_color shaders that use push constants instead of UBO
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
+            auto vertexShader = shaderManager.loadShader("simple_color.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("simple_color.frag", VulkanShader::Type::Fragment);
+            
+            return builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
+                .setVertexInput<VertexFormats::ColorVertex>()
+                .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                .setDepthTest(false, false)  // Disable depth test for 2D UI
+                .setCullMode(VK_CULL_MODE_NONE)  // No culling for 2D UI
+                .setBlending(true)  // Enable alpha blending
+                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)  // mat4 MVP
                 .setViewportDynamic()
                 .setScissorDynamic()
                 .build();

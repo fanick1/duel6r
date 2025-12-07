@@ -72,6 +72,7 @@ namespace Duel6 {
     struct RenderBatch {
         VulkanPipeline* pipeline;
         std::vector<DrawCommand> commands;
+        std::vector<std::vector<uint8_t>> vertexDataStorage;  // Persistent storage for vertex data
         VkDescriptorSet descriptorSet;
         bool dirty;
         
@@ -126,7 +127,7 @@ namespace Duel6 {
         
         // Command submission
         void addDrawCommand(VulkanPipeline* pipeline, const DrawCommand& command);
-        void flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass);
+        void flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass, uint32_t viewportWidth, uint32_t viewportHeight);
         
         // Buffer management
         void reserveVertexData(size_t size);

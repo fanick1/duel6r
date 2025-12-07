@@ -112,6 +112,9 @@ namespace Duel6 {
         // Descriptor set layouts
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
         
+        // Push constant ranges
+        std::vector<VkPushConstantRange> pushConstantRanges;
+        
         // Dynamic states
         std::vector<VkDynamicState> dynamicStates;
 
@@ -146,6 +149,9 @@ namespace Duel6 {
 
         // Descriptor set layouts
         VulkanPipelineBuilder& addDescriptorSetLayout(VkDescriptorSetLayout layout);
+
+        // Push constants
+        VulkanPipelineBuilder& addPushConstantRange(VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size);
 
         // Dynamic states
         VulkanPipelineBuilder& addDynamicState(VkDynamicState state);
@@ -229,6 +235,12 @@ namespace Duel6 {
                                                                   VkDescriptorSetLayout uniformLayout,
                                                                   VkDescriptorSetLayout textureLayout,
                                                                   VkDescriptorSetLayout bloomUniformLayout);
+
+        /**
+         * Create simple color pipeline using push constants (no descriptor sets needed)
+         */
+        std::unique_ptr<VulkanPipeline> createSimpleColorPipeline(const VulkanDevice& device, 
+                                                                   VkRenderPass renderPass);
     }
 
 }

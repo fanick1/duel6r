@@ -67,6 +67,7 @@ namespace Duel6 {
             createPipelines();
             
             currentFrame = 0;
+            inFrame = false;
 
             initialized = true;
             console->printLine("...Vulkan renderer initialized successfully");
@@ -248,8 +249,29 @@ namespace Duel6 {
         uint32_t framebufferIndex = swapchain->getCurrentImageIndex();
         renderPass->begin(commandBuffer, framebufferIndex);
         
-        // Flush any pending draw commands
-        batchRenderer->flush(commandBuffer, renderPass->getHandle());
+        // Mark that we're now inside a frame
+        inFrame = true;
+        
+        // NOTE: Don't flush or end render pass here!
+        // The geometry will be added via quad(), triangle(), etc. calls
+        // and then flushed in swapBuffers()
+    }
+
+    void VulkanRenderer::swapBuffers() {
+        if (!initialized || !inFrame) {
+            return;
+        }
+        
+        // Mark that we're ending the frame
+        inFrame = false;
+        
+        VkCommandBuffer commandBuffer = commandBufferManager->getCurrentCommandBuffer();
+        
+        // Get swapchain extent for viewport
+        VkExtent2D extent = swapchain->getExtent();
+        
+        // Flush all pending draw commands
+        batchRenderer->flush(commandBuffer, renderPass->getHandle(), extent.width, extent.height);
         
         // End render pass
         renderPass->end(commandBuffer);
@@ -279,7 +301,7 @@ namespace Duel6 {
 
     // Geometry rendering - implementations
     void VulkanRenderer::triangle(const Vector &p1, const Vector &p2, const Vector &p3, const Color &color) {
-        if (!initialized || !batchRenderer) {
+        if (!initialized || !batchRenderer || !inFrame) {
             return;
         }
 
@@ -318,7 +340,55 @@ namespace Duel6 {
     }
 
     void VulkanRenderer::quad(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const Color &color) {
-        // TODO: Implement quad rendering
+        if (!initialized || !batchRenderer || !inFrame) {
+            return;
+        }
+
+        static int quadCount = 0;
+        if (quadCount < 5) {
+            std::cerr << "[DEBUG] quad() called: p1=(" << p1.x << "," << p1.y << "," << p1.z << ") color=(" 
+                      << (int)color.getRed() << "," << (int)color.getGreen() << "," << (int)color.getBlue() << ")" << std::endl;
+            quadCount++;
+        }
+
+        // Convert color to float values
+        float r = color.getRed() / 255.0f;
+        float g = color.getGreen() / 255.0f;
+        float b = color.getBlue() / 255.0f;
+        float a = color.getAlpha() / 255.0f;
+
+        // A quad is rendered as two triangles (6 vertices)
+        // Triangle 1: p1, p2, p3
+        // Triangle 2: p1, p3, p4
+        VertexFormats::ColorVertex vertices[6] = {
+            // Triangle 1
+            {p1, {r, g, b, a}},
+            {p2, {r, g, b, a}},
+            {p3, {r, g, b, a}},
+            // Triangle 2
+            {p1, {r, g, b, a}},
+            {p3, {r, g, b, a}},
+            {p4, {r, g, b, a}}
+        };
+
+        // Create draw command
+        DrawCommand cmd;
+        cmd.type = DrawCommand::TRIANGLES;
+        cmd.vertexCount = 6;
+        cmd.vertices = vertices;
+        cmd.vertexDataSize = sizeof(vertices);
+        cmd.projectionMatrix = getProjectionMatrix();
+        cmd.viewMatrix = getViewMatrix();
+        cmd.modelMatrix = getModelMatrix();
+        cmd.color = color;
+
+        // Get color pipeline and add to batch renderer
+        VulkanPipeline* pipeline = getColorPipeline();
+        if (pipeline) {
+            batchRenderer->addDrawCommand(pipeline, cmd);
+        } else {
+            console->printLine("Warning: Color pipeline not available for quad rendering");
+        }
     }
 
     void VulkanRenderer::quad(const Vector &p1, const Vector &t1,
@@ -372,19 +442,15 @@ namespace Duel6 {
     }
 
     void VulkanRenderer::createPipelines() {
-        if (!initialized || !pipelineCache || !renderPass || !descriptorManager) {
+        if (!initialized || !pipelineCache || !renderPass) {
             return;
         }
 
         try {
-            // Get proper uniform buffer layout from descriptor manager
-            VkDescriptorSetLayout uniformLayout = descriptorManager->getUniformBufferLayout(*device);
-            
-            // Create color pipeline for simple colored geometry using preset
-            auto colorPipelinePtr = PipelinePresets::createColorPipeline(
+            // Create simple color pipeline using push constants (no descriptor sets needed)
+            auto colorPipelinePtr = PipelinePresets::createSimpleColorPipeline(
                 *device, 
-                renderPass->getHandle(),
-                uniformLayout
+                renderPass->getHandle()
             );
 
             if (colorPipelinePtr) {
@@ -392,7 +458,7 @@ namespace Duel6 {
                 size_t hash = std::hash<std::string>{}("color_pipeline");
                 colorPipeline = pipelineCache->getOrCreatePipeline(hash, 
                     [&]() { return std::move(colorPipelinePtr); });
-                console->printLine("...Created color pipeline");
+                console->printLine("...Created simple color pipeline with push constants");
             }
         } catch (const std::exception& e) {
             console->printLine(Format("Failed to create color pipeline: {0}") << e.what());
@@ -435,17 +501,5 @@ namespace Duel6 {
 
     Matrix VulkanRenderer::getModelMatrix() const {
         return modelMatrix;
-    }
-
-    void VulkanRenderer::swapBuffers() {
-        if (!initialized) {
-            return;
-        }
-        
-        // For Vulkan, the presentation is handled in the render() method
-        // This method is called by the legacy OpenGL interface but is not needed for Vulkan
-        // since Vulkan uses a different rendering paradigm where presentation is part of the render loop
-        // 
-        // Leaving this empty to avoid double presentation calls
     }
 }

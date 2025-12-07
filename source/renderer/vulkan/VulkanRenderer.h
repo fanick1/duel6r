@@ -43,6 +43,7 @@ namespace Duel6 {
         
         // Current frame state
         uint32_t currentFrame;
+        bool inFrame;  // True between clearBuffers() and swapBuffers()
         
         // Matrix state
         Matrix projectionMatrix;

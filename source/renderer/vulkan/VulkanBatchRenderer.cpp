@@ -57,7 +57,16 @@ namespace Duel6 {
         }
         
         RenderBatch* batch = getBatch(pipeline);
-        batch->commands.push_back(command);
+        
+        // Copy vertex data to persistent storage
+        DrawCommand cmd = command;
+        if (command.vertices && command.vertexDataSize > 0) {
+            batch->vertexDataStorage.emplace_back(command.vertexDataSize);
+            std::memcpy(batch->vertexDataStorage.back().data(), command.vertices, command.vertexDataSize);
+            cmd.vertices = batch->vertexDataStorage.back().data();
+        }
+        
+        batch->commands.push_back(cmd);
         batch->dirty = true;
         
         // Update statistics
@@ -71,15 +80,41 @@ namespace Duel6 {
         }
     }
 
-    void VulkanBatchRenderer::flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass) {
+    void VulkanBatchRenderer::flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass, uint32_t viewportWidth, uint32_t viewportHeight) {
         if (batches.empty()) {
             return;
         }
         
-        // Begin render pass
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = renderPass;
+        // Safety check - don't try to record if command buffer is null
+        if (commandBuffer == VK_NULL_HANDLE) {
+            std::cerr << "[WARNING] VulkanBatchRenderer::flush called with null command buffer, skipping" << std::endl;
+            return;
+        }
+        
+        // Count total commands for debugging
+        size_t totalCommands = 0;
+        for (const auto& pair : batches) {
+            totalCommands += pair.second->commands.size();
+        }
+        if (totalCommands > 0) {
+            std::cerr << "[DEBUG] VulkanBatchRenderer::flush - " << batches.size() << " batches, " << totalCommands << " total commands" << std::endl;
+        }
+        
+        // Set dynamic viewport
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(viewportWidth);
+        viewport.height = static_cast<float>(viewportHeight);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+        
+        // Set dynamic scissor
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = {viewportWidth, viewportHeight};
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
         
         stats.batches = 0;
         
@@ -156,16 +191,38 @@ namespace Duel6 {
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         
-        // Bind descriptor sets
-        if (batch.descriptorSet != VK_NULL_HANDLE) {
-            VkDescriptorSet descriptorSets[] = { batch.descriptorSet };
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                   batch.pipeline->getLayout(), 0, 1, descriptorSets, 0, nullptr);
-        }
+        static int debugCount = 0;
         
         // Record individual draw commands
         for (const DrawCommand& cmd : batch.commands) {
             if (cmd.vertices && cmd.vertexDataSize > 0) {
+                // Push MVP matrix using push constants
+                Matrix mvp = cmd.projectionMatrix * cmd.viewMatrix * cmd.modelMatrix;
+                
+                if (debugCount < 1) {
+                    const float* m = mvp.getStorage();
+                    std::cerr << "[DEBUG] MVP matrix:\n";
+                    std::cerr << "  " << m[0] << " " << m[4] << " " << m[8] << " " << m[12] << "\n";
+                    std::cerr << "  " << m[1] << " " << m[5] << " " << m[9] << " " << m[13] << "\n";
+                    std::cerr << "  " << m[2] << " " << m[6] << " " << m[10] << " " << m[14] << "\n";
+                    std::cerr << "  " << m[3] << " " << m[7] << " " << m[11] << " " << m[15] << "\n";
+                    
+                    // Also print first vertex
+                    const auto* vertices = static_cast<const VertexFormats::ColorVertex*>(cmd.vertices);
+                    std::cerr << "[DEBUG] First vertex: pos=(" << vertices[0].position.x << "," 
+                              << vertices[0].position.y << "," << vertices[0].position.z 
+                              << ") color=(" << vertices[0].color[0] << "," << vertices[0].color[1] 
+                              << "," << vertices[0].color[2] << "," << vertices[0].color[3] << ")\n";
+                    debugCount++;
+                }
+                
+                vkCmdPushConstants(commandBuffer, batch.pipeline->getLayout(),
+                                   VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16, mvp.getStorage());
+                
+                // Calculate vertex size and first vertex index
+                size_t vertexSize = cmd.vertexDataSize / cmd.vertexCount;
+                uint32_t firstVertex = static_cast<uint32_t>(vertexBufferOffset / vertexSize);
+                
                 // Copy vertex data to buffer
                 ensureVertexBufferCapacity(vertexBufferOffset + cmd.vertexDataSize);
                 void* mappedData = vertexBuffer.map(device, memoryManager);
@@ -188,13 +245,13 @@ namespace Duel6 {
                     vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getBuffer().buffer, 
                                         indexBufferOffset, VK_INDEX_TYPE_UINT16);
                     vkCmdDrawIndexed(commandBuffer, cmd.indexCount, cmd.instanceCount,
-                                    0, vertexBufferOffset / sizeof(Float32), cmd.firstInstance);
+                                    0, firstVertex, cmd.firstInstance);
                     
                     indexBufferOffset += indexDataSize;
                 } else {
                     // Non-indexed drawing
                     vkCmdDraw(commandBuffer, cmd.vertexCount, cmd.instanceCount,
-                             cmd.firstVertex, cmd.firstInstance);
+                             firstVertex, cmd.firstInstance);
                 }
                 
                 vertexBufferOffset += cmd.vertexDataSize;
