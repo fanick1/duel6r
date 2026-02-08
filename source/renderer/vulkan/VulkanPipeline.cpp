@@ -338,7 +338,7 @@ namespace Duel6 {
         dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
         alphaBlendOp = VK_BLEND_OP_ADD;
         cullMode = VK_CULL_MODE_BACK_BIT;
-        frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        frontFace = VK_FRONT_FACE_CLOCKWISE;  // Clockwise because negative viewport height flips winding
         wireframe = false;
         stencilTestEnable = false;
         stencilCompareOp = VK_COMPARE_OP_NOT_EQUAL;
@@ -454,7 +454,7 @@ namespace Duel6 {
                 .setVertexInput<VertexFormats::ColorVertex>()
                 .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                 .setDepthTest(true, true, VK_COMPARE_OP_LESS_OR_EQUAL)
-                .setCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+                .setCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE)
                 .addDescriptorSetLayout(uniformLayout)
                 .setViewportDynamic()
                 .setScissorDynamic()
@@ -705,7 +705,7 @@ namespace Duel6 {
                 .setVertexInput<VertexFormats::MaterialVertex>()
                 .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                 .setDepthTest(true, true, VK_COMPARE_OP_LESS_OR_EQUAL)
-                .setCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+                .setCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE)
                 .addDescriptorSetLayout(uniformLayout)
                 .addDescriptorSetLayout(textureLayout)
                 .addDescriptorSetLayout(materialUniformLayout)

@@ -242,7 +242,8 @@ namespace Duel6 {
 
     std::vector<const char*> VulkanDevice::getRequiredDeviceExtensions() const {
         return {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_MAINTENANCE1_EXTENSION_NAME  // Needed for negative viewport height (GL Y-flip)
         };
     }
 
