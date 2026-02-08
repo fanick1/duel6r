@@ -149,6 +149,20 @@ namespace Duel6 {
 
         device->waitIdle();
         swapchain->recreate(*device, *surface);
+        
+        // Recreate renderer's own framebuffers (they reference swapchain image views)
+        if (renderPass) {
+            renderPass->recreateFramebuffers(*swapchain);
+        }
+        
+        // Recreate pipelines (they reference the render pass which may have a new format)
+        if (pipelineCache) {
+            pipelineCache = std::make_unique<VulkanPipelineCache>(*device);
+            colorPipeline = nullptr;
+            texturePipeline = nullptr;
+            createPipelines();
+        }
+        
         framebufferResized = false;
     }
 
@@ -294,7 +308,7 @@ namespace Duel6 {
             float y = static_cast<float>(scissorY);
             float w = static_cast<float>(scissorWidth);
             float h = static_cast<float>(scissorHeight);
-            
+            float z = float(0);
             // Temporarily enable frame drawing
             inFrame = true;
             Matrix savedProj = projectionMatrix;
@@ -305,17 +319,17 @@ namespace Duel6 {
             modelMatrix = Matrix::IDENTITY;
             
             // Top edge
-            quad(Vector(x, y + h - lineWidth, 0), Vector(x, y + h, 0), 
-                 Vector(x + w, y + h, 0), Vector(x + w, y + h - lineWidth, 0), red);
+            quad(Vector(x, y + h - lineWidth, z), Vector(x, y + h, z), 
+                 Vector(x + w, y + h, z), Vector(x + w, y + h - lineWidth, z), red);
             // Bottom edge
-            quad(Vector(x, y, 0), Vector(x, y + lineWidth, 0), 
-                 Vector(x + w, y + lineWidth, 0), Vector(x + w, y, 0), red);
+            quad(Vector(x, y, z), Vector(x, y + lineWidth, z), 
+                 Vector(x + w, y + lineWidth, z), Vector(x + w, y, z), red);
             // Left edge
-            quad(Vector(x, y, 0), Vector(x, y + h, 0), 
-                 Vector(x + lineWidth, y + h, 0), Vector(x + lineWidth, y, 0), red);
+            quad(Vector(x, y, z), Vector(x, y + h, z), 
+                 Vector(x + lineWidth, y + h, z), Vector(x + lineWidth, y, z), red);
             // Right edge
-            quad(Vector(x + w - lineWidth, y, 0), Vector(x + w - lineWidth, y + h, 0), 
-                 Vector(x + w, y + h, 0), Vector(x + w, y, 0), red);
+            quad(Vector(x + w - lineWidth, y, z), Vector(x + w - lineWidth, y + h, z), 
+                 Vector(x + w, y + h, z), Vector(x + w, y, z), red);
             
             // Restore state
             projectionMatrix = savedProj;
@@ -502,9 +516,15 @@ namespace Duel6 {
     }
 
     std::unique_ptr<RendererTarget> VulkanRenderer::makeTarget(ScreenParameters screenParameters) {
-        // TODO: Implement render target creation
-        console->printLine("Warning: VulkanRenderer::makeTarget not yet implemented");
-        return nullptr;
+        // Return a stub target that does nothing but won't crash
+        class VulkanRendererTarget : public RendererTarget {
+        public:
+            void record(RenderCallback renderCallback) override { callback = renderCallback; }
+            void apply(const Color& modulateColor) override {}
+            void resize(Int32 width, Int32 height) override {}
+            void rerender() override { if (callback) callback(); }
+        };
+        return std::make_unique<VulkanRendererTarget>();
     }
 
     void VulkanRenderer::createPipelines() {

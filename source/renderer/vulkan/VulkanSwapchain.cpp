@@ -94,6 +94,7 @@ namespace Duel6 {
         
         createSwapchain(device, surface);
         createImageViews(device);
+        createRenderPass(device);
         createFramebuffers(device);
         
         imagesInFlight.resize(swapchainImages.size(), VK_NULL_HANDLE);
