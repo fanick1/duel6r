@@ -33,7 +33,7 @@
 
 namespace Duel6 {
     VulkanTexture::VulkanTexture(Console& console)
-        : sampler(VK_NULL_HANDLE), descriptorSet(VK_NULL_HANDLE), width(0), height(0), 
+        : sampler(VK_NULL_HANDLE), descriptorSet(VK_NULL_HANDLE), width(0), height(0), depth(1),
           format(VK_FORMAT_UNDEFINED), isValid(false), console(&console) {
     }
 
@@ -46,12 +46,13 @@ namespace Duel6 {
 
     VulkanTexture::VulkanTexture(VulkanTexture&& other) noexcept
         : image(std::move(other.image)), sampler(other.sampler), descriptorSet(other.descriptorSet),
-          width(other.width), height(other.height), format(other.format), 
+          width(other.width), height(other.height), depth(other.depth), format(other.format), 
           isValid(other.isValid), console(other.console) {
         other.sampler = VK_NULL_HANDLE;
         other.descriptorSet = VK_NULL_HANDLE;
         other.width = 0;
         other.height = 0;
+        other.depth = 1;
         other.format = VK_FORMAT_UNDEFINED;
         other.isValid = false;
     }
@@ -63,6 +64,7 @@ namespace Duel6 {
             descriptorSet = other.descriptorSet;
             width = other.width;
             height = other.height;
+            depth = other.depth;
             format = other.format;
             isValid = other.isValid;
             console = other.console;
@@ -71,6 +73,7 @@ namespace Duel6 {
             other.descriptorSet = VK_NULL_HANDLE;
             other.width = 0;
             other.height = 0;
+            other.depth = 1;
             other.format = VK_FORMAT_UNDEFINED;
             other.isValid = false;
         }
@@ -85,12 +88,13 @@ namespace Duel6 {
 
         width = sourceImage.getWidth();
         height = sourceImage.getHeight();
+        depth = std::max(static_cast<uint32_t>(sourceImage.getDepth()), 1u);
         format = selectFormat(sourceImage);
 
-        // Create Vulkan image
+        // Create Vulkan image (2D array if depth > 1)
         image = memoryManager.createImage(device, width, height, format, VK_IMAGE_TILING_OPTIMAL,
                                          VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth);
 
         // Create sampler
         createSampler(device, filter, clamp);
@@ -139,6 +143,7 @@ namespace Duel6 {
         descriptorSet = VK_NULL_HANDLE; // Managed by descriptor pool
         width = 0;
         height = 0;
+        depth = 1;
         format = VK_FORMAT_UNDEFINED;
         isValid = false;
     }
@@ -235,18 +240,17 @@ namespace Duel6 {
     }
 
     void VulkanTexture::uploadImageData(const VulkanDevice& device, VulkanMemoryManager& memoryManager, const Image& sourceImage) {
-        // Convert image data to RGBA format
+        // Convert image data to RGBA format — all layers stored contiguously
+        uint32_t totalPixels = width * height * depth;
         std::vector<uint8_t> pixelData;
-        pixelData.reserve(width * height * 4);
+        pixelData.reserve(totalPixels * 4);
 
-        for (uint32_t y = 0; y < height; ++y) {
-            for (uint32_t x = 0; x < width; ++x) {
-                Color pixel = sourceImage.at(y * width + x);
-                pixelData.push_back(static_cast<uint8_t>(pixel.getRed() * 255));
-                pixelData.push_back(static_cast<uint8_t>(pixel.getGreen() * 255));
-                pixelData.push_back(static_cast<uint8_t>(pixel.getBlue() * 255));
-                pixelData.push_back(static_cast<uint8_t>(pixel.getAlpha() * 255));
-            }
+        for (uint32_t i = 0; i < totalPixels; ++i) {
+            Color pixel = sourceImage.at(i);
+            pixelData.push_back(static_cast<uint8_t>(pixel.getRed() * 255));
+            pixelData.push_back(static_cast<uint8_t>(pixel.getGreen() * 255));
+            pixelData.push_back(static_cast<uint8_t>(pixel.getBlue() * 255));
+            pixelData.push_back(static_cast<uint8_t>(pixel.getAlpha() * 255));
         }
 
         size_t imageSize = pixelData.size();
@@ -255,14 +259,16 @@ namespace Duel6 {
         // Copy pixel data to staging buffer
         memoryManager.uploadBufferData(device, stagingBuffer, pixelData.data(), imageSize);
 
-        // Transition image layout and copy from staging buffer
+        // Transition image layout and copy from staging buffer (all layers)
         memoryManager.transitionImageLayout(device, image.image, format,
-                                           VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                                           VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                           depth);
 
-        memoryManager.copyBufferToImage(device, stagingBuffer.buffer, image.image, width, height);
+        memoryManager.copyBufferToImage(device, stagingBuffer.buffer, image.image, width, height, depth);
 
         memoryManager.transitionImageLayout(device, image.image, format,
-                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                           depth);
 
         // Cleanup staging buffer
         memoryManager.destroyBuffer(device, stagingBuffer);

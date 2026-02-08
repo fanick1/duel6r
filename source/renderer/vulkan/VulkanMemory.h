@@ -49,9 +49,10 @@ namespace Duel6 {
         VkImageView view;
         VkFormat format;
         VkExtent2D extent;
+        uint32_t arrayLayers;
 
         VulkanImage() : image(VK_NULL_HANDLE), memory(VK_NULL_HANDLE), view(VK_NULL_HANDLE), 
-                       format(VK_FORMAT_UNDEFINED), extent({0, 0}) {}
+                       format(VK_FORMAT_UNDEFINED), extent({0, 0}), arrayLayers(1) {}
     };
 
     class VulkanMemoryManager {
@@ -82,12 +83,13 @@ namespace Duel6 {
         // Image management
         VulkanImage createImage(const VulkanDevice& device, uint32_t width, uint32_t height, 
                                 VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, 
-                                VkMemoryPropertyFlags properties);
+                                VkMemoryPropertyFlags properties, uint32_t arrayLayers = 1);
         void destroyImage(const VulkanDevice& device, VulkanImage& image);
         void transitionImageLayout(const VulkanDevice& device, VkImage image, VkFormat format, 
-                                   VkImageLayout oldLayout, VkImageLayout newLayout);
+                                   VkImageLayout oldLayout, VkImageLayout newLayout,
+                                   uint32_t arrayLayers = 1);
         void copyBufferToImage(const VulkanDevice& device, VkBuffer buffer, VkImage image, 
-                               uint32_t width, uint32_t height);
+                               uint32_t width, uint32_t height, uint32_t arrayLayers = 1);
 
         // Staging operations
         void uploadBufferData(const VulkanDevice& device, VulkanBuffer& buffer, const void* data, VkDeviceSize size);

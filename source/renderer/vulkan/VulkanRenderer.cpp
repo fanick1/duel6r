@@ -21,7 +21,12 @@ namespace Duel6 {
         , scissorHeight(0)
         , projectionMatrix(Matrix::IDENTITY)
         , viewMatrix(Matrix::IDENTITY)
-        , modelMatrix(Matrix::IDENTITY) {
+        , modelMatrix(Matrix::IDENTITY)
+        , depthTestEnabled(false)
+        , depthWriteEnabled(true)
+        , currentBlendFunc(BlendFunc::None)
+        , wireframeEnabled(false)
+        , textureDescriptorSetLayout(VK_NULL_HANDLE) {
         
         initialize();
     }
@@ -53,6 +58,15 @@ namespace Duel6 {
             // Initialize rendering components
             descriptorManager = std::make_unique<VulkanDescriptorManager>(*console);
             descriptorManager->initialize();
+
+            // Initialize resource management
+            samplerManager = std::make_unique<VulkanSamplerManager>(*console);
+            resourceManager = std::make_unique<VulkanResourceManager>(*console);
+            resourceManager->initialize(memoryManager.get(), samplerManager.get(), descriptorManager.get());
+
+            // Cache the texture descriptor set layout for pipeline creation
+            textureDescriptorSetLayout = descriptorManager->getTextureLayout(*device);
+
             batchRenderer = std::make_unique<VulkanBatchRenderer>(*device, *memoryManager, *console);
             
             // Create render pass with default configuration
@@ -69,6 +83,9 @@ namespace Duel6 {
             // Initialize pipeline cache and create basic pipelines
             pipelineCache = std::make_unique<VulkanPipelineCache>(*device);
             colorPipeline = nullptr;
+            linePipeline = nullptr;
+            lineStripPipeline = nullptr;
+            pointPipeline = nullptr;
             texturePipeline = nullptr;
             createPipelines();
             
@@ -95,11 +112,22 @@ namespace Duel6 {
 
         // Cleanup rendering components
         colorPipeline = nullptr;
+        linePipeline = nullptr;
+        lineStripPipeline = nullptr;
+        pointPipeline = nullptr;
         texturePipeline = nullptr;
+        textureDescriptorSetLayout = VK_NULL_HANDLE;
         pipelineCache.reset();
         commandBufferManager.reset();
         renderPass.reset();
         batchRenderer.reset();
+
+        if (resourceManager && device) {
+            resourceManager->cleanup(*device);
+            resourceManager.reset();
+        }
+        samplerManager.reset();
+
         if (descriptorManager) {
             descriptorManager->cleanup(*device);
             descriptorManager.reset();
@@ -172,6 +200,9 @@ namespace Duel6 {
         if (pipelineCache) {
             pipelineCache = std::make_unique<VulkanPipelineCache>(*device);
             colorPipeline = nullptr;
+            linePipeline = nullptr;
+            lineStripPipeline = nullptr;
+            pointPipeline = nullptr;
             texturePipeline = nullptr;
             createPipelines();
         }
@@ -208,20 +239,125 @@ namespace Duel6 {
     }
 
     Texture VulkanRenderer::createTexture(const Image &image, TextureFilter filtering, bool clamp) {
-        // TODO: Implement texture creation
-        console->printLine("Warning: VulkanRenderer::createTexture not yet implemented");
-        return INVALID_TEXTURE_ID;
+        if (!initialized || !resourceManager) {
+            console->printLine("Warning: VulkanRenderer::createTexture called but renderer not ready");
+            return INVALID_TEXTURE_ID;
+        }
+
+        try {
+            return resourceManager->createTexture(*device, image, filtering, clamp);
+        } catch (const std::exception& e) {
+            console->printLine(Format("Failed to create texture: {0}") << e.what());
+            return INVALID_TEXTURE_ID;
+        }
     }
 
     void VulkanRenderer::freeTexture(Texture textureId) {
-        // TODO: Implement texture freeing
-        console->printLine("Warning: VulkanRenderer::freeTexture not yet implemented");
+        if (!initialized || !resourceManager) {
+            return;
+        }
+
+        if (textureId != INVALID_TEXTURE_ID) {
+            resourceManager->deleteTexture(textureId);
+        }
     }
 
     Image VulkanRenderer::makeScreenshot() {
-        // TODO: Implement screenshot
-        console->printLine("Warning: VulkanRenderer::makeScreenshot not yet implemented");
-        return Image();
+        if (!initialized || !device || !swapchain || !memoryManager) {
+            return Image();
+        }
+
+        device->waitIdle();
+
+        VkExtent2D extent = swapchain->getExtent();
+        uint32_t width = extent.width;
+        uint32_t height = extent.height;
+        VkDeviceSize imageSize = width * height * 4; // RGBA 8-bit
+
+        // Get the last presented swapchain image
+        uint32_t imageIndex = swapchain->getCurrentImageIndex();
+        VkImage srcImage = swapchain->getImage(imageIndex);
+
+        // Create a host-visible staging buffer
+        VulkanBuffer stagingBuffer = memoryManager->createStagingBuffer(*device, imageSize);
+
+        // Record a single-time command buffer
+        VkCommandBuffer cmdBuf = device->beginSingleTimeCommands();
+
+        // Transition swapchain image from PRESENT_SRC to TRANSFER_SRC
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = srcImage;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+        barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        vkCmdPipelineBarrier(cmdBuf,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+        // Copy image to staging buffer
+        VkBufferImageCopy region{};
+        region.bufferOffset = 0;
+        region.bufferRowLength = 0;   // tightly packed
+        region.bufferImageHeight = 0; // tightly packed
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = 0;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount = 1;
+        region.imageOffset = {0, 0, 0};
+        region.imageExtent = {width, height, 1};
+
+        vkCmdCopyImageToBuffer(cmdBuf, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               stagingBuffer.buffer, 1, &region);
+
+        // Transition swapchain image back to PRESENT_SRC
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+        vkCmdPipelineBarrier(cmdBuf,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+        device->endSingleTimeCommands(cmdBuf);
+
+        // Read pixels from staging buffer
+        void* data = memoryManager->mapBuffer(*device, stagingBuffer);
+        if (!data) {
+            memoryManager->destroyBuffer(*device, stagingBuffer);
+            return Image();
+        }
+
+        Image image(width, height);
+        const uint8_t* src = static_cast<const uint8_t*>(data);
+        bool isBGRA = (swapchain->getImageFormat() == VK_FORMAT_B8G8R8A8_UNORM ||
+                       swapchain->getImageFormat() == VK_FORMAT_B8G8R8A8_SRGB);
+
+        for (uint32_t y = 0; y < height; y++) {
+            for (uint32_t x = 0; x < width; x++) {
+                size_t idx = (y * width + x) * 4;
+                uint8_t r = isBGRA ? src[idx + 2] : src[idx + 0];
+                uint8_t g = src[idx + 1];
+                uint8_t b = isBGRA ? src[idx + 0] : src[idx + 2];
+                uint8_t a = src[idx + 3];
+                image.at(y * width + x) = Color(r, g, b, a);
+            }
+        }
+
+        memoryManager->unmapBuffer(*device, stagingBuffer);
+        memoryManager->destroyBuffer(*device, stagingBuffer);
+
+        return image;
     }
 
     void VulkanRenderer::setViewport(Int32 x, Int32 y, Int32 width, Int32 height) {
@@ -234,19 +370,19 @@ namespace Duel6 {
     }
 
     void VulkanRenderer::enableWireframe(bool enable) {
-        // TODO: Implement wireframe mode (requires pipeline variant)
+        wireframeEnabled = enable;
     }
 
     void VulkanRenderer::enableDepthTest(bool enable) {
-        // TODO: Implement depth testing (requires pipeline variant or dynamic state)
+        depthTestEnabled = enable;
     }
 
     void VulkanRenderer::enableDepthWrite(bool enable) {
-        // TODO: Implement depth writing (requires pipeline variant or dynamic state)
+        depthWriteEnabled = enable;
     }
 
     void VulkanRenderer::setBlendFunc(BlendFunc func) {
-        // TODO: Implement blend function (requires pipeline variant or dynamic state)
+        currentBlendFunc = func;
     }
 
     void VulkanRenderer::setGlobalTime(Float32 time) {
@@ -315,6 +451,11 @@ namespace Duel6 {
         commandBufferManager->submit(device->getGraphicsQueue(), waitSemaphores, waitStages, signalSemaphores, fence);
         
         batchRenderer->endFrame();
+
+        // Process deferred texture/resource deletions
+        if (resourceManager) {
+            resourceManager->processDeletes(*device);
+        }
         
         swapchain->present(*device);
         currentFrame = (currentFrame + 1) % 2; // MAX_FRAMES_IN_FLIGHT = 2
@@ -345,12 +486,12 @@ namespace Duel6 {
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
 
-        // Get color pipeline and add to batch renderer
-        VulkanPipeline* pipeline = getColorPipeline();
+        // Get pipeline based on current render state
+        VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         if (pipeline) {
             batchRenderer->addDrawCommand(pipeline, cmd);
         } else {
-            console->printLine("Warning: Color pipeline not available for triangle rendering");
+            console->printLine("Warning: Pipeline not available for triangle rendering");
         }
     }
 
@@ -358,7 +499,49 @@ namespace Duel6 {
                                   const Vector &p2, const Vector &t2,
                                   const Vector &p3, const Vector &t3,
                                   const Material &material) {
-        // TODO: Implement textured triangle rendering
+        if (!initialized || !batchRenderer || !inFrame || !resourceManager) {
+            return;
+        }
+
+        TextureId texId = material.getTexture();
+        if (texId == INVALID_TEXTURE_ID) {
+            return;
+        }
+
+        VkDescriptorSet texDescSet = resourceManager->getTextureDescriptorSet(texId);
+        if (texDescSet == VK_NULL_HANDLE) {
+            return;
+        }
+
+        // Build MaterialVertex data
+        // Texture coords: x=u, y=v; z=layer index (texIndex)
+        VertexFormats::MaterialVertex vertices[3] = {
+            {p1, t1, 0},
+            {p2, t2, 0},
+            {p3, t3, 0}
+        };
+
+        DrawCommand cmd;
+        cmd.type = DrawCommand::TRIANGLES;
+        cmd.vertexCount = 3;
+        cmd.vertices = vertices;
+        cmd.vertexDataSize = sizeof(vertices);
+        cmd.projectionMatrix = getProjectionMatrix();
+        cmd.viewMatrix = getViewMatrix();
+        cmd.modelMatrix = getModelMatrix();
+        cmd.textureDescriptorSet = texDescSet;
+
+        const Color& mc = material.getColor();
+        cmd.modulateColor[0] = mc.getRed() / 255.0f;
+        cmd.modulateColor[1] = mc.getGreen() / 255.0f;
+        cmd.modulateColor[2] = mc.getBlue() / 255.0f;
+        cmd.modulateColor[3] = mc.getAlpha() / 255.0f;
+        cmd.alphaTest = material.isMasked() ? 1u : 0u;
+
+        VulkanPipeline* pipeline = getTextureStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        if (pipeline) {
+            batchRenderer->addDrawCommand(pipeline, cmd);
+        }
     }
 
     void VulkanRenderer::quad(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const Color &color) {
@@ -397,12 +580,12 @@ namespace Duel6 {
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
 
-        // Get color pipeline and add to batch renderer
-        VulkanPipeline* pipeline = getColorPipeline();
+        // Get pipeline based on current render state
+        VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         if (pipeline) {
             batchRenderer->addDrawCommand(pipeline, cmd);
         } else {
-            console->printLine("Warning: Color pipeline not available for quad rendering");
+            console->printLine("Warning: Pipeline not available for quad rendering");
         }
     }
 
@@ -411,24 +594,202 @@ namespace Duel6 {
                               const Vector &p3, const Vector &t3,
                               const Vector &p4, const Vector &t4,
                               const Material &material) {
-        // TODO: Implement textured quad rendering
+        if (!initialized || !batchRenderer || !inFrame || !resourceManager) {
+            return;
+        }
+
+        TextureId texId = material.getTexture();
+        if (texId == INVALID_TEXTURE_ID) {
+            return;
+        }
+
+        VkDescriptorSet texDescSet = resourceManager->getTextureDescriptorSet(texId);
+        if (texDescSet == VK_NULL_HANDLE) {
+            return;
+        }
+
+        // A quad is rendered as two triangles (6 vertices)
+        VertexFormats::MaterialVertex vertices[6] = {
+            // Triangle 1: p1, p2, p3
+            {p1, t1, 0},
+            {p2, t2, 0},
+            {p3, t3, 0},
+            // Triangle 2: p1, p3, p4
+            {p1, t1, 0},
+            {p3, t3, 0},
+            {p4, t4, 0}
+        };
+
+        DrawCommand cmd;
+        cmd.type = DrawCommand::TRIANGLES;
+        cmd.vertexCount = 6;
+        cmd.vertices = vertices;
+        cmd.vertexDataSize = sizeof(vertices);
+        cmd.projectionMatrix = getProjectionMatrix();
+        cmd.viewMatrix = getViewMatrix();
+        cmd.modelMatrix = getModelMatrix();
+        cmd.textureDescriptorSet = texDescSet;
+
+        const Color& mc = material.getColor();
+        cmd.modulateColor[0] = mc.getRed() / 255.0f;
+        cmd.modulateColor[1] = mc.getGreen() / 255.0f;
+        cmd.modulateColor[2] = mc.getBlue() / 255.0f;
+        cmd.modulateColor[3] = mc.getAlpha() / 255.0f;
+        cmd.alphaTest = material.isMasked() ? 1u : 0u;
+
+        VulkanPipeline* pipeline = getTextureStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        if (pipeline) {
+            batchRenderer->addDrawCommand(pipeline, cmd);
+        }
     }
 
     void VulkanRenderer::point(const Vector &position, Float32 size, const Color &color) {
-        // TODO: Implement point rendering
+        if (!initialized || !batchRenderer || !inFrame) {
+            return;
+        }
+
+        float r = color.getRed() / 255.0f;
+        float g = color.getGreen() / 255.0f;
+        float b = color.getBlue() / 255.0f;
+        float a = color.getAlpha() / 255.0f;
+
+        VertexFormats::ColorVertex vertices[1] = {
+            {position, {r, g, b, a}}
+        };
+
+        DrawCommand cmd;
+        cmd.type = DrawCommand::POINTS;
+        cmd.vertexCount = 1;
+        cmd.vertices = vertices;
+        cmd.vertexDataSize = sizeof(vertices);
+        cmd.projectionMatrix = getProjectionMatrix();
+        cmd.viewMatrix = getViewMatrix();
+        cmd.modelMatrix = getModelMatrix();
+        cmd.color = color;
+
+        VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+        if (pipeline) {
+            batchRenderer->addDrawCommand(pipeline, cmd);
+        }
     }
 
     void VulkanRenderer::line(const Vector &from, const Vector &to, Float32 width, const Color &color) {
-        // TODO: Implement line rendering
+        if (!initialized || !batchRenderer || !inFrame) {
+            return;
+        }
+
+        float r = color.getRed() / 255.0f;
+        float g = color.getGreen() / 255.0f;
+        float b = color.getBlue() / 255.0f;
+        float a = color.getAlpha() / 255.0f;
+
+        VertexFormats::ColorVertex vertices[2] = {
+            {from, {r, g, b, a}},
+            {to,   {r, g, b, a}}
+        };
+
+        DrawCommand cmd;
+        cmd.type = DrawCommand::LINES;
+        cmd.vertexCount = 2;
+        cmd.vertices = vertices;
+        cmd.vertexDataSize = sizeof(vertices);
+        cmd.projectionMatrix = getProjectionMatrix();
+        cmd.viewMatrix = getViewMatrix();
+        cmd.modelMatrix = getModelMatrix();
+        cmd.color = color;
+
+        VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+        if (pipeline) {
+            batchRenderer->addDrawCommand(pipeline, cmd);
+        }
     }
 
     void VulkanRenderer::lines(const Vector positions[4], Float32 width, const Color &color) {
-        // TODO: Implement lines rendering
+        if (!initialized || !batchRenderer || !inFrame) {
+            return;
+        }
+
+        float r = color.getRed() / 255.0f;
+        float g = color.getGreen() / 255.0f;
+        float b = color.getBlue() / 255.0f;
+        float a = color.getAlpha() / 255.0f;
+
+        VertexFormats::ColorVertex vertices[4] = {
+            {positions[0], {r, g, b, a}},
+            {positions[1], {r, g, b, a}},
+            {positions[2], {r, g, b, a}},
+            {positions[3], {r, g, b, a}}
+        };
+
+        DrawCommand cmd;
+        cmd.type = DrawCommand::LINE_STRIP;
+        cmd.vertexCount = 4;
+        cmd.vertices = vertices;
+        cmd.vertexDataSize = sizeof(vertices);
+        cmd.projectionMatrix = getProjectionMatrix();
+        cmd.viewMatrix = getViewMatrix();
+        cmd.modelMatrix = getModelMatrix();
+        cmd.color = color;
+
+        VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
+        if (pipeline) {
+            batchRenderer->addDrawCommand(pipeline, cmd);
+        }
     }
 
     void VulkanRenderer::lines(const std::vector<Vector> &positions, const std::vector<int>& indices, 
                                const int restartIndex, Float32 width, const Color &color) {
-        // TODO: Implement indexed lines rendering
+        if (!initialized || !batchRenderer || !inFrame) {
+            return;
+        }
+
+        float r = color.getRed() / 255.0f;
+        float g = color.getGreen() / 255.0f;
+        float b = color.getBlue() / 255.0f;
+        float a = color.getAlpha() / 255.0f;
+
+        // Build line segments from indexed line strip, splitting at restart indices
+        // Each non-restart segment becomes a LINE_STRIP draw command
+        std::vector<VertexFormats::ColorVertex> segmentVertices;
+        VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
+        if (!pipeline) return;
+
+        for (size_t i = 0; i < indices.size(); i++) {
+            if (indices[i] == restartIndex) {
+                // Flush current segment
+                if (segmentVertices.size() >= 2) {
+                    DrawCommand cmd;
+                    cmd.type = DrawCommand::LINE_STRIP;
+                    cmd.vertexCount = static_cast<uint32_t>(segmentVertices.size());
+                    cmd.vertices = segmentVertices.data();
+                    cmd.vertexDataSize = segmentVertices.size() * sizeof(VertexFormats::ColorVertex);
+                    cmd.projectionMatrix = getProjectionMatrix();
+                    cmd.viewMatrix = getViewMatrix();
+                    cmd.modelMatrix = getModelMatrix();
+                    cmd.color = color;
+                    batchRenderer->addDrawCommand(pipeline, cmd);
+                }
+                segmentVertices.clear();
+            } else {
+                int idx = indices[i];
+                if (idx >= 0 && idx < static_cast<int>(positions.size())) {
+                    segmentVertices.push_back({positions[idx], {r, g, b, a}});
+                }
+            }
+        }
+        // Flush final segment
+        if (segmentVertices.size() >= 2) {
+            DrawCommand cmd;
+            cmd.type = DrawCommand::LINE_STRIP;
+            cmd.vertexCount = static_cast<uint32_t>(segmentVertices.size());
+            cmd.vertices = segmentVertices.data();
+            cmd.vertexDataSize = segmentVertices.size() * sizeof(VertexFormats::ColorVertex);
+            cmd.projectionMatrix = getProjectionMatrix();
+            cmd.viewMatrix = getViewMatrix();
+            cmd.modelMatrix = getModelMatrix();
+            cmd.color = color;
+            batchRenderer->addDrawCommand(pipeline, cmd);
+        }
     }
 
     void VulkanRenderer::stencil(StencilMode mode) const {
@@ -478,22 +839,41 @@ namespace Duel6 {
             return;
         }
 
-        try {
-            // Create simple color pipeline using push constants (no descriptor sets needed)
-            auto colorPipelinePtr = PipelinePresets::createSimpleColorPipeline(
-                *device, 
-                renderPass->getHandle()
-            );
+        VkRenderPass rp = renderPass->getHandle();
 
-            if (colorPipelinePtr) {
-                // Store in cache
-                size_t hash = std::hash<std::string>{}("color_pipeline");
-                colorPipeline = pipelineCache->getOrCreatePipeline(hash, 
-                    [&]() { return std::move(colorPipelinePtr); });
-                console->printLine("...Created simple color pipeline with push constants");
-            }
+        // Helper to register a pipeline in the cache
+        auto cachePipeline = [&](const char* name, std::unique_ptr<VulkanPipeline> ptr) -> VulkanPipeline* {
+            if (!ptr) return nullptr;
+            size_t hash = std::hash<std::string>{}(name);
+            return pipelineCache->getOrCreatePipeline(hash, [&]() { return std::move(ptr); });
+        };
+
+        try {
+            colorPipeline = cachePipeline("color_pipeline",
+                PipelinePresets::createSimpleColorPipeline(*device, rp));
         } catch (const std::exception& e) {
             console->printLine(Format("Failed to create color pipeline: {0}") << e.what());
+        }
+
+        try {
+            linePipeline = cachePipeline("line_pipeline",
+                PipelinePresets::createSimpleLinePipeline(*device, rp));
+        } catch (const std::exception& e) {
+            console->printLine(Format("Failed to create line pipeline: {0}") << e.what());
+        }
+
+        try {
+            lineStripPipeline = cachePipeline("line_strip_pipeline",
+                PipelinePresets::createSimpleLineStripPipeline(*device, rp));
+        } catch (const std::exception& e) {
+            console->printLine(Format("Failed to create line-strip pipeline: {0}") << e.what());
+        }
+
+        try {
+            pointPipeline = cachePipeline("point_pipeline",
+                PipelinePresets::createSimplePointPipeline(*device, rp));
+        } catch (const std::exception& e) {
+            console->printLine(Format("Failed to create point pipeline: {0}") << e.what());
         }
     }
 
@@ -504,11 +884,86 @@ namespace Duel6 {
         return colorPipeline;
     }
 
+    VulkanPipeline* VulkanRenderer::getLinePipeline() {
+        if (!linePipeline) {
+            createPipelines();
+        }
+        return linePipeline;
+    }
+
+    VulkanPipeline* VulkanRenderer::getLineStripPipeline() {
+        if (!lineStripPipeline) {
+            createPipelines();
+        }
+        return lineStripPipeline;
+    }
+
+    VulkanPipeline* VulkanRenderer::getPointPipeline() {
+        if (!pointPipeline) {
+            createPipelines();
+        }
+        return pointPipeline;
+    }
+
     VulkanPipeline* VulkanRenderer::getTexturePipeline() {
         if (!texturePipeline) {
             createPipelines();
         }
         return texturePipeline;
+    }
+
+    VulkanPipeline* VulkanRenderer::getStatePipeline(VkPrimitiveTopology topology) {
+        if (!pipelineCache || !renderPass) {
+            return nullptr;
+        }
+
+        // Compute a hash key from (topology, depthTest, depthWrite, blendFunc, wireframe)
+        uint32_t key = static_cast<uint32_t>(topology);
+        key |= (depthTestEnabled  ? 1u : 0u) << 8;
+        key |= (depthWriteEnabled ? 1u : 0u) << 9;
+        key |= static_cast<uint32_t>(currentBlendFunc) << 10;
+        key |= (wireframeEnabled  ? 1u : 0u) << 12;
+        
+        size_t hash = std::hash<uint32_t>{}(key);
+
+        VkRenderPass rp = renderPass->getHandle();
+        bool dt = depthTestEnabled;
+        bool dw = depthWriteEnabled;
+        BlendFunc bf = currentBlendFunc;
+        bool wf = wireframeEnabled;
+
+        return pipelineCache->getOrCreatePipeline(hash, [&]() {
+            return PipelinePresets::createSimpleColorPipelineWithState(
+                *device, rp, topology, dt, dw, bf, wf);
+        });
+    }
+
+    VulkanPipeline* VulkanRenderer::getTextureStatePipeline(VkPrimitiveTopology topology) {
+        if (!pipelineCache || !renderPass || textureDescriptorSetLayout == VK_NULL_HANDLE) {
+            return nullptr;
+        }
+
+        // Compute hash key differentiated from color pipelines (set bit 16 for texture)
+        uint32_t key = static_cast<uint32_t>(topology);
+        key |= (depthTestEnabled  ? 1u : 0u) << 8;
+        key |= (depthWriteEnabled ? 1u : 0u) << 9;
+        key |= static_cast<uint32_t>(currentBlendFunc) << 10;
+        key |= (wireframeEnabled  ? 1u : 0u) << 12;
+        key |= 1u << 16; // Texture pipeline flag
+
+        size_t hash = std::hash<uint32_t>{}(key);
+
+        VkRenderPass rp = renderPass->getHandle();
+        VkDescriptorSetLayout texLayout = textureDescriptorSetLayout;
+        bool dt = depthTestEnabled;
+        bool dw = depthWriteEnabled;
+        BlendFunc bf = currentBlendFunc;
+        bool wf = wireframeEnabled;
+
+        return pipelineCache->getOrCreatePipeline(hash, [&]() {
+            return PipelinePresets::createSimpleTexturePipelineWithState(
+                *device, rp, texLayout, topology, dt, dw, bf, wf);
+        });
     }
 
     void VulkanRenderer::setProjectionMatrix(const Matrix &m) {

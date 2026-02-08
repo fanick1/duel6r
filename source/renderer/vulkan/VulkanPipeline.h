@@ -241,6 +241,51 @@ namespace Duel6 {
          */
         std::unique_ptr<VulkanPipeline> createSimpleColorPipeline(const VulkanDevice& device, 
                                                                    VkRenderPass renderPass);
+
+        /**
+         * Create line pipeline using push constants (LINE_LIST topology)
+         */
+        std::unique_ptr<VulkanPipeline> createSimpleLinePipeline(const VulkanDevice& device,
+                                                                  VkRenderPass renderPass);
+
+        /**
+         * Create line strip pipeline using push constants (LINE_STRIP topology)
+         */
+        std::unique_ptr<VulkanPipeline> createSimpleLineStripPipeline(const VulkanDevice& device,
+                                                                       VkRenderPass renderPass);
+
+        /**
+         * Create point pipeline using push constants (POINT_LIST topology)
+         */
+        std::unique_ptr<VulkanPipeline> createSimplePointPipeline(const VulkanDevice& device,
+                                                                    VkRenderPass renderPass);
+
+        /**
+         * Create a simple_color pipeline with arbitrary state parameters.
+         * Used for on-demand pipeline creation based on current render state.
+         */
+        std::unique_ptr<VulkanPipeline> createSimpleColorPipelineWithState(
+            const VulkanDevice& device,
+            VkRenderPass renderPass,
+            VkPrimitiveTopology topology,
+            bool depthTest,
+            bool depthWrite,
+            BlendFunc blendFunc,
+            bool wireframe);
+
+        /**
+         * Create a simple_texture pipeline with state parameters and a texture descriptor set layout.
+         * Used for textured geometry with push constant MVP + material params.
+         */
+        std::unique_ptr<VulkanPipeline> createSimpleTexturePipelineWithState(
+            const VulkanDevice& device,
+            VkRenderPass renderPass,
+            VkDescriptorSetLayout textureLayout,
+            VkPrimitiveTopology topology,
+            bool depthTest,
+            bool depthWrite,
+            BlendFunc blendFunc,
+            bool wireframe);
     }
 
 }

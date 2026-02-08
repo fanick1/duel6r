@@ -12,6 +12,8 @@
 #include "VulkanDescriptor.h"
 #include "VulkanRenderPass.h"
 #include "VulkanRendererTarget.h"
+#include "VulkanResourceManager.h"
+#include "VulkanSampler.h"
 #include <SDL2/SDL.h>
 #include <memory>
 
@@ -38,8 +40,15 @@ namespace Duel6 {
         
         // Pipeline cache
         std::unique_ptr<VulkanPipelineCache> pipelineCache;
-        VulkanPipeline* colorPipeline; // Pipeline for colored geometry
+        VulkanPipeline* colorPipeline; // Pipeline for colored triangles
+        VulkanPipeline* linePipeline;  // Pipeline for line primitives
+        VulkanPipeline* lineStripPipeline; // Pipeline for line strip primitives
+        VulkanPipeline* pointPipeline; // Pipeline for point primitives
         VulkanPipeline* texturePipeline; // Pipeline for textured geometry
+
+        // Resource management (textures)
+        std::unique_ptr<VulkanSamplerManager> samplerManager;
+        std::unique_ptr<VulkanResourceManager> resourceManager;
         
         // Current frame state
         uint32_t currentFrame;
@@ -48,11 +57,18 @@ namespace Duel6 {
         // Scissor state
         mutable bool scissorEnabled;
         mutable Int32 scissorX, scissorY, scissorWidth, scissorHeight;
-        
+
         // Matrix state
         Matrix projectionMatrix;
         Matrix viewMatrix;  
         Matrix modelMatrix;
+
+        // Render state (tracked for pipeline selection)
+        bool depthTestEnabled;
+        bool depthWriteEnabled;
+        BlendFunc currentBlendFunc;
+        bool wireframeEnabled;
+        VkDescriptorSetLayout textureDescriptorSetLayout; // Layout for texture-only descriptor sets
 
     public:
         explicit VulkanRenderer(SDL_Window* window, Console& console);
@@ -123,7 +139,12 @@ namespace Duel6 {
         void cleanup();
         void recreateSwapchain();
         void createPipelines();
+        VulkanPipeline* getStatePipeline(VkPrimitiveTopology topology);
+        VulkanPipeline* getTextureStatePipeline(VkPrimitiveTopology topology);
         VulkanPipeline* getColorPipeline();
+        VulkanPipeline* getLinePipeline();
+        VulkanPipeline* getLineStripPipeline();
+        VulkanPipeline* getPointPipeline();
         VulkanPipeline* getTexturePipeline();
     };
 }

@@ -119,6 +119,15 @@ namespace Duel6 {
             unmapBuffer(device, buffer);
         }
 
+        // Remove from tracking list BEFORE destroying handles (handle values needed for lookup)
+        if (buffer.buffer != VK_NULL_HANDLE) {
+            auto it = std::find_if(allocatedBuffers.begin(), allocatedBuffers.end(),
+                                   [&buffer](const VulkanBuffer& b) { return b.buffer == buffer.buffer; });
+            if (it != allocatedBuffers.end()) {
+                allocatedBuffers.erase(it);
+            }
+        }
+
         if (buffer.buffer != VK_NULL_HANDLE) {
             vkDestroyBuffer(device.getLogicalDevice(), buffer.buffer, nullptr);
             buffer.buffer = VK_NULL_HANDLE;
@@ -127,13 +136,6 @@ namespace Duel6 {
         if (buffer.memory != VK_NULL_HANDLE) {
             vkFreeMemory(device.getLogicalDevice(), buffer.memory, nullptr);
             buffer.memory = VK_NULL_HANDLE;
-        }
-
-        // Remove from tracking list
-        auto it = std::find_if(allocatedBuffers.begin(), allocatedBuffers.end(),
-                               [&buffer](const VulkanBuffer& b) { return b.buffer == buffer.buffer; });
-        if (it != allocatedBuffers.end()) {
-            allocatedBuffers.erase(it);
         }
 
         buffer.size = 0;
@@ -168,10 +170,11 @@ namespace Duel6 {
 
     VulkanImage VulkanMemoryManager::createImage(const VulkanDevice& device, uint32_t width, uint32_t height,
                                                  VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-                                                 VkMemoryPropertyFlags properties) {
+                                                 VkMemoryPropertyFlags properties, uint32_t arrayLayers) {
         VulkanImage image;
         image.format = format;
         image.extent = {width, height};
+        image.arrayLayers = arrayLayers;
 
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -180,7 +183,7 @@ namespace Duel6 {
         imageInfo.extent.height = height;
         imageInfo.extent.depth = 1;
         imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
+        imageInfo.arrayLayers = arrayLayers;
         imageInfo.format = format;
         imageInfo.tiling = tiling;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -213,13 +216,17 @@ namespace Duel6 {
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = image.image;
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        // Always use 2D_ARRAY view type when arrayLayers is explicitly set,
+        // to be compatible with sampler2DArray in shaders even for single-layer images.
+        // For non-array images created without the arrayLayers parameter (default=1),
+        // this also uses 2D_ARRAY which is valid per Vulkan spec.
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
         viewInfo.format = format;
         viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         viewInfo.subresourceRange.baseMipLevel = 0;
         viewInfo.subresourceRange.levelCount = 1;
         viewInfo.subresourceRange.baseArrayLayer = 0;
-        viewInfo.subresourceRange.layerCount = 1;
+        viewInfo.subresourceRange.layerCount = arrayLayers;
 
         result = vkCreateImageView(device.getLogicalDevice(), &viewInfo, nullptr, &image.view);
         if (result != VK_SUCCESS) {
@@ -235,6 +242,15 @@ namespace Duel6 {
     }
 
     void VulkanMemoryManager::destroyImage(const VulkanDevice& device, VulkanImage& image) {
+        // Remove from tracking list BEFORE destroying handles (handle values needed for lookup)
+        if (image.image != VK_NULL_HANDLE) {
+            auto it = std::find_if(allocatedImages.begin(), allocatedImages.end(),
+                                   [&image](const VulkanImage& img) { return img.image == image.image; });
+            if (it != allocatedImages.end()) {
+                allocatedImages.erase(it);
+            }
+        }
+
         if (image.view != VK_NULL_HANDLE) {
             vkDestroyImageView(device.getLogicalDevice(), image.view, nullptr);
             image.view = VK_NULL_HANDLE;
@@ -250,19 +266,13 @@ namespace Duel6 {
             image.memory = VK_NULL_HANDLE;
         }
 
-        // Remove from tracking list
-        auto it = std::find_if(allocatedImages.begin(), allocatedImages.end(),
-                               [&image](const VulkanImage& img) { return img.image == image.image; });
-        if (it != allocatedImages.end()) {
-            allocatedImages.erase(it);
-        }
-
         image.format = VK_FORMAT_UNDEFINED;
         image.extent = {0, 0};
     }
 
     void VulkanMemoryManager::transitionImageLayout(const VulkanDevice& device, VkImage image, VkFormat format,
-                                                    VkImageLayout oldLayout, VkImageLayout newLayout) {
+                                                    VkImageLayout oldLayout, VkImageLayout newLayout,
+                                                    uint32_t arrayLayers) {
         VkCommandBuffer commandBuffer = device.beginSingleTimeCommands();
 
         VkImageMemoryBarrier barrier{};
@@ -276,7 +286,7 @@ namespace Duel6 {
         barrier.subresourceRange.baseMipLevel = 0;
         barrier.subresourceRange.levelCount = 1;
         barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = 1;
+        barrier.subresourceRange.layerCount = arrayLayers;
 
         VkPipelineStageFlags sourceStage;
         VkPipelineStageFlags destinationStage;
@@ -303,7 +313,7 @@ namespace Duel6 {
     }
 
     void VulkanMemoryManager::copyBufferToImage(const VulkanDevice& device, VkBuffer buffer, VkImage image,
-                                                uint32_t width, uint32_t height) {
+                                                uint32_t width, uint32_t height, uint32_t arrayLayers) {
         VkCommandBuffer commandBuffer = device.beginSingleTimeCommands();
 
         VkBufferImageCopy region{};
@@ -313,7 +323,7 @@ namespace Duel6 {
         region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel = 0;
         region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount = 1;
+        region.imageSubresource.layerCount = arrayLayers;
         region.imageOffset = {0, 0, 0};
         region.imageExtent = {width, height, 1};
 

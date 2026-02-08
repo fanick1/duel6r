@@ -50,6 +50,10 @@ namespace Duel6 {
         Matrix modelMatrix;
         Color color;
         VkDescriptorSet textureDescriptorSet;
+
+        // Material push constant data (used when textureDescriptorSet != VK_NULL_HANDLE)
+        Float32 modulateColor[4];
+        uint32_t alphaTest;
         
         DrawCommand()
             : type(TRIANGLES)
@@ -65,7 +69,9 @@ namespace Duel6 {
             , viewMatrix(Matrix::IDENTITY)
             , modelMatrix(Matrix::IDENTITY)
             , color(Color::WHITE)
-            , textureDescriptorSet(VK_NULL_HANDLE) {}
+            , textureDescriptorSet(VK_NULL_HANDLE)
+            , modulateColor{1.0f, 1.0f, 1.0f, 1.0f}
+            , alphaTest(0) {}
     };
 
     // Render batch for grouping similar draw calls
@@ -85,6 +91,8 @@ namespace Duel6 {
     // Batch renderer for efficient Vulkan rendering
     class VulkanBatchRenderer {
     private:
+        static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+
         const VulkanDevice& device;
         VulkanMemoryManager& memoryManager;
         Console& console;
@@ -92,15 +100,15 @@ namespace Duel6 {
         // Render batches organized by pipeline
         std::unordered_map<VulkanPipeline*, std::unique_ptr<RenderBatch>> batches;
         
-        // Vertex buffer management
-        VulkanVertexBuffer vertexBuffer;
-        VulkanIndexBuffer indexBuffer;
+        // Per-frame vertex/index buffers to avoid GPU/CPU data races.
+        // Indexed by currentFrame (0..MAX_FRAMES_IN_FLIGHT-1).
+        VulkanVertexBuffer vertexBuffers[MAX_FRAMES_IN_FLIGHT];
+        VulkanIndexBuffer indexBuffers[MAX_FRAMES_IN_FLIGHT];
         size_t vertexBufferOffset;
         size_t indexBufferOffset;
         
         // Current frame data
         uint32_t currentFrame;
-        static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
         
         // Statistics
         struct Statistics {

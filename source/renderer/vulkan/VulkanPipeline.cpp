@@ -447,7 +447,176 @@ namespace Duel6 {
                 .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)  // mat4 MVP
                 .setViewportDynamic()
                 .setScissorDynamic()
+                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH)
                 .build();
+        }
+
+        std::unique_ptr<VulkanPipeline> createSimpleLinePipeline(const VulkanDevice& device,
+                                                                  VkRenderPass renderPass) {
+            VulkanPipelineBuilder builder(device, renderPass);
+
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
+            auto vertexShader = shaderManager.loadShader("simple_color.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("simple_color.frag", VulkanShader::Type::Fragment);
+
+            return builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
+                .setVertexInput<VertexFormats::ColorVertex>()
+                .setTopology(VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
+                .setDepthTest(false, false)
+                .setCullMode(VK_CULL_MODE_NONE)
+                .setBlending(true)
+                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH)
+                .build();
+        }
+
+        std::unique_ptr<VulkanPipeline> createSimpleLineStripPipeline(const VulkanDevice& device,
+                                                                       VkRenderPass renderPass) {
+            VulkanPipelineBuilder builder(device, renderPass);
+
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
+            auto vertexShader = shaderManager.loadShader("simple_color.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("simple_color.frag", VulkanShader::Type::Fragment);
+
+            return builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
+                .setVertexInput<VertexFormats::ColorVertex>()
+                .setTopology(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP)
+                .setDepthTest(false, false)
+                .setCullMode(VK_CULL_MODE_NONE)
+                .setBlending(true)
+                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH)
+                .build();
+        }
+
+        std::unique_ptr<VulkanPipeline> createSimplePointPipeline(const VulkanDevice& device,
+                                                                    VkRenderPass renderPass) {
+            VulkanPipelineBuilder builder(device, renderPass);
+
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
+            auto vertexShader = shaderManager.loadShader("simple_color.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("simple_color.frag", VulkanShader::Type::Fragment);
+
+            return builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
+                .setVertexInput<VertexFormats::ColorVertex>()
+                .setTopology(VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
+                .setDepthTest(false, false)
+                .setCullMode(VK_CULL_MODE_NONE)
+                .setBlending(true)
+                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH)
+                .build();
+        }
+
+        std::unique_ptr<VulkanPipeline> createSimpleColorPipelineWithState(
+            const VulkanDevice& device,
+            VkRenderPass renderPass,
+            VkPrimitiveTopology topology,
+            bool depthTest,
+            bool depthWrite,
+            BlendFunc blendFunc,
+            bool wireframe) {
+            VulkanPipelineBuilder builder(device, renderPass);
+
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
+            auto vertexShader = shaderManager.loadShader("simple_color.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("simple_color.frag", VulkanShader::Type::Fragment);
+
+            builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
+                .setVertexInput<VertexFormats::ColorVertex>()
+                .setTopology(topology)
+                .setDepthTest(depthTest, depthWrite, VK_COMPARE_OP_LESS_OR_EQUAL)
+                .setCullMode(VK_CULL_MODE_NONE)
+                .setWireframe(wireframe)
+                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
+
+            // Configure blending based on BlendFunc
+            switch (blendFunc) {
+                case BlendFunc::None:
+                    builder.setBlending(false);
+                    break;
+                case BlendFunc::SrcAlpha:
+                    builder.setBlending(true,
+                        VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
+                        VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+                    break;
+                case BlendFunc::SrcColor:
+                    builder.setBlending(true,
+                        VK_BLEND_FACTOR_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR, VK_BLEND_OP_ADD,
+                        VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+                    break;
+            }
+
+            return builder.build();
+        }
+
+        std::unique_ptr<VulkanPipeline> createSimpleTexturePipelineWithState(
+            const VulkanDevice& device,
+            VkRenderPass renderPass,
+            VkDescriptorSetLayout textureLayout,
+            VkPrimitiveTopology topology,
+            bool depthTest,
+            bool depthWrite,
+            BlendFunc blendFunc,
+            bool wireframe) {
+            VulkanPipelineBuilder builder(device, renderPass);
+
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
+            auto vertexShader = shaderManager.loadShader("simple_texture.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("simple_texture.frag", VulkanShader::Type::Fragment);
+
+            builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
+                .setVertexInput<VertexFormats::MaterialVertex>()
+                .setTopology(topology)
+                .setDepthTest(depthTest, depthWrite, VK_COMPARE_OP_LESS_OR_EQUAL)
+                .setCullMode(VK_CULL_MODE_NONE)
+                .setWireframe(wireframe)
+                // Push constants: mat4 MVP for vertex stage + material params for fragment stage
+                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, 64)               // mat4 MVP
+                .addPushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, 64, 20)             // vec4 modulateColor + uint alphaTest
+                // Descriptor set 0 = texture sampler
+                .addDescriptorSetLayout(textureLayout)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
+
+            // Configure blending
+            switch (blendFunc) {
+                case BlendFunc::None:
+                    builder.setBlending(false);
+                    break;
+                case BlendFunc::SrcAlpha:
+                    builder.setBlending(true,
+                        VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
+                        VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+                    break;
+                case BlendFunc::SrcColor:
+                    builder.setBlending(true,
+                        VK_BLEND_FACTOR_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR, VK_BLEND_OP_ADD,
+                        VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+                    break;
+            }
+
+            return builder.build();
         }
 
         std::unique_ptr<VulkanPipeline> createMaterialPipeline(const VulkanDevice& device, 

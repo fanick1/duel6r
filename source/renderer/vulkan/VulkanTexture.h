@@ -46,6 +46,7 @@ namespace Duel6 {
         VkDescriptorSet descriptorSet;
         uint32_t width;
         uint32_t height;
+        uint32_t depth;  // Array layers (1 for regular 2D, >1 for 2D array)
         VkFormat format;
         bool isValid;
         Console* console;
@@ -81,6 +82,7 @@ namespace Duel6 {
         VkDescriptorSet getDescriptorSet() const { return descriptorSet; }
         uint32_t getWidth() const { return width; }
         uint32_t getHeight() const { return height; }
+        uint32_t getDepth() const { return depth; }
         VkFormat getFormat() const { return format; }
         bool valid() const { return isValid; }
 

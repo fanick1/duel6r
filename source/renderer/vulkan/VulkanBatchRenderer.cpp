@@ -4,6 +4,7 @@
 #include "../../Exception.h"
 #include <algorithm>
 #include <cstring>
+#include <iostream>
 
 namespace Duel6 {
 
@@ -13,17 +14,17 @@ namespace Duel6 {
         : device(device)
         , memoryManager(memoryManager)
         , console(console)
-        , vertexBuffer(console)
-        , indexBuffer(console, VK_INDEX_TYPE_UINT16)
+        , vertexBuffers{VulkanVertexBuffer(console), VulkanVertexBuffer(console)}
+        , indexBuffers{VulkanIndexBuffer(console, VK_INDEX_TYPE_UINT16), VulkanIndexBuffer(console, VK_INDEX_TYPE_UINT16)}
         , vertexBufferOffset(0)
         , indexBufferOffset(0)
         , currentFrame(0) {
         
-        // Initialize vertex buffer with reasonable size (1MB)
-        vertexBuffer.create(device, memoryManager, 1024 * 1024, false);
-        
-        // Initialize index buffer with reasonable size (256KB)
-        indexBuffer.create(device, memoryManager, 256 * 1024, false);
+        // Initialize per-frame vertex and index buffers
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vertexBuffers[i].create(device, memoryManager, 1024 * 1024, false);
+            indexBuffers[i].create(device, memoryManager, 256 * 1024, false);
+        }
         
         stats.reset();
     }
@@ -153,6 +154,9 @@ namespace Duel6 {
             // Bind pipeline
             vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, batch.pipeline->getPipeline());
             
+            // Set default line width for line-topology pipelines (dynamic state)
+            vkCmdSetLineWidth(commandBuffer, 1.0f);
+            
             // Record draw commands for this batch
             recordDrawCommands(commandBuffer, batch);
             
@@ -204,10 +208,10 @@ namespace Duel6 {
     }
 
     void VulkanBatchRenderer::recordDrawCommands(VkCommandBuffer commandBuffer, const RenderBatch& batch) {
-        // Bind vertex buffer
-        VkBuffer vertexBuffers[] = { vertexBuffer.getBuffer().buffer };
+        // Bind the current frame's vertex buffer
+        VkBuffer vbHandles[] = { vertexBuffers[currentFrame].getBuffer().buffer };
         VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbHandles, offsets);
         
         // Calculate total vertex data size for this batch
         size_t totalVertexDataSize = 0;
@@ -221,11 +225,11 @@ namespace Duel6 {
             return;
         }
         
-        // Ensure vertex buffer is large enough for all data
+        // Ensure current frame's vertex buffer is large enough for all data
         ensureVertexBufferCapacity(vertexBufferOffset + totalVertexDataSize);
         
-        // Map vertex buffer ONCE for all draw commands in this batch
-        void* mappedData = vertexBuffer.map(device, memoryManager);
+        // Map current frame's vertex buffer ONCE for all draw commands in this batch
+        void* mappedData = vertexBuffers[currentFrame].map(device, memoryManager);
         if (!mappedData) {
             return;
         }
@@ -240,7 +244,7 @@ namespace Duel6 {
         }
         
         // Unmap ONCE after all data is written
-        vertexBuffer.unmap(device, memoryManager);
+        vertexBuffers[currentFrame].unmap(device, memoryManager);
         
         // Second pass: record draw commands
         size_t currentOffset = batchStartOffset;
@@ -249,8 +253,34 @@ namespace Duel6 {
                 // Push MVP matrix using push constants
                 Matrix mvp = cmd.projectionMatrix * cmd.viewMatrix * cmd.modelMatrix;
                 
-                vkCmdPushConstants(commandBuffer, batch.pipeline->getLayout(),
-                                   VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16, mvp.getStorage());
+                if (cmd.textureDescriptorSet != VK_NULL_HANDLE) {
+                    // Textured draw: bind descriptor set and push extended push constants
+                    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                           batch.pipeline->getLayout(), 0, 1,
+                                           &cmd.textureDescriptorSet, 0, nullptr);
+
+                    // Push vertex stage: mat4 MVP (bytes 0-63)
+                    vkCmdPushConstants(commandBuffer, batch.pipeline->getLayout(),
+                                       VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16,
+                                       mvp.getStorage());
+
+                    // Push fragment stage: vec4 modulateColor (bytes 64-79) + uint alphaTest (bytes 80-83)
+                    struct { float color[4]; uint32_t alphaTest; } materialData;
+                    materialData.color[0] = cmd.modulateColor[0];
+                    materialData.color[1] = cmd.modulateColor[1];
+                    materialData.color[2] = cmd.modulateColor[2];
+                    materialData.color[3] = cmd.modulateColor[3];
+                    materialData.alphaTest = cmd.alphaTest;
+
+                    vkCmdPushConstants(commandBuffer, batch.pipeline->getLayout(),
+                                       VK_SHADER_STAGE_FRAGMENT_BIT, 64, 20,
+                                       &materialData);
+                } else {
+                    // Color-only draw: push MVP only
+                    vkCmdPushConstants(commandBuffer, batch.pipeline->getLayout(),
+                                       VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16,
+                                       mvp.getStorage());
+                }
                 
                 // Calculate vertex size and first vertex index
                 size_t vertexSize = cmd.vertexDataSize / cmd.vertexCount;
@@ -261,13 +291,13 @@ namespace Duel6 {
                     size_t indexDataSize = cmd.indexCount * sizeof(uint16_t);
                     ensureIndexBufferCapacity(indexBufferOffset + indexDataSize);
                     
-                    void* indexMappedData = indexBuffer.map(device, memoryManager);
+                    void* indexMappedData = indexBuffers[currentFrame].map(device, memoryManager);
                     if (indexMappedData) {
                         std::memcpy(static_cast<char*>(indexMappedData) + indexBufferOffset, cmd.indices, indexDataSize);
-                        indexBuffer.unmap(device, memoryManager);
+                        indexBuffers[currentFrame].unmap(device, memoryManager);
                     }
                     
-                    vkCmdBindIndexBuffer(commandBuffer, indexBuffer.getBuffer().buffer, 
+                    vkCmdBindIndexBuffer(commandBuffer, indexBuffers[currentFrame].getBuffer().buffer, 
                                         indexBufferOffset, VK_INDEX_TYPE_UINT16);
                     vkCmdDrawIndexed(commandBuffer, cmd.indexCount, cmd.instanceCount,
                                     0, firstVertex, cmd.firstInstance);
@@ -302,9 +332,10 @@ namespace Duel6 {
     }
 
     void VulkanBatchRenderer::ensureVertexBufferCapacity(size_t requiredSize) {
-        if (requiredSize > vertexBuffer.getCapacity()) {
+        VulkanVertexBuffer& vb = vertexBuffers[currentFrame];
+        if (requiredSize > vb.getCapacity()) {
             // Grow buffer by 50% or to required size, whichever is larger
-            size_t newSize = std::max(requiredSize, static_cast<size_t>(vertexBuffer.getCapacity() * 3 / 2));
+            size_t newSize = std::max(requiredSize, static_cast<size_t>(vb.getCapacity() * 3 / 2));
             
             // Create new buffer
             VulkanVertexBuffer newBuffer(console);
@@ -316,15 +347,16 @@ namespace Duel6 {
                 // For now, we'll lose the data and start fresh
             }
             
-            vertexBuffer = std::move(newBuffer);
+            vb = std::move(newBuffer);
             vertexBufferOffset = 0;
         }
     }
 
     void VulkanBatchRenderer::ensureIndexBufferCapacity(size_t requiredSize) {
-        if (requiredSize > indexBuffer.getCapacity()) {
+        VulkanIndexBuffer& ib = indexBuffers[currentFrame];
+        if (requiredSize > ib.getCapacity()) {
             // Grow buffer by 50% or to required size, whichever is larger
-            size_t newSize = std::max(requiredSize, static_cast<size_t>(indexBuffer.getCapacity() * 3 / 2));
+            size_t newSize = std::max(requiredSize, static_cast<size_t>(ib.getCapacity() * 3 / 2));
             
             // Create new buffer
             VulkanIndexBuffer newBuffer(console, VK_INDEX_TYPE_UINT16);
@@ -336,7 +368,7 @@ namespace Duel6 {
                 // For now, we'll lose the data and start fresh
             }
             
-            indexBuffer = std::move(newBuffer);
+            ib = std::move(newBuffer);
             indexBufferOffset = 0;
         }
     }
