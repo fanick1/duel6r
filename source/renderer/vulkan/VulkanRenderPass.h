@@ -43,7 +43,7 @@ namespace Duel6 {
      */
     struct RenderPassConfig {
         VkFormat colorFormat = VK_FORMAT_B8G8R8A8_UNORM;
-        VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+        VkFormat depthFormat = VK_FORMAT_D32_SFLOAT_S8_UINT;
         VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
         bool hasDepthBuffer = true;
         bool hasBloomTarget = false;

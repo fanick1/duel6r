@@ -109,6 +109,16 @@ namespace Duel6 {
         VkFrontFace frontFace;
         bool wireframe;
         
+        // Stencil state
+        bool stencilTestEnable;
+        VkCompareOp stencilCompareOp;
+        VkStencilOp stencilFailOp;
+        VkStencilOp stencilPassOp;
+        VkStencilOp stencilDepthFailOp;
+        
+        // Color write mask
+        VkColorComponentFlags colorWriteMask;
+        
         // Descriptor set layouts
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
         
@@ -146,6 +156,14 @@ namespace Duel6 {
                                            VkBlendOp alphaOp = VK_BLEND_OP_ADD);
         VulkanPipelineBuilder& setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE);
         VulkanPipelineBuilder& setWireframe(bool enable);
+
+        // Stencil configuration
+        VulkanPipelineBuilder& setStencilTest(bool enable, 
+                                              VkCompareOp compareOp = VK_COMPARE_OP_NOT_EQUAL,
+                                              VkStencilOp failOp = VK_STENCIL_OP_KEEP,
+                                              VkStencilOp passOp = VK_STENCIL_OP_KEEP,
+                                              VkStencilOp depthFailOp = VK_STENCIL_OP_KEEP);
+        VulkanPipelineBuilder& setColorWriteMask(VkColorComponentFlags mask);
 
         // Descriptor set layouts
         VulkanPipelineBuilder& addDescriptorSetLayout(VkDescriptorSetLayout layout);
@@ -271,7 +289,8 @@ namespace Duel6 {
             bool depthTest,
             bool depthWrite,
             BlendFunc blendFunc,
-            bool wireframe);
+            bool wireframe,
+            uint32_t stencilMode = 0);
 
         /**
          * Create a simple_texture pipeline with state parameters and a texture descriptor set layout.
@@ -285,7 +304,8 @@ namespace Duel6 {
             bool depthTest,
             bool depthWrite,
             BlendFunc blendFunc,
-            bool wireframe);
+            bool wireframe,
+            uint32_t stencilMode = 0);
     }
 
 }

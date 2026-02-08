@@ -18,7 +18,8 @@ namespace Duel6 {
         , indexBuffers{VulkanIndexBuffer(console, VK_INDEX_TYPE_UINT16), VulkanIndexBuffer(console, VK_INDEX_TYPE_UINT16)}
         , vertexBufferOffset(0)
         , indexBufferOffset(0)
-        , currentFrame(0) {
+        , currentFrame(0)
+        , lastPipeline(nullptr) {
         
         // Initialize per-frame vertex and index buffers
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -39,14 +40,9 @@ namespace Duel6 {
         indexBufferOffset = 0;
         stats.reset();
         
-        // Clear all batch state for the new frame, including vertex data storage.
-        // This also handles the case where pipeline pointers may have been
-        // invalidated by swapchain recreation between frames.
-        for (auto& pair : batches) {
-            pair.second->dirty = true;
-            pair.second->commands.clear();
-            pair.second->vertexDataStorage.clear();
-        }
+        // Clear all batch state for the new frame
+        orderedBatches.clear();
+        lastPipeline = nullptr;
     }
 
     void VulkanBatchRenderer::endFrame() {
@@ -88,7 +84,7 @@ namespace Duel6 {
                                      uint32_t viewportWidth, uint32_t viewportHeight,
                                      bool scissorEnabled, int32_t scissorX, int32_t scissorY,
                                      int32_t scissorWidth, int32_t scissorHeight) {
-        if (batches.empty()) {
+        if (orderedBatches.empty()) {
             return;
         }
         
@@ -100,8 +96,8 @@ namespace Duel6 {
         
         // Count total commands
         size_t totalCommands = 0;
-        for (const auto& pair : batches) {
-            totalCommands += pair.second->commands.size();
+        for (const auto& batch : orderedBatches) {
+            totalCommands += batch->commands.size();
         }
         if (totalCommands == 0) {
             return;
@@ -137,28 +133,26 @@ namespace Duel6 {
         
         stats.batches = 0;
         
-        // Process each batch
-        for (auto& pair : batches) {
-            RenderBatch& batch = *pair.second;
-            
-            if (batch.commands.empty()) {
+        // Process each batch IN ORDER (preserves stencil/state ordering)
+        for (auto& batch : orderedBatches) {
+            if (batch->commands.empty()) {
                 continue;
             }
             
             // Update uniform buffer if dirty
-            if (batch.dirty) {
-                updateUniformBuffer(batch);
-                batch.dirty = false;
+            if (batch->dirty) {
+                updateUniformBuffer(*batch);
+                batch->dirty = false;
             }
             
             // Bind pipeline
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, batch.pipeline->getPipeline());
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, batch->pipeline->getPipeline());
             
             // Set default line width for line-topology pipelines (dynamic state)
             vkCmdSetLineWidth(commandBuffer, 1.0f);
             
             // Record draw commands for this batch
-            recordDrawCommands(commandBuffer, batch);
+            recordDrawCommands(commandBuffer, *batch);
             
             stats.batches++;
         }
@@ -173,15 +167,16 @@ namespace Duel6 {
     }
 
     void VulkanBatchRenderer::clear() {
-        batches.clear();
+        orderedBatches.clear();
+        lastPipeline = nullptr;
         vertexBufferOffset = 0;
         indexBufferOffset = 0;
         stats.reset();
     }
 
     bool VulkanBatchRenderer::isEmpty() const {
-        for (const auto& pair : batches) {
-            if (!pair.second->commands.empty()) {
+        for (const auto& batch : orderedBatches) {
+            if (!batch->commands.empty()) {
                 return false;
             }
         }
@@ -189,17 +184,17 @@ namespace Duel6 {
     }
 
     RenderBatch* VulkanBatchRenderer::getBatch(VulkanPipeline* pipeline) {
-        auto it = batches.find(pipeline);
-        if (it == batches.end()) {
-            // Create new batch
-            auto batch = std::make_unique<RenderBatch>(pipeline);
-            
-            RenderBatch* batchPtr = batch.get();
-            batches[pipeline] = std::move(batch);
-            return batchPtr;
+        // If the last batch uses the same pipeline, reuse it (preserves ordering)
+        if (!orderedBatches.empty() && orderedBatches.back()->pipeline == pipeline) {
+            return orderedBatches.back().get();
         }
         
-        return it->second.get();
+        // Create a new batch to preserve ordering
+        auto batch = std::make_unique<RenderBatch>(pipeline);
+        RenderBatch* batchPtr = batch.get();
+        orderedBatches.push_back(std::move(batch));
+        lastPipeline = pipeline;
+        return batchPtr;
     }
 
     void VulkanBatchRenderer::updateUniformBuffer(RenderBatch& batch) {
@@ -249,6 +244,41 @@ namespace Duel6 {
         // Second pass: record draw commands
         size_t currentOffset = batchStartOffset;
         for (const DrawCommand& cmd : batch.commands) {
+            // Handle special clear-stencil command
+            if (cmd.stencilMode == 4) {
+                VkClearAttachment clearAtt{};
+                clearAtt.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+                clearAtt.clearValue.depthStencil = {1.0f, 0};
+                VkClearRect clearRect{};
+                clearRect.rect.offset = {0, 0};
+                clearRect.rect.extent = {4096, 4096}; // Large enough for any framebuffer
+                clearRect.baseArrayLayer = 0;
+                clearRect.layerCount = 1;
+                vkCmdClearAttachments(commandBuffer, 1, &clearAtt, 1, &clearRect);
+                continue;
+            }
+
+            // Set dynamic stencil state based on stencil mode
+            if (cmd.stencilMode > 0 && cmd.stencilMode <= 3) {
+                switch (cmd.stencilMode) {
+                    case 1: // WRITE: reference=1, compare mask=all, write mask=all
+                        vkCmdSetStencilCompareMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
+                        vkCmdSetStencilWriteMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
+                        vkCmdSetStencilReference(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 1);
+                        break;
+                    case 2: // TEST: reference=0, compare mask=all, write mask=0
+                        vkCmdSetStencilCompareMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
+                        vkCmdSetStencilWriteMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0);
+                        vkCmdSetStencilReference(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0);
+                        break;
+                    case 3: // ERASE: reference=0, compare mask=all, write mask=all
+                        vkCmdSetStencilCompareMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
+                        vkCmdSetStencilWriteMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
+                        vkCmdSetStencilReference(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0);
+                        break;
+                }
+            }
+
             if (cmd.vertices && cmd.vertexDataSize > 0) {
                 // Push MVP matrix using push constants
                 Matrix mvp = cmd.projectionMatrix * cmd.viewMatrix * cmd.modelMatrix;

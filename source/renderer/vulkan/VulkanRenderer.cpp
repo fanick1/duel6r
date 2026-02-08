@@ -1,5 +1,7 @@
 #include "VulkanRenderer.h"
 #include "../../Format.h"
+#include "../../FaceList.h"
+#include "../../Vertex.h"
 
 namespace Duel6 {
     VulkanRenderer::VulkanRenderer(SDL_Window* window, Console& console)
@@ -15,10 +17,17 @@ namespace Duel6 {
         , currentFrame(0)
         , inFrame(false)
         , scissorEnabled(false)
+        , viewportX(0)
+        , viewportY(0)
+        , viewportWidth(0)
+        , viewportHeight(0)
+        , viewportDirty(false)
         , scissorX(0)
         , scissorY(0)
         , scissorWidth(0)
         , scissorHeight(0)
+        , globalTime(0.0f)
+        , currentStencilMode(Renderer::StencilMode::DISABLE)
         , projectionMatrix(Matrix::IDENTITY)
         , viewMatrix(Matrix::IDENTITY)
         , modelMatrix(Matrix::IDENTITY)
@@ -125,6 +134,9 @@ namespace Duel6 {
         if (resourceManager && device) {
             resourceManager->cleanup(*device);
             resourceManager.reset();
+        }
+        if (samplerManager && device) {
+            samplerManager->cleanup(*device);
         }
         samplerManager.reset();
 
@@ -365,8 +377,11 @@ namespace Duel6 {
             return;
         }
         
-        // Store viewport parameters - they'll be used in command recording
-        // TODO: Implement proper viewport state tracking
+        viewportX = x;
+        viewportY = y;
+        viewportWidth = width;
+        viewportHeight = height;
+        viewportDirty = true;
     }
 
     void VulkanRenderer::enableWireframe(bool enable) {
@@ -386,7 +401,8 @@ namespace Duel6 {
     }
 
     void VulkanRenderer::setGlobalTime(Float32 time) {
-        // TODO: Implement global time for shaders
+        globalTime = time;
+        // Time is stored and will be passed to shaders when UBO-based material pipeline is implemented
     }
 
     void VulkanRenderer::clearBuffers() {
@@ -432,6 +448,10 @@ namespace Duel6 {
         // Get swapchain extent for viewport
         VkExtent2D extent = swapchain->getExtent();
         
+        // Use explicit viewport if setViewport was called, otherwise use swapchain extent
+        uint32_t vpWidth = viewportDirty ? static_cast<uint32_t>(viewportWidth) : extent.width;
+        uint32_t vpHeight = viewportDirty ? static_cast<uint32_t>(viewportHeight) : extent.height;
+        
         // Flush all pending draw commands with scissor state
         batchRenderer->flush(commandBuffer, renderPass->getHandle(), extent.width, extent.height,
                             scissorEnabled, scissorX, scissorY, scissorWidth, scissorHeight);
@@ -462,6 +482,16 @@ namespace Duel6 {
         commandBufferManager->nextFrame();
     }
 
+    // Convert StencilMode enum to pipeline stencil mode number
+    static uint32_t stencilModeToPipelineMode(Renderer::StencilMode mode) {
+        switch (mode) {
+            case Renderer::StencilMode::WRITE:   return 1;
+            case Renderer::StencilMode::TEST:    return 2;
+            case Renderer::StencilMode::ERASE:   return 3;
+            default:                              return 0; // DISABLE, CLEAR
+        }
+    }
+
     // Geometry rendering - implementations
     void VulkanRenderer::triangle(const Vector &p1, const Vector &p2, const Vector &p3, const Color &color) {
         if (!initialized || !batchRenderer || !inFrame) {
@@ -485,6 +515,7 @@ namespace Duel6 {
         cmd.viewMatrix = getViewMatrix();
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
+        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
 
         // Get pipeline based on current render state
         VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -537,6 +568,7 @@ namespace Duel6 {
         cmd.modulateColor[2] = mc.getBlue() / 255.0f;
         cmd.modulateColor[3] = mc.getAlpha() / 255.0f;
         cmd.alphaTest = material.isMasked() ? 1u : 0u;
+        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
 
         VulkanPipeline* pipeline = getTextureStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         if (pipeline) {
@@ -579,6 +611,7 @@ namespace Duel6 {
         cmd.viewMatrix = getViewMatrix();
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
+        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
 
         // Get pipeline based on current render state
         VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -636,6 +669,7 @@ namespace Duel6 {
         cmd.modulateColor[2] = mc.getBlue() / 255.0f;
         cmd.modulateColor[3] = mc.getAlpha() / 255.0f;
         cmd.alphaTest = material.isMasked() ? 1u : 0u;
+        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
 
         VulkanPipeline* pipeline = getTextureStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         if (pipeline) {
@@ -666,6 +700,7 @@ namespace Duel6 {
         cmd.viewMatrix = getViewMatrix();
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
+        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
 
         VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
         if (pipeline) {
@@ -697,6 +732,7 @@ namespace Duel6 {
         cmd.viewMatrix = getViewMatrix();
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
+        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
 
         VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
         if (pipeline) {
@@ -730,6 +766,7 @@ namespace Duel6 {
         cmd.viewMatrix = getViewMatrix();
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
+        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
 
         VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
         if (pipeline) {
@@ -767,6 +804,7 @@ namespace Duel6 {
                     cmd.viewMatrix = getViewMatrix();
                     cmd.modelMatrix = getModelMatrix();
                     cmd.color = color;
+                    cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
                     batchRenderer->addDrawCommand(pipeline, cmd);
                 }
                 segmentVertices.clear();
@@ -788,12 +826,29 @@ namespace Duel6 {
             cmd.viewMatrix = getViewMatrix();
             cmd.modelMatrix = getModelMatrix();
             cmd.color = color;
+            cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
             batchRenderer->addDrawCommand(pipeline, cmd);
         }
     }
 
     void VulkanRenderer::stencil(StencilMode mode) const {
-        // TODO: Implement stencil operations
+        currentStencilMode = mode;
+        
+        if (mode == StencilMode::CLEAR && batchRenderer && inFrame) {
+            // Insert a special "clear stencil" command into the draw stream
+            // This will be translated to vkCmdClearAttachments during flush
+            DrawCommand clearCmd;
+            clearCmd.stencilMode = 4; // Special: clear stencil
+            clearCmd.vertexCount = 0;
+            clearCmd.vertices = nullptr;
+            clearCmd.vertexDataSize = 0;
+            
+            // Use whatever pipeline is available (the command won't actually draw)
+            VulkanPipeline* pipeline = const_cast<VulkanRenderer*>(this)->getStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+            if (pipeline) {
+                batchRenderer->addDrawCommand(pipeline, clearCmd);
+            }
+        }
     }
 
     bool VulkanRenderer::setScissorTest(bool value) const {
@@ -816,10 +871,145 @@ namespace Duel6 {
         scissorHeight = height;
     }
 
+    // ============================================================
+    // VulkanRendererBuffer - static world geometry buffer
+    // ============================================================
+    
+    class VulkanRendererBuffer : public RendererBuffer {
+    private:
+        VulkanRenderer& renderer;
+        size_t faceCount;
+        
+        // Base vertex data: triangulated quads (6 verts per face), constant after construction
+        struct BaseVertex {
+            float x, y, z;
+            float u, v;
+            uint32_t flags;
+        };
+        std::vector<BaseVertex> baseVertices;
+        
+        // Per-face texture layer index (updated via update())
+        std::vector<float> textureLayers;
+        
+        // Full MaterialVertex array, rebuilt when texture layers change
+        std::vector<VertexFormats::MaterialVertex> materialVertices;
+        bool dirty;
+        
+    public:
+        VulkanRendererBuffer(VulkanRenderer& renderer, const FaceList& faceList)
+            : renderer(renderer)
+            , faceCount(faceList.getFaces().size())
+            , dirty(true) {
+            
+            // Triangulate quads: 4 vertices per face → 6 triangle vertices per face
+            const Vertex* vertex = faceList.getVertexes().data();
+            const auto& faces = faceList.getFaces();
+            
+            baseVertices.reserve(faceCount * 6);
+            textureLayers.reserve(faceCount);
+            
+            for (size_t i = 0; i < faceCount; i++, vertex += 4) {
+                const Vertex& v1 = vertex[0];
+                const Vertex& v2 = vertex[1];
+                const Vertex& v3 = vertex[2];
+                const Vertex& v4 = vertex[3];
+                
+                // Triangle 1: v1, v2, v3
+                baseVertices.push_back({v1.x, v1.y, v1.z, v1.u, v1.v, v1.getFlag()});
+                baseVertices.push_back({v2.x, v2.y, v2.z, v2.u, v2.v, v2.getFlag()});
+                baseVertices.push_back({v3.x, v3.y, v3.z, v3.u, v3.v, v3.getFlag()});
+                // Triangle 2: v1, v3, v4
+                baseVertices.push_back({v1.x, v1.y, v1.z, v1.u, v1.v, v1.getFlag()});
+                baseVertices.push_back({v3.x, v3.y, v3.z, v3.u, v3.v, v3.getFlag()});
+                baseVertices.push_back({v4.x, v4.y, v4.z, v4.u, v4.v, v4.getFlag()});
+                
+                textureLayers.push_back(static_cast<float>(faces[i].getCurrentTexture()));
+            }
+            
+            materialVertices.resize(faceCount * 6);
+            rebuildMaterialVertices();
+        }
+        
+        void update(const FaceList& faceList) override {
+            const auto& faces = faceList.getFaces();
+            for (size_t i = 0; i < faceCount && i < faces.size(); i++) {
+                textureLayers[i] = static_cast<float>(faces[i].getCurrentTexture());
+            }
+            dirty = true;
+            rebuildMaterialVertices();
+        }
+        
+        void render(const Material& material) override {
+            if (faceCount == 0 || materialVertices.empty()) return;
+            
+            renderer.renderMaterialVertices(
+                materialVertices.data(),
+                static_cast<uint32_t>(materialVertices.size()),
+                materialVertices.size() * sizeof(VertexFormats::MaterialVertex),
+                material);
+        }
+        
+    private:
+        void rebuildMaterialVertices() {
+            for (size_t face = 0; face < faceCount; face++) {
+                float layer = textureLayers[face];
+                for (size_t v = 0; v < 6; v++) {
+                    size_t idx = face * 6 + v;
+                    const BaseVertex& bv = baseVertices[idx];
+                    materialVertices[idx].position = Vector(bv.x, bv.y, bv.z);
+                    materialVertices[idx].textureCoord = Vector(bv.u, bv.v, layer);
+                    materialVertices[idx].flags = bv.flags;
+                }
+            }
+            dirty = false;
+        }
+    };
+
     std::unique_ptr<RendererBuffer> VulkanRenderer::makeBuffer(const FaceList &faceList) {
-        // TODO: Implement buffer creation
-        console->printLine("Warning: VulkanRenderer::makeBuffer not yet implemented");
-        return nullptr;
+        if (faceList.getFaces().empty()) {
+            return nullptr;
+        }
+        return std::make_unique<VulkanRendererBuffer>(*this, faceList);
+    }
+
+    void VulkanRenderer::renderMaterialVertices(const void* vertices, uint32_t vertexCount,
+                                                 size_t vertexDataSize, const Material& material) {
+        if (!initialized || !batchRenderer || !inFrame || !resourceManager) {
+            return;
+        }
+
+        TextureId texId = material.getTexture();
+        if (texId == INVALID_TEXTURE_ID) {
+            return;
+        }
+
+        VkDescriptorSet texDescSet = resourceManager->getTextureDescriptorSet(texId);
+        if (texDescSet == VK_NULL_HANDLE) {
+            return;
+        }
+
+        DrawCommand cmd;
+        cmd.type = DrawCommand::TRIANGLES;
+        cmd.vertexCount = vertexCount;
+        cmd.vertices = vertices;
+        cmd.vertexDataSize = vertexDataSize;
+        cmd.projectionMatrix = getProjectionMatrix();
+        cmd.viewMatrix = getViewMatrix();
+        cmd.modelMatrix = getModelMatrix();
+        cmd.textureDescriptorSet = texDescSet;
+
+        const Color& mc = material.getColor();
+        cmd.modulateColor[0] = mc.getRed() / 255.0f;
+        cmd.modulateColor[1] = mc.getGreen() / 255.0f;
+        cmd.modulateColor[2] = mc.getBlue() / 255.0f;
+        cmd.modulateColor[3] = mc.getAlpha() / 255.0f;
+        cmd.alphaTest = material.isMasked() ? 1u : 0u;
+        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+
+        VulkanPipeline* pipeline = getTextureStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        if (pipeline) {
+            batchRenderer->addDrawCommand(pipeline, cmd);
+        }
     }
 
     std::unique_ptr<RendererTarget> VulkanRenderer::makeTarget(ScreenParameters screenParameters) {
@@ -917,12 +1107,15 @@ namespace Duel6 {
             return nullptr;
         }
 
-        // Compute a hash key from (topology, depthTest, depthWrite, blendFunc, wireframe)
+        uint32_t sm = stencilModeToPipelineMode(currentStencilMode);
+
+        // Compute a hash key from (topology, depthTest, depthWrite, blendFunc, wireframe, stencilMode)
         uint32_t key = static_cast<uint32_t>(topology);
         key |= (depthTestEnabled  ? 1u : 0u) << 8;
         key |= (depthWriteEnabled ? 1u : 0u) << 9;
         key |= static_cast<uint32_t>(currentBlendFunc) << 10;
         key |= (wireframeEnabled  ? 1u : 0u) << 12;
+        key |= sm << 13; // Stencil mode in bits 13-14
         
         size_t hash = std::hash<uint32_t>{}(key);
 
@@ -934,7 +1127,7 @@ namespace Duel6 {
 
         return pipelineCache->getOrCreatePipeline(hash, [&]() {
             return PipelinePresets::createSimpleColorPipelineWithState(
-                *device, rp, topology, dt, dw, bf, wf);
+                *device, rp, topology, dt, dw, bf, wf, sm);
         });
     }
 
@@ -943,12 +1136,15 @@ namespace Duel6 {
             return nullptr;
         }
 
+        uint32_t sm = stencilModeToPipelineMode(currentStencilMode);
+
         // Compute hash key differentiated from color pipelines (set bit 16 for texture)
         uint32_t key = static_cast<uint32_t>(topology);
         key |= (depthTestEnabled  ? 1u : 0u) << 8;
         key |= (depthWriteEnabled ? 1u : 0u) << 9;
         key |= static_cast<uint32_t>(currentBlendFunc) << 10;
         key |= (wireframeEnabled  ? 1u : 0u) << 12;
+        key |= sm << 13; // Stencil mode in bits 13-14
         key |= 1u << 16; // Texture pipeline flag
 
         size_t hash = std::hash<uint32_t>{}(key);
@@ -962,7 +1158,7 @@ namespace Duel6 {
 
         return pipelineCache->getOrCreatePipeline(hash, [&]() {
             return PipelinePresets::createSimpleTexturePipelineWithState(
-                *device, rp, texLayout, topology, dt, dw, bf, wf);
+                *device, rp, texLayout, topology, dt, dw, bf, wf, sm);
         });
     }
 

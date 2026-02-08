@@ -56,7 +56,19 @@ namespace Duel6 {
         
         // Scissor state
         mutable bool scissorEnabled;
+
+        // Viewport state (stored, applied at flush)
+        mutable Int32 viewportX, viewportY, viewportWidth, viewportHeight;
+        mutable bool viewportDirty;  // true when setViewport was called
+
+        // Scissor extents
         mutable Int32 scissorX, scissorY, scissorWidth, scissorHeight;
+
+        // Global time for shader effects
+        Float32 globalTime;
+
+        // Stencil state
+        mutable Renderer::StencilMode currentStencilMode;
 
         // Matrix state
         Matrix projectionMatrix;
@@ -146,6 +158,11 @@ namespace Duel6 {
         VulkanPipeline* getLineStripPipeline();
         VulkanPipeline* getPointPipeline();
         VulkanPipeline* getTexturePipeline();
+
+    public:
+        // Called by VulkanRendererBuffer to render pre-built material vertices
+        void renderMaterialVertices(const void* vertices, uint32_t vertexCount, 
+                                    size_t vertexDataSize, const Material& material);
     };
 }
 

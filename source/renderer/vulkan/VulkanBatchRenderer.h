@@ -55,6 +55,9 @@ namespace Duel6 {
         Float32 modulateColor[4];
         uint32_t alphaTest;
         
+        // Stencil mode: 0=none, 1=write, 2=test, 3=erase, 4=clear_stencil (special)
+        uint32_t stencilMode;
+        
         DrawCommand()
             : type(TRIANGLES)
             , vertexCount(0)
@@ -71,7 +74,8 @@ namespace Duel6 {
             , color(Color::WHITE)
             , textureDescriptorSet(VK_NULL_HANDLE)
             , modulateColor{1.0f, 1.0f, 1.0f, 1.0f}
-            , alphaTest(0) {}
+            , alphaTest(0)
+            , stencilMode(0) {}
     };
 
     // Render batch for grouping similar draw calls
@@ -97,8 +101,8 @@ namespace Duel6 {
         VulkanMemoryManager& memoryManager;
         Console& console;
         
-        // Render batches organized by pipeline
-        std::unordered_map<VulkanPipeline*, std::unique_ptr<RenderBatch>> batches;
+        // Render batches in submission order (preserves stencil/state ordering)
+        std::vector<std::unique_ptr<RenderBatch>> orderedBatches;
         
         // Per-frame vertex/index buffers to avoid GPU/CPU data races.
         // Indexed by currentFrame (0..MAX_FRAMES_IN_FLIGHT-1).
@@ -109,6 +113,8 @@ namespace Duel6 {
         
         // Current frame data
         uint32_t currentFrame;
+        
+        VulkanPipeline* lastPipeline;
         
         // Statistics
         struct Statistics {

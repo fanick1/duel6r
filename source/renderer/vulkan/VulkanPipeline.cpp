@@ -154,6 +154,22 @@ namespace Duel6 {
         return *this;
     }
 
+    VulkanPipelineBuilder& VulkanPipelineBuilder::setStencilTest(bool enable, VkCompareOp compareOp,
+                                                                  VkStencilOp failOp, VkStencilOp passOp,
+                                                                  VkStencilOp depthFailOp) {
+        stencilTestEnable = enable;
+        stencilCompareOp = compareOp;
+        stencilFailOp = failOp;
+        stencilPassOp = passOp;
+        stencilDepthFailOp = depthFailOp;
+        return *this;
+    }
+
+    VulkanPipelineBuilder& VulkanPipelineBuilder::setColorWriteMask(VkColorComponentFlags mask) {
+        colorWriteMask = mask;
+        return *this;
+    }
+
     VulkanPipelineBuilder& VulkanPipelineBuilder::addDescriptorSetLayout(VkDescriptorSetLayout layout) {
         descriptorSetLayouts.push_back(layout);
         return *this;
@@ -247,12 +263,23 @@ namespace Duel6 {
         depthStencil.depthWriteEnable = depthWriteEnable ? VK_TRUE : VK_FALSE;
         depthStencil.depthCompareOp = depthCompareOp;
         depthStencil.depthBoundsTestEnable = VK_FALSE;
-        depthStencil.stencilTestEnable = VK_FALSE;
+        depthStencil.stencilTestEnable = stencilTestEnable ? VK_TRUE : VK_FALSE;
+        if (stencilTestEnable) {
+            VkStencilOpState stencilOps{};
+            stencilOps.failOp = stencilFailOp;
+            stencilOps.passOp = stencilPassOp;
+            stencilOps.depthFailOp = stencilDepthFailOp;
+            stencilOps.compareOp = stencilCompareOp;
+            stencilOps.compareMask = 0;  // dynamic
+            stencilOps.writeMask = 0;    // dynamic
+            stencilOps.reference = 0;    // dynamic
+            depthStencil.front = stencilOps;
+            depthStencil.back = stencilOps;
+        }
 
         // Color blend state
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | 
-                                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.colorWriteMask = colorWriteMask;
         colorBlendAttachment.blendEnable = blendEnable ? VK_TRUE : VK_FALSE;
         colorBlendAttachment.srcColorBlendFactor = srcColorBlendFactor;
         colorBlendAttachment.dstColorBlendFactor = dstColorBlendFactor;
@@ -313,6 +340,13 @@ namespace Duel6 {
         cullMode = VK_CULL_MODE_BACK_BIT;
         frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         wireframe = false;
+        stencilTestEnable = false;
+        stencilCompareOp = VK_COMPARE_OP_NOT_EQUAL;
+        stencilFailOp = VK_STENCIL_OP_KEEP;
+        stencilPassOp = VK_STENCIL_OP_KEEP;
+        stencilDepthFailOp = VK_STENCIL_OP_KEEP;
+        colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | 
+                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
         // Default dynamic states removed - they will be added by setViewportDynamic/setScissorDynamic calls
     }
@@ -520,6 +554,34 @@ namespace Duel6 {
                 .build();
         }
 
+        // Helper to configure stencil on a pipeline builder based on stencilMode
+        // stencilMode: 0=none, 1=write(REPLACE), 2=test(KEEP), 3=erase(REPLACE+no color write)
+        static void configureStencilMode(VulkanPipelineBuilder& builder, uint32_t stencilMode) {
+            // Always add dynamic stencil states for reference/mask control
+            builder.addDynamicState(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK);
+            builder.addDynamicState(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK);
+            builder.addDynamicState(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
+            
+            switch (stencilMode) {
+                case 1: // WRITE: stencil test + replace, color write enabled
+                    builder.setStencilTest(true, VK_COMPARE_OP_NOT_EQUAL,
+                                           VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE);
+                    break;
+                case 2: // TEST: stencil test + keep, color write enabled
+                    builder.setStencilTest(true, VK_COMPARE_OP_NOT_EQUAL,
+                                           VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP);
+                    break;
+                case 3: // ERASE: stencil test + replace, color write DISABLED
+                    builder.setStencilTest(true, VK_COMPARE_OP_NOT_EQUAL,
+                                           VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE);
+                    builder.setColorWriteMask(0); // No color output
+                    break;
+                default: // 0 = NONE/DISABLE
+                    builder.setStencilTest(false);
+                    break;
+            }
+        }
+
         std::unique_ptr<VulkanPipeline> createSimpleColorPipelineWithState(
             const VulkanDevice& device,
             VkRenderPass renderPass,
@@ -527,7 +589,8 @@ namespace Duel6 {
             bool depthTest,
             bool depthWrite,
             BlendFunc blendFunc,
-            bool wireframe) {
+            bool wireframe,
+            uint32_t stencilMode) {
             VulkanPipelineBuilder builder(device, renderPass);
 
             VulkanShaderManager shaderManager(device, "shaders/vulkan");
@@ -546,6 +609,8 @@ namespace Duel6 {
                 .setViewportDynamic()
                 .setScissorDynamic()
                 .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
+
+            configureStencilMode(builder, stencilMode);
 
             // Configure blending based on BlendFunc
             switch (blendFunc) {
@@ -575,7 +640,8 @@ namespace Duel6 {
             bool depthTest,
             bool depthWrite,
             BlendFunc blendFunc,
-            bool wireframe) {
+            bool wireframe,
+            uint32_t stencilMode) {
             VulkanPipelineBuilder builder(device, renderPass);
 
             VulkanShaderManager shaderManager(device, "shaders/vulkan");
@@ -598,6 +664,8 @@ namespace Duel6 {
                 .setViewportDynamic()
                 .setScissorDynamic()
                 .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
+
+            configureStencilMode(builder, stencilMode);
 
             // Configure blending
             switch (blendFunc) {
