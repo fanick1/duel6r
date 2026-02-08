@@ -1,6 +1,5 @@
 #include "VulkanRenderer.h"
 #include "../../Format.h"
-#include <iostream>
 
 namespace Duel6 {
     VulkanRenderer::VulkanRenderer(SDL_Window* window, Console& console)
@@ -148,14 +147,28 @@ namespace Duel6 {
         }
 
         device->waitIdle();
+        
+        // Clear batches BEFORE destroying pipelines to avoid dangling pipeline pointers
+        if (batchRenderer) {
+            batchRenderer->clear();
+        }
+        
         swapchain->recreate(*device, *surface);
         
-        // Recreate renderer's own framebuffers (they reference swapchain image views)
-        if (renderPass) {
+        // Recreate render pass if swapchain format changed
+        VkFormat newFormat = swapchain->getImageFormat();
+        if (renderPass && renderPass->getConfig().colorFormat != newFormat) {
+            // Format changed — need to recreate the entire render pass
+            RenderPassConfig newConfig = renderPass->getConfig();
+            newConfig.colorFormat = newFormat;
+            renderPass = std::make_unique<VulkanRenderPass>(*device, newConfig);
+            renderPass->createFramebuffers(*swapchain);
+        } else if (renderPass) {
+            // Same format — just recreate framebuffers
             renderPass->recreateFramebuffers(*swapchain);
         }
         
-        // Recreate pipelines (they reference the render pass which may have a new format)
+        // Recreate pipelines (they reference the render pass)
         if (pipelineCache) {
             pipelineCache = std::make_unique<VulkanPipelineCache>(*device);
             colorPipeline = nullptr;
@@ -217,35 +230,27 @@ namespace Duel6 {
         }
         
         // Store viewport parameters - they'll be used in command recording
-        // For now, just log the viewport change
-        console->printLine(Format("Viewport set to {0}x{1} at ({2},{3})") << width << height << x << y);
-        
-        // TODO: Update viewport state for rendering
+        // TODO: Implement proper viewport state tracking
     }
 
     void VulkanRenderer::enableWireframe(bool enable) {
-        // TODO: Implement wireframe mode
-        console->printLine("Warning: VulkanRenderer::enableWireframe not yet implemented");
+        // TODO: Implement wireframe mode (requires pipeline variant)
     }
 
     void VulkanRenderer::enableDepthTest(bool enable) {
-        // TODO: Implement depth testing
-        console->printLine("Warning: VulkanRenderer::enableDepthTest not yet implemented");
+        // TODO: Implement depth testing (requires pipeline variant or dynamic state)
     }
 
     void VulkanRenderer::enableDepthWrite(bool enable) {
-        // TODO: Implement depth writing
-        console->printLine("Warning: VulkanRenderer::enableDepthWrite not yet implemented");
+        // TODO: Implement depth writing (requires pipeline variant or dynamic state)
     }
 
     void VulkanRenderer::setBlendFunc(BlendFunc func) {
-        // TODO: Implement blend function
-        console->printLine("Warning: VulkanRenderer::setBlendFunc not yet implemented");
+        // TODO: Implement blend function (requires pipeline variant or dynamic state)
     }
 
     void VulkanRenderer::setGlobalTime(Float32 time) {
         // TODO: Implement global time for shaders
-        console->printLine("Warning: VulkanRenderer::setGlobalTime not yet implemented");
     }
 
     void VulkanRenderer::clearBuffers() {
@@ -295,53 +300,6 @@ namespace Duel6 {
         batchRenderer->flush(commandBuffer, renderPass->getHandle(), extent.width, extent.height,
                             scissorEnabled, scissorX, scissorY, scissorWidth, scissorHeight);
         
-        // Debug: Draw red scissor rectangle outline when scissor is enabled (after main flush, without scissor)
-        if (scissorEnabled && scissorWidth > 0 && scissorHeight > 0) {
-            // Set orthographic projection for screen-space drawing
-            Matrix orthoProj = Matrix::orthographic(0, extent.width, 0, extent.height, -1, 1);
-            
-            // Draw scissor rectangle outline using thin quads (2 pixel width)
-            const float lineWidth = 2.0f;
-            Color red(255, 0, 0, 255);
-            
-            float x = static_cast<float>(scissorX);
-            float y = static_cast<float>(scissorY);
-            float w = static_cast<float>(scissorWidth);
-            float h = static_cast<float>(scissorHeight);
-            float z = float(0);
-            // Temporarily enable frame drawing
-            inFrame = true;
-            Matrix savedProj = projectionMatrix;
-            Matrix savedView = viewMatrix;
-            Matrix savedModel = modelMatrix;
-            projectionMatrix = orthoProj;
-            viewMatrix = Matrix::IDENTITY;
-            modelMatrix = Matrix::IDENTITY;
-            
-            // Top edge
-            quad(Vector(x, y + h - lineWidth, z), Vector(x, y + h, z), 
-                 Vector(x + w, y + h, z), Vector(x + w, y + h - lineWidth, z), red);
-            // Bottom edge
-            quad(Vector(x, y, z), Vector(x, y + lineWidth, z), 
-                 Vector(x + w, y + lineWidth, z), Vector(x + w, y, z), red);
-            // Left edge
-            quad(Vector(x, y, z), Vector(x, y + h, z), 
-                 Vector(x + lineWidth, y + h, z), Vector(x + lineWidth, y, z), red);
-            // Right edge
-            quad(Vector(x + w - lineWidth, y, z), Vector(x + w - lineWidth, y + h, z), 
-                 Vector(x + w, y + h, z), Vector(x + w, y, z), red);
-            
-            // Restore state
-            projectionMatrix = savedProj;
-            viewMatrix = savedView;
-            modelMatrix = savedModel;
-            inFrame = false;
-            
-            // Flush debug rectangle without scissor
-            batchRenderer->flush(commandBuffer, renderPass->getHandle(), extent.width, extent.height,
-                                false, 0, 0, 0, 0);
-        }
-        
         // End render pass
         renderPass->end(commandBuffer);
         
@@ -354,17 +312,12 @@ namespace Duel6 {
         std::vector<VkSemaphore> signalSemaphores = {swapchain->getRenderFinishedSemaphore()};
         VkFence fence = swapchain->getInFlightFence();
         
-        std::cerr << "[DEBUG] Render Submit: imageIndex=" << swapchain->getCurrentImageIndex()
-                  << ", waitSemaphore=" << waitSemaphores[0] 
-                  << ", signalSemaphore=" << signalSemaphores[0] 
-                  << ", fence=" << fence << std::endl;
-        
         commandBufferManager->submit(device->getGraphicsQueue(), waitSemaphores, waitStages, signalSemaphores, fence);
         
         batchRenderer->endFrame();
         
         swapchain->present(*device);
-        currentFrame = (currentFrame + 1) % 2; // Assuming MAX_FRAMES_IN_FLIGHT = 2
+        currentFrame = (currentFrame + 1) % 2; // MAX_FRAMES_IN_FLIGHT = 2
         commandBufferManager->nextFrame();
     }
 
@@ -411,13 +364,6 @@ namespace Duel6 {
     void VulkanRenderer::quad(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const Color &color) {
         if (!initialized || !batchRenderer || !inFrame) {
             return;
-        }
-
-        static int quadCount = 0;
-        if (quadCount < 5) {
-            std::cerr << "[DEBUG] quad() called: p1=(" << p1.x << "," << p1.y << "," << p1.z << ") color=(" 
-                      << (int)color.getRed() << "," << (int)color.getGreen() << "," << (int)color.getBlue() << ")" << std::endl;
-            quadCount++;
         }
 
         // Convert color to float values

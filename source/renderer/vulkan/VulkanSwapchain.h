@@ -42,8 +42,6 @@ namespace Duel6 {
         std::vector<VkImageView> swapchainImageViews;
         VkFormat swapchainImageFormat;
         VkExtent2D swapchainExtent;
-        VkRenderPass renderPass;
-        std::vector<VkFramebuffer> swapchainFramebuffers;
         
         // Synchronization objects
         std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -77,8 +75,6 @@ namespace Duel6 {
         VkSwapchainKHR getSwapchain() const { return swapchain; }
         VkFormat getImageFormat() const { return swapchainImageFormat; }
         VkExtent2D getExtent() const { return swapchainExtent; }
-        VkRenderPass getRenderPass() const { return renderPass; }
-        VkFramebuffer getCurrentFramebuffer() const { return swapchainFramebuffers[imageIndex]; }
         // Use currentFrame for acquisition semaphore (before we know imageIndex)
         VkSemaphore getImageAvailableSemaphore() const { return imageAvailableSemaphores[currentFrame]; }
         // Use imageIndex for render finished semaphore (after we know imageIndex)  
@@ -90,8 +86,6 @@ namespace Duel6 {
     private:
         void createSwapchain(const VulkanDevice& device, const VulkanSurface& surface);
         void createImageViews(const VulkanDevice& device);
-        void createRenderPass(const VulkanDevice& device);
-        void createFramebuffers(const VulkanDevice& device);
         void createSyncObjects(const VulkanDevice& device);
         void cleanupSwapchain(const VulkanDevice& device);
     };

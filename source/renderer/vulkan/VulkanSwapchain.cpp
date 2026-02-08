@@ -28,14 +28,12 @@
 #include "VulkanSwapchain.h"
 #include "../../Format.h"
 #include <algorithm>
-#include <iostream>
 
 namespace Duel6 {
     VulkanSwapchain::VulkanSwapchain(Console& console)
         : swapchain(VK_NULL_HANDLE)
         , swapchainImageFormat(VK_FORMAT_UNDEFINED)
         , swapchainExtent({0, 0})
-        , renderPass(VK_NULL_HANDLE)
         , currentFrame(0)
         , imageIndex(0)
         , console(&console) {
@@ -48,8 +46,6 @@ namespace Duel6 {
     void VulkanSwapchain::initialize(const VulkanDevice& device, const VulkanSurface& surface) {
         createSwapchain(device, surface);
         createImageViews(device);
-        createRenderPass(device);
-        createFramebuffers(device);
         createSyncObjects(device);
 
         console->printLine(Format("...Vulkan swapchain initialized: {0}x{1}, {2} images") 
@@ -94,8 +90,6 @@ namespace Duel6 {
         
         createSwapchain(device, surface);
         createImageViews(device);
-        createRenderPass(device);
-        createFramebuffers(device);
         
         imagesInFlight.resize(swapchainImages.size(), VK_NULL_HANDLE);
 
@@ -185,73 +179,6 @@ namespace Duel6 {
         }
     }
 
-    void VulkanSwapchain::createRenderPass(const VulkanDevice& device) {
-        VkAttachmentDescription colorAttachment{};
-        colorAttachment.format = swapchainImageFormat;
-        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkAttachmentReference colorAttachmentRef{};
-        colorAttachmentRef.attachment = 0;
-        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkSubpassDescription subpass{};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &colorAttachmentRef;
-
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        VkRenderPassCreateInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = 1;
-        renderPassInfo.pAttachments = &colorAttachment;
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpass;
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies = &dependency;
-
-        VkResult result = vkCreateRenderPass(device.getLogicalDevice(), &renderPassInfo, nullptr, &renderPass);
-        if (result != VK_SUCCESS) {
-            D6_THROW(VulkanException, Format("Failed to create render pass, error: {0}") << result);
-        }
-    }
-
-    void VulkanSwapchain::createFramebuffers(const VulkanDevice& device) {
-        swapchainFramebuffers.resize(swapchainImageViews.size());
-
-        for (size_t i = 0; i < swapchainImageViews.size(); i++) {
-            VkImageView attachments[] = {
-                swapchainImageViews[i]
-            };
-
-            VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = renderPass;
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = attachments;
-            framebufferInfo.width = swapchainExtent.width;
-            framebufferInfo.height = swapchainExtent.height;
-            framebufferInfo.layers = 1;
-
-            VkResult result = vkCreateFramebuffer(device.getLogicalDevice(), &framebufferInfo, nullptr, &swapchainFramebuffers[i]);
-            if (result != VK_SUCCESS) {
-                D6_THROW(VulkanException, Format("Failed to create framebuffer {0}, error: {1}") << i << result);
-            }
-        }
-    }
-
     void VulkanSwapchain::createSyncObjects(const VulkanDevice& device) {
         // Image available semaphores: per-frame in flight (we don't know imageIndex during acquisition)
         imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -300,9 +227,6 @@ namespace Duel6 {
         // Use a reasonable timeout (1 second) instead of infinite wait
         const uint64_t timeout = 1000000000; // 1 second in nanoseconds
         
-        std::cerr << "[DEBUG] Acquiring image with currentFrame=" << currentFrame 
-                  << ", semaphore=" << imageAvailableSemaphores[currentFrame] << std::endl;
-        
         VkResult result = vkAcquireNextImageKHR(device.getLogicalDevice(), swapchain, timeout, 
                                                imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
@@ -314,9 +238,6 @@ namespace Duel6 {
         } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
             D6_THROW(VulkanException, Format("Failed to acquire swap chain image, error: {0}") << result);
         }
-
-        std::cerr << "[DEBUG] Acquired imageIndex=" << imageIndex 
-                  << ", currentFrame=" << currentFrame << std::endl;
 
         if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
             vkWaitForFences(device.getLogicalDevice(), 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
@@ -330,10 +251,6 @@ namespace Duel6 {
 
     void VulkanSwapchain::present(const VulkanDevice& device) {
         VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[imageIndex]};
-
-        std::cerr << "[DEBUG] Present: imageIndex=" << imageIndex 
-                  << ", currentFrame=" << currentFrame 
-                  << ", waiting on semaphore=" << renderFinishedSemaphores[imageIndex] << std::endl;
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -352,18 +269,6 @@ namespace Duel6 {
     }
 
     void VulkanSwapchain::cleanupSwapchain(const VulkanDevice& device) {
-        for (auto framebuffer : swapchainFramebuffers) {
-            if (framebuffer != VK_NULL_HANDLE) {
-                vkDestroyFramebuffer(device.getLogicalDevice(), framebuffer, nullptr);
-            }
-        }
-        swapchainFramebuffers.clear();
-
-        if (renderPass != VK_NULL_HANDLE) {
-            vkDestroyRenderPass(device.getLogicalDevice(), renderPass, nullptr);
-            renderPass = VK_NULL_HANDLE;
-        }
-
         for (auto imageView : swapchainImageViews) {
             if (imageView != VK_NULL_HANDLE) {
                 vkDestroyImageView(device.getLogicalDevice(), imageView, nullptr);
