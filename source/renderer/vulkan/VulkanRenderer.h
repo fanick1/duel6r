@@ -161,8 +161,31 @@ namespace Duel6 {
 
     public:
         // Called by VulkanRendererBuffer to render pre-built material vertices
-        void renderMaterialVertices(const void* vertices, uint32_t vertexCount, 
+        void renderMaterialVertices(const void* vertices, uint32_t vertexCount,
                                     size_t vertexDataSize, const Material& material);
+
+        // Accessors for VulkanRendererTarget offscreen rendering
+        VulkanDevice& getDevice() { return *device; }
+        const VulkanDevice& getDevice() const { return *device; }
+        VulkanMemoryManager& getMemoryManager() { return *memoryManager; }
+        VulkanBatchRenderer& getBatchRenderer() { return *batchRenderer; }
+        VulkanDescriptorManager& getDescriptorManager() { return *descriptorManager; }
+        VulkanSamplerManager& getSamplerManager() { return *samplerManager; }
+        VulkanResourceManager& getResourceManager() { return *resourceManager; }
+        VulkanRenderPass& getMainRenderPass() { return *renderPass; }
+        VulkanSwapchain& getSwapchain() { return *swapchain; }
+        VulkanCommandBufferManager& getCommandBufferManager() { return *commandBufferManager; }
+        VulkanPipelineCache& getPipelineCache() { return *pipelineCache; }
+        VkDescriptorSetLayout getTextureDescriptorSetLayout() const { return textureDescriptorSetLayout; }
+        bool isInFrame() const { return inFrame; }
+        void setInFrame(bool value) { inFrame = value; }
+        uint32_t getCurrentFrameIndex() const { return currentFrame; }
+        bool isInitialized() const { return initialized; }
+
+        // Flush and manage render pass for offscreen rendering
+        void stampDrawState(DrawCommand& cmd) const;
+        void flushAndEndRenderPass(VkCommandBuffer cmdBuf);
+        void beginMainRenderPass(VkCommandBuffer cmdBuf);
     };
 }
 

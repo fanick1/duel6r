@@ -28,28 +28,55 @@
 #ifndef DUEL6_RENDERER_VULKAN_RENDERER_TARGET_H
 #define DUEL6_RENDERER_VULKAN_RENDERER_TARGET_H
 
+#include <vulkan/vulkan.h>
 #include "../RendererTarget.h"
 
 namespace Duel6 {
 
     class VulkanRenderer;
 
-    /**
-     * Minimal Vulkan renderer target implementation
-     * Currently just passes through to direct rendering
-     */
     class VulkanRendererTarget : public RendererTarget {
     private:
         VulkanRenderer& renderer;
+        uint32_t width;
+        uint32_t height;
+
+        // Offscreen color image
+        VkImage colorImage;
+        VkDeviceMemory colorMemory;
+        VkImageView colorView;
+
+        // Offscreen depth+stencil image
+        VkImage depthImage;
+        VkDeviceMemory depthMemory;
+        VkImageView depthView;
+
+        // Offscreen render pass and framebuffer
+        VkRenderPass offscreenRenderPass;
+        VkFramebuffer offscreenFramebuffer;
+
+        // Sampler and descriptor set for sampling the color image in apply()
+        VkSampler sampler;
+        VkDescriptorSet colorDescriptorSet;
+
+        // Texture ID registered with resource manager for apply() quad rendering
+        TextureId offscreenTextureId;
+
+        bool resourcesCreated;
 
     public:
-        explicit VulkanRendererTarget(VulkanRenderer& renderer, ScreenParameters screenParameters);
-        ~VulkanRendererTarget() = default;
+        VulkanRendererTarget(VulkanRenderer& renderer, ScreenParameters screenParameters);
+        ~VulkanRendererTarget();
 
         void record(RenderCallback renderCallback) override;
         void apply(const Color& modulateColor) override;
         void resize(Int32 width, Int32 height) override;
         void rerender() override;
+
+    private:
+        void createResources();
+        void destroyResources();
+        void createOffscreenRenderPass();
     };
 
 } // namespace Duel6

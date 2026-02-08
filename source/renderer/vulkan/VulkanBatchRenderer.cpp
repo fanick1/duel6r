@@ -81,9 +81,7 @@ namespace Duel6 {
     }
 
     void VulkanBatchRenderer::flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass, 
-                                     uint32_t viewportWidth, uint32_t viewportHeight,
-                                     bool scissorEnabled, int32_t scissorX, int32_t scissorY,
-                                     int32_t scissorWidth, int32_t scissorHeight) {
+                                     uint32_t viewportWidth, uint32_t viewportHeight) {
         if (orderedBatches.empty()) {
             return;
         }
@@ -94,6 +92,9 @@ namespace Duel6 {
             return;
         }
         
+        flushViewportWidth = viewportWidth;
+        flushViewportHeight = viewportHeight;
+
         // Count total commands
         size_t totalCommands = 0;
         for (const auto& batch : orderedBatches) {
@@ -113,22 +114,10 @@ namespace Duel6 {
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
         
-        // Set dynamic scissor
+        // Set default scissor to full viewport (per-draw scissor is set in recordDrawCommands)
         VkRect2D scissor{};
-        if (scissorEnabled && scissorWidth > 0 && scissorHeight > 0) {
-            // Clamp scissor to viewport bounds
-            int32_t clampedX = std::max(0, scissorX);
-            int32_t clampedY = std::max(0, scissorY);
-            int32_t clampedWidth = std::min(scissorWidth, static_cast<int32_t>(viewportWidth) - clampedX);
-            int32_t clampedHeight = std::min(scissorHeight, static_cast<int32_t>(viewportHeight) - clampedY);
-            
-            scissor.offset = {clampedX, clampedY};
-            scissor.extent = {static_cast<uint32_t>(std::max(0, clampedWidth)), 
-                              static_cast<uint32_t>(std::max(0, clampedHeight))};
-        } else {
-            scissor.offset = {0, 0};
-            scissor.extent = {viewportWidth, viewportHeight};
-        }
+        scissor.offset = {0, 0};
+        scissor.extent = {viewportWidth, viewportHeight};
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
         
         stats.batches = 0;
@@ -251,7 +240,8 @@ namespace Duel6 {
                 clearAtt.clearValue.depthStencil = {1.0f, 0};
                 VkClearRect clearRect{};
                 clearRect.rect.offset = {0, 0};
-                clearRect.rect.extent = {4096, 4096}; // Large enough for any framebuffer
+                clearRect.rect.extent.width = flushViewportWidth;
+                clearRect.rect.extent.height = flushViewportHeight;
                 clearRect.baseArrayLayer = 0;
                 clearRect.layerCount = 1;
                 vkCmdClearAttachments(commandBuffer, 1, &clearAtt, 1, &clearRect);
@@ -277,6 +267,26 @@ namespace Duel6 {
                         vkCmdSetStencilReference(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0);
                         break;
                 }
+            }
+
+            // Set per-draw scissor
+            {
+                VkRect2D drawScissor{};
+                if (cmd.scissorEnabled && cmd.scissorWidth > 0 && cmd.scissorHeight > 0) {
+                    int32_t cx = std::max(0, cmd.scissorX);
+                    int32_t cy = std::max(0, cmd.scissorY);
+                    int32_t cw = std::min(cmd.scissorWidth, static_cast<int32_t>(flushViewportWidth) - cx);
+                    int32_t ch = std::min(cmd.scissorHeight, static_cast<int32_t>(flushViewportHeight) - cy);
+                    drawScissor.offset.x = cx;
+                    drawScissor.offset.y = cy;
+                    drawScissor.extent.width = static_cast<uint32_t>(std::max(0, cw));
+                    drawScissor.extent.height = static_cast<uint32_t>(std::max(0, ch));
+                } else {
+                    drawScissor.offset = {0, 0};
+                    drawScissor.extent.width = flushViewportWidth;
+                    drawScissor.extent.height = flushViewportHeight;
+                }
+                vkCmdSetScissor(commandBuffer, 0, 1, &drawScissor);
             }
 
             if (cmd.vertices && cmd.vertexDataSize > 0) {

@@ -57,7 +57,11 @@ namespace Duel6 {
         
         // Stencil mode: 0=none, 1=write, 2=test, 3=erase, 4=clear_stencil (special)
         uint32_t stencilMode;
-        
+
+        // Per-draw scissor state
+        bool scissorEnabled;
+        int32_t scissorX, scissorY, scissorWidth, scissorHeight;
+
         DrawCommand()
             : type(TRIANGLES)
             , vertexCount(0)
@@ -75,7 +79,9 @@ namespace Duel6 {
             , textureDescriptorSet(VK_NULL_HANDLE)
             , modulateColor{1.0f, 1.0f, 1.0f, 1.0f}
             , alphaTest(0)
-            , stencilMode(0) {}
+            , stencilMode(0)
+            , scissorEnabled(false)
+            , scissorX(0), scissorY(0), scissorWidth(0), scissorHeight(0) {}
     };
 
     // Render batch for grouping similar draw calls
@@ -113,6 +119,8 @@ namespace Duel6 {
         
         // Current frame data
         uint32_t currentFrame;
+        uint32_t flushViewportWidth;
+        uint32_t flushViewportHeight;
         
         VulkanPipeline* lastPipeline;
         
@@ -141,10 +149,8 @@ namespace Duel6 {
         
         // Command submission
         void addDrawCommand(VulkanPipeline* pipeline, const DrawCommand& command);
-        void flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass, 
-                   uint32_t viewportWidth, uint32_t viewportHeight,
-                   bool scissorEnabled, int32_t scissorX, int32_t scissorY, 
-                   int32_t scissorWidth, int32_t scissorHeight);
+        void flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass,
+                   uint32_t viewportWidth, uint32_t viewportHeight);
         
         // Buffer management
         void reserveVertexData(size_t size);

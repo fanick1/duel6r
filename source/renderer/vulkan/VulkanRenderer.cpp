@@ -452,9 +452,8 @@ namespace Duel6 {
         uint32_t vpWidth = viewportDirty ? static_cast<uint32_t>(viewportWidth) : extent.width;
         uint32_t vpHeight = viewportDirty ? static_cast<uint32_t>(viewportHeight) : extent.height;
         
-        // Flush all pending draw commands with scissor state
-        batchRenderer->flush(commandBuffer, renderPass->getHandle(), extent.width, extent.height,
-                            scissorEnabled, scissorX, scissorY, scissorWidth, scissorHeight);
+        // Flush all pending draw commands
+        batchRenderer->flush(commandBuffer, renderPass->getHandle(), vpWidth, vpHeight);
         
         // End render pass
         renderPass->end(commandBuffer);
@@ -492,6 +491,15 @@ namespace Duel6 {
         }
     }
 
+    void VulkanRenderer::stampDrawState(DrawCommand& cmd) const {
+        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+        cmd.scissorEnabled = scissorEnabled;
+        cmd.scissorX = scissorX;
+        cmd.scissorY = scissorY;
+        cmd.scissorWidth = scissorWidth;
+        cmd.scissorHeight = scissorHeight;
+    }
+
     // Geometry rendering - implementations
     void VulkanRenderer::triangle(const Vector &p1, const Vector &p2, const Vector &p3, const Color &color) {
         if (!initialized || !batchRenderer || !inFrame) {
@@ -515,7 +523,7 @@ namespace Duel6 {
         cmd.viewMatrix = getViewMatrix();
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
-        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+        stampDrawState(cmd);
 
         // Get pipeline based on current render state
         VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -568,7 +576,7 @@ namespace Duel6 {
         cmd.modulateColor[2] = mc.getBlue() / 255.0f;
         cmd.modulateColor[3] = mc.getAlpha() / 255.0f;
         cmd.alphaTest = material.isMasked() ? 1u : 0u;
-        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+        stampDrawState(cmd);
 
         VulkanPipeline* pipeline = getTextureStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         if (pipeline) {
@@ -611,7 +619,7 @@ namespace Duel6 {
         cmd.viewMatrix = getViewMatrix();
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
-        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+        stampDrawState(cmd);
 
         // Get pipeline based on current render state
         VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -669,7 +677,7 @@ namespace Duel6 {
         cmd.modulateColor[2] = mc.getBlue() / 255.0f;
         cmd.modulateColor[3] = mc.getAlpha() / 255.0f;
         cmd.alphaTest = material.isMasked() ? 1u : 0u;
-        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+        stampDrawState(cmd);
 
         VulkanPipeline* pipeline = getTextureStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         if (pipeline) {
@@ -700,7 +708,7 @@ namespace Duel6 {
         cmd.viewMatrix = getViewMatrix();
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
-        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+        stampDrawState(cmd);
 
         VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
         if (pipeline) {
@@ -732,7 +740,7 @@ namespace Duel6 {
         cmd.viewMatrix = getViewMatrix();
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
-        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+        stampDrawState(cmd);
 
         VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
         if (pipeline) {
@@ -766,7 +774,7 @@ namespace Duel6 {
         cmd.viewMatrix = getViewMatrix();
         cmd.modelMatrix = getModelMatrix();
         cmd.color = color;
-        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+        stampDrawState(cmd);
 
         VulkanPipeline* pipeline = getStatePipeline(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
         if (pipeline) {
@@ -804,7 +812,7 @@ namespace Duel6 {
                     cmd.viewMatrix = getViewMatrix();
                     cmd.modelMatrix = getModelMatrix();
                     cmd.color = color;
-                    cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+                    stampDrawState(cmd);
                     batchRenderer->addDrawCommand(pipeline, cmd);
                 }
                 segmentVertices.clear();
@@ -826,7 +834,7 @@ namespace Duel6 {
             cmd.viewMatrix = getViewMatrix();
             cmd.modelMatrix = getModelMatrix();
             cmd.color = color;
-            cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+            stampDrawState(cmd);
             batchRenderer->addDrawCommand(pipeline, cmd);
         }
     }
@@ -1004,7 +1012,7 @@ namespace Duel6 {
         cmd.modulateColor[2] = mc.getBlue() / 255.0f;
         cmd.modulateColor[3] = mc.getAlpha() / 255.0f;
         cmd.alphaTest = material.isMasked() ? 1u : 0u;
-        cmd.stencilMode = stencilModeToPipelineMode(currentStencilMode);
+        stampDrawState(cmd);
 
         VulkanPipeline* pipeline = getTextureStatePipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         if (pipeline) {
@@ -1013,15 +1021,62 @@ namespace Duel6 {
     }
 
     std::unique_ptr<RendererTarget> VulkanRenderer::makeTarget(ScreenParameters screenParameters) {
-        // Return a stub target that does nothing but won't crash
-        class VulkanRendererTarget : public RendererTarget {
-        public:
-            void record(RenderCallback renderCallback) override { callback = renderCallback; }
-            void apply(const Color& modulateColor) override {}
-            void resize(Int32 width, Int32 height) override {}
-            void rerender() override { if (callback) callback(); }
-        };
-        return std::make_unique<VulkanRendererTarget>();
+        return std::make_unique<VulkanRendererTarget>(*this, screenParameters);
+    }
+
+    void VulkanRenderer::flushAndEndRenderPass(VkCommandBuffer cmdBuf) {
+        if (!inFrame || !batchRenderer || !renderPass) {
+            return;
+        }
+
+        VkExtent2D extent = swapchain->getExtent();
+        uint32_t vpWidth = viewportDirty ? static_cast<uint32_t>(viewportWidth) : extent.width;
+        uint32_t vpHeight = viewportDirty ? static_cast<uint32_t>(viewportHeight) : extent.height;
+
+        batchRenderer->flush(cmdBuf, renderPass->getHandle(), vpWidth, vpHeight);
+        renderPass->end(cmdBuf);
+    }
+
+    void VulkanRenderer::beginMainRenderPass(VkCommandBuffer cmdBuf) {
+        if (!renderPass || !swapchain) {
+            return;
+        }
+
+        // Restart the main render pass without clearing (use LOAD instead of CLEAR)
+        uint32_t framebufferIndex = swapchain->getCurrentImageIndex();
+
+        VkRenderPassBeginInfo rpInfo{};
+        rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rpInfo.renderPass = renderPass->getHandle();
+        rpInfo.framebuffer = renderPass->getFramebuffer(framebufferIndex);
+        rpInfo.renderArea.offset = {0, 0};
+        rpInfo.renderArea.extent = {renderPass->getWidth(), renderPass->getHeight()};
+
+        // We don't want to clear since content was already rendered before the interruption
+        // But the render pass was created with LOAD_OP_CLEAR. The clear values are ignored
+        // when loadOp is CLEAR and the render pass is restarted - the content from before
+        // vkCmdEndRenderPass is already in the attachments. However, with initialLayout=UNDEFINED
+        // and loadOp=CLEAR, restarting will clear again.
+        //
+        // To avoid this, we pass clear values but accept the clear. The content that was
+        // rendered before the offscreen pass is already submitted. The main render pass
+        // restart will clear, but that's acceptable because in the current game flow,
+        // rerender() is called from prerender() (before clearBuffers), and apply() just
+        // draws a quad during the active frame.
+        std::vector<VkClearValue> clearValues;
+        VkClearValue colorClear{};
+        colorClear.color = renderPass->getConfig().clearColorValue;
+        clearValues.push_back(colorClear);
+        if (renderPass->getConfig().hasDepthBuffer) {
+            VkClearValue depthClear{};
+            depthClear.depthStencil = {renderPass->getConfig().clearDepthValue, renderPass->getConfig().stencilClearValue};
+            clearValues.push_back(depthClear);
+        }
+
+        rpInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        rpInfo.pClearValues = clearValues.data();
+
+        vkCmdBeginRenderPass(cmdBuf, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
     }
 
     void VulkanRenderer::createPipelines() {

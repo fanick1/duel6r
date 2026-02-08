@@ -13,7 +13,7 @@
 *       names of its contributors may be used to endorse or promote products
 *       derived from this software without specific prior written permission.
 *
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT SHALL COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
 * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
@@ -27,46 +27,454 @@
 
 #include "VulkanRendererTarget.h"
 #include "VulkanRenderer.h"
+#include "../../VideoException.h"
 
 namespace Duel6 {
 
     VulkanRendererTarget::VulkanRendererTarget(VulkanRenderer& renderer, ScreenParameters screenParameters)
-        : renderer(renderer) {
-        // For now, this is a minimal implementation that just passes through
-        // In the future, this could implement off-screen rendering to textures
+        : renderer(renderer)
+        , width(screenParameters.getClientWidth())
+        , height(screenParameters.getClientHeight())
+        , colorImage(VK_NULL_HANDLE)
+        , colorMemory(VK_NULL_HANDLE)
+        , colorView(VK_NULL_HANDLE)
+        , depthImage(VK_NULL_HANDLE)
+        , depthMemory(VK_NULL_HANDLE)
+        , depthView(VK_NULL_HANDLE)
+        , offscreenRenderPass(VK_NULL_HANDLE)
+        , offscreenFramebuffer(VK_NULL_HANDLE)
+        , sampler(VK_NULL_HANDLE)
+        , colorDescriptorSet(VK_NULL_HANDLE)
+        , offscreenTextureId(INVALID_TEXTURE_ID)
+        , resourcesCreated(false) {
+        createResources();
+    }
+
+    VulkanRendererTarget::~VulkanRendererTarget() {
+        if (renderer.isInitialized()) {
+            renderer.getDevice().waitIdle();
+        }
+        destroyResources();
+    }
+
+    void VulkanRendererTarget::createOffscreenRenderPass() {
+        const auto& mainConfig = renderer.getMainRenderPass().getConfig();
+        VkDevice dev = renderer.getDevice().getLogicalDevice();
+
+        // Color attachment - same format as main, but finalLayout is SHADER_READ_ONLY
+        VkAttachmentDescription colorAttachment{};
+        colorAttachment.format = mainConfig.colorFormat;
+        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        // Depth+stencil attachment - same format as main
+        VkAttachmentDescription depthAttachment{};
+        depthAttachment.format = mainConfig.depthFormat;
+        depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+
+        VkAttachmentReference colorRef{};
+        colorRef.attachment = 0;
+        colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkAttachmentReference depthRef{};
+        depthRef.attachment = 1;
+        depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorRef;
+        subpass.pDepthStencilAttachment = &depthRef;
+
+        // Dependencies for layout transitions
+        std::array<VkSubpassDependency, 2> dependencies{};
+
+        dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependencies[0].dstSubpass = 0;
+        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        dependencies[1].srcSubpass = 0;
+        dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        VkRenderPassCreateInfo rpInfo{};
+        rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+        rpInfo.pAttachments = attachments.data();
+        rpInfo.subpassCount = 1;
+        rpInfo.pSubpasses = &subpass;
+        rpInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+        rpInfo.pDependencies = dependencies.data();
+
+        VkResult result = vkCreateRenderPass(dev, &rpInfo, nullptr, &offscreenRenderPass);
+        if (result != VK_SUCCESS) {
+            D6_THROW(VideoException, "Failed to create offscreen render pass");
+        }
+    }
+
+    void VulkanRendererTarget::createResources() {
+        if (width == 0 || height == 0 || !renderer.isInitialized()) {
+            return;
+        }
+
+        VkDevice dev = renderer.getDevice().getLogicalDevice();
+        const auto& mainConfig = renderer.getMainRenderPass().getConfig();
+
+        // Create offscreen render pass (compatible with main)
+        createOffscreenRenderPass();
+
+        // Create color image
+        {
+            VkImageCreateInfo imageInfo{};
+            imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.format = mainConfig.colorFormat;
+            imageInfo.extent = {width, height, 1};
+            imageInfo.mipLevels = 1;
+            imageInfo.arrayLayers = 1;
+            imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+            imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+            imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            if (vkCreateImage(dev, &imageInfo, nullptr, &colorImage) != VK_SUCCESS) {
+                D6_THROW(VideoException, "Failed to create offscreen color image");
+            }
+
+            VkMemoryRequirements memReqs;
+            vkGetImageMemoryRequirements(dev, colorImage, &memReqs);
+
+            VkMemoryAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            allocInfo.allocationSize = memReqs.size;
+            allocInfo.memoryTypeIndex = renderer.getDevice().findMemoryType(
+                memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+            if (vkAllocateMemory(dev, &allocInfo, nullptr, &colorMemory) != VK_SUCCESS) {
+                D6_THROW(VideoException, "Failed to allocate offscreen color memory");
+            }
+            vkBindImageMemory(dev, colorImage, colorMemory, 0);
+
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image = colorImage;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format = mainConfig.colorFormat;
+            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            viewInfo.subresourceRange.baseMipLevel = 0;
+            viewInfo.subresourceRange.levelCount = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount = 1;
+
+            if (vkCreateImageView(dev, &viewInfo, nullptr, &colorView) != VK_SUCCESS) {
+                D6_THROW(VideoException, "Failed to create offscreen color image view");
+            }
+        }
+
+        // Create depth+stencil image
+        {
+            VkImageCreateInfo imageInfo{};
+            imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.format = mainConfig.depthFormat;
+            imageInfo.extent = {width, height, 1};
+            imageInfo.mipLevels = 1;
+            imageInfo.arrayLayers = 1;
+            imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+            imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            if (vkCreateImage(dev, &imageInfo, nullptr, &depthImage) != VK_SUCCESS) {
+                D6_THROW(VideoException, "Failed to create offscreen depth image");
+            }
+
+            VkMemoryRequirements memReqs;
+            vkGetImageMemoryRequirements(dev, depthImage, &memReqs);
+
+            VkMemoryAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            allocInfo.allocationSize = memReqs.size;
+            allocInfo.memoryTypeIndex = renderer.getDevice().findMemoryType(
+                memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+            if (vkAllocateMemory(dev, &allocInfo, nullptr, &depthMemory) != VK_SUCCESS) {
+                D6_THROW(VideoException, "Failed to allocate offscreen depth memory");
+            }
+            vkBindImageMemory(dev, depthImage, depthMemory, 0);
+
+            VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            if (mainConfig.depthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+                mainConfig.depthFormat == VK_FORMAT_D24_UNORM_S8_UINT ||
+                mainConfig.depthFormat == VK_FORMAT_D16_UNORM_S8_UINT) {
+                aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            }
+
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image = depthImage;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format = mainConfig.depthFormat;
+            viewInfo.subresourceRange.aspectMask = aspectMask;
+            viewInfo.subresourceRange.baseMipLevel = 0;
+            viewInfo.subresourceRange.levelCount = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount = 1;
+
+            if (vkCreateImageView(dev, &viewInfo, nullptr, &depthView) != VK_SUCCESS) {
+                D6_THROW(VideoException, "Failed to create offscreen depth image view");
+            }
+        }
+
+        // Create framebuffer
+        {
+            std::array<VkImageView, 2> attachments = {colorView, depthView};
+
+            VkFramebufferCreateInfo fbInfo{};
+            fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            fbInfo.renderPass = offscreenRenderPass;
+            fbInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+            fbInfo.pAttachments = attachments.data();
+            fbInfo.width = width;
+            fbInfo.height = height;
+            fbInfo.layers = 1;
+
+            if (vkCreateFramebuffer(dev, &fbInfo, nullptr, &offscreenFramebuffer) != VK_SUCCESS) {
+                D6_THROW(VideoException, "Failed to create offscreen framebuffer");
+            }
+        }
+
+        // Create sampler for sampling the color attachment
+        sampler = renderer.getSamplerManager().getLinearSampler(renderer.getDevice(), true);
+
+        // Allocate descriptor set for the offscreen color image
+        VkDescriptorSetLayout texLayout = renderer.getTextureDescriptorSetLayout();
+        colorDescriptorSet = renderer.getDescriptorManager().allocateDescriptorSet(
+            renderer.getDevice(), texLayout);
+
+        // Update descriptor set to point to offscreen color image
+        renderer.getDescriptorManager().updateTextureDescriptorSet(
+            renderer.getDevice(), colorDescriptorSet, 0, colorView, sampler);
+
+        resourcesCreated = true;
+    }
+
+    void VulkanRendererTarget::destroyResources() {
+        if (!resourcesCreated) {
+            return;
+        }
+
+        VkDevice dev = renderer.getDevice().getLogicalDevice();
+
+        if (offscreenFramebuffer != VK_NULL_HANDLE) {
+            vkDestroyFramebuffer(dev, offscreenFramebuffer, nullptr);
+            offscreenFramebuffer = VK_NULL_HANDLE;
+        }
+
+        if (depthView != VK_NULL_HANDLE) {
+            vkDestroyImageView(dev, depthView, nullptr);
+            depthView = VK_NULL_HANDLE;
+        }
+        if (depthImage != VK_NULL_HANDLE) {
+            vkDestroyImage(dev, depthImage, nullptr);
+            depthImage = VK_NULL_HANDLE;
+        }
+        if (depthMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(dev, depthMemory, nullptr);
+            depthMemory = VK_NULL_HANDLE;
+        }
+
+        if (colorView != VK_NULL_HANDLE) {
+            vkDestroyImageView(dev, colorView, nullptr);
+            colorView = VK_NULL_HANDLE;
+        }
+        if (colorImage != VK_NULL_HANDLE) {
+            vkDestroyImage(dev, colorImage, nullptr);
+            colorImage = VK_NULL_HANDLE;
+        }
+        if (colorMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(dev, colorMemory, nullptr);
+            colorMemory = VK_NULL_HANDLE;
+        }
+
+        if (offscreenRenderPass != VK_NULL_HANDLE) {
+            vkDestroyRenderPass(dev, offscreenRenderPass, nullptr);
+            offscreenRenderPass = VK_NULL_HANDLE;
+        }
+
+        // sampler is managed by SamplerManager, don't destroy it here
+        // colorDescriptorSet is managed by DescriptorManager pool, don't free individually
+
+        resourcesCreated = false;
     }
 
     void VulkanRendererTarget::record(RenderCallback renderCallback) {
-        // Store the callback for later execution
         callback = renderCallback;
-        
-        // For now, execute immediately
-        if (callback) {
-            callback();
+        rerender();
+    }
+
+    void VulkanRendererTarget::rerender() {
+        if (!callback || !resourcesCreated || !renderer.isInitialized()) {
+            return;
+        }
+
+        bool wasInFrame = renderer.isInFrame();
+        VkCommandBuffer cmdBuf;
+
+        if (wasInFrame) {
+            // We're inside the main frame. Need to:
+            // 1. Flush pending draws and end the main render pass
+            // 2. Do offscreen rendering
+            // 3. Restart the main render pass
+            cmdBuf = renderer.getCommandBufferManager().getCurrentCommandBuffer();
+            renderer.flushAndEndRenderPass(cmdBuf);
+        } else {
+            // Not in a frame - use a single-time command buffer
+            cmdBuf = renderer.getDevice().beginSingleTimeCommands();
+        }
+
+        // Begin offscreen render pass
+        VkRenderPassBeginInfo rpBegin{};
+        rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rpBegin.renderPass = offscreenRenderPass;
+        rpBegin.framebuffer = offscreenFramebuffer;
+        rpBegin.renderArea.offset = {0, 0};
+        rpBegin.renderArea.extent = {width, height};
+
+        std::array<VkClearValue, 2> clearValues{};
+        clearValues[0].color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+        clearValues[1].depthStencil = {1.0f, 0};
+
+        rpBegin.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        rpBegin.pClearValues = clearValues.data();
+
+        vkCmdBeginRenderPass(cmdBuf, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+        // Set inFrame so renderer draw calls work
+        renderer.setInFrame(true);
+
+        // Begin batch frame if we weren't in a frame
+        if (!wasInFrame) {
+            renderer.getBatchRenderer().beginFrame(renderer.getCurrentFrameIndex());
+        }
+
+        // Execute the callback - this adds draw commands to the batch renderer
+        callback();
+
+        // Flush the batched commands into the offscreen render pass
+        renderer.getBatchRenderer().flush(cmdBuf, offscreenRenderPass, width, height);
+
+        vkCmdEndRenderPass(cmdBuf);
+
+        if (wasInFrame) {
+            // Restart the main render pass
+            renderer.beginMainRenderPass(cmdBuf);
+        } else {
+            renderer.getBatchRenderer().endFrame();
+            renderer.setInFrame(false);
+            renderer.getDevice().endSingleTimeCommands(cmdBuf);
         }
     }
 
     void VulkanRendererTarget::apply(const Color& modulateColor) {
-        // For minimal implementation, do nothing to see the clear color
-        // In a full implementation, this would blit the off-screen target to the main framebuffer
-        // with color modulation
-        
-        // TODO: Uncomment to enable background rendering
-        // if (callback) {
-        //     callback();
-        // }
-    }
-
-    void VulkanRendererTarget::resize(Int32 width, Int32 height) {
-        // For minimal implementation, nothing to resize
-        // In full implementation, would resize off-screen render targets
-    }
-
-    void VulkanRendererTarget::rerender() {
-        // Re-execute the recorded callback
-        if (callback) {
-            callback();
+        if (!resourcesCreated || !renderer.isInFrame()) {
+            return;
         }
+
+        // Draw a fullscreen textured quad using the offscreen color image
+        // Use the existing texture pipeline by submitting a textured quad draw command
+        Vector p1(0.0f, 0.0f, 0.0f);
+        Vector p2(static_cast<float>(width), 0.0f, 0.0f);
+        Vector p3(static_cast<float>(width), static_cast<float>(height), 0.0f);
+        Vector p4(0.0f, static_cast<float>(height), 0.0f);
+
+        Vector t1(0.0f, 0.0f, 0.0f);
+        Vector t2(1.0f, 0.0f, 0.0f);
+        Vector t3(1.0f, 1.0f, 0.0f);
+        Vector t4(0.0f, 1.0f, 0.0f);
+
+        VertexFormats::MaterialVertex vertices[6] = {
+            {p1, t1, 0},
+            {p2, t2, 0},
+            {p3, t3, 0},
+            {p1, t1, 0},
+            {p3, t3, 0},
+            {p4, t4, 0}
+        };
+
+        DrawCommand cmd;
+        cmd.type = DrawCommand::TRIANGLES;
+        cmd.vertexCount = 6;
+        cmd.vertices = vertices;
+        cmd.vertexDataSize = sizeof(vertices);
+        cmd.projectionMatrix = renderer.getProjectionMatrix();
+        cmd.viewMatrix = renderer.getViewMatrix();
+        cmd.modelMatrix = renderer.getModelMatrix();
+        cmd.textureDescriptorSet = colorDescriptorSet;
+        cmd.modulateColor[0] = modulateColor.getRed() / 255.0f;
+        cmd.modulateColor[1] = modulateColor.getGreen() / 255.0f;
+        cmd.modulateColor[2] = modulateColor.getBlue() / 255.0f;
+        cmd.modulateColor[3] = modulateColor.getAlpha() / 255.0f;
+        cmd.alphaTest = 0;
+        cmd.stencilMode = 0;
+
+        VulkanPipeline* pipeline = nullptr;
+        VkRenderPass rp = renderer.getMainRenderPass().getHandle();
+        VkDescriptorSetLayout texLayout = renderer.getTextureDescriptorSetLayout();
+
+        if (texLayout != VK_NULL_HANDLE) {
+            // Get or create a texture pipeline for this state
+            // Use a fixed hash for the apply-quad pipeline (no depth test, alpha blend)
+            size_t hash = std::hash<std::string>{}("offscreen_apply_pipeline");
+            pipeline = renderer.getPipelineCache().getOrCreatePipeline(hash, [&]() {
+                return PipelinePresets::createSimpleTexturePipelineWithState(
+                    renderer.getDevice(), rp, texLayout,
+                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                    false, false, BlendFunc::SrcAlpha, false, 0);
+            });
+        }
+
+        if (pipeline) {
+            renderer.getBatchRenderer().addDrawCommand(pipeline, cmd);
+        }
+    }
+
+    void VulkanRendererTarget::resize(Int32 newWidth, Int32 newHeight) {
+        if (static_cast<uint32_t>(newWidth) == width && static_cast<uint32_t>(newHeight) == height) {
+            return;
+        }
+
+        if (renderer.isInitialized()) {
+            renderer.getDevice().waitIdle();
+        }
+
+        destroyResources();
+        width = static_cast<uint32_t>(newWidth);
+        height = static_cast<uint32_t>(newHeight);
+        createResources();
     }
 
 } // namespace Duel6
