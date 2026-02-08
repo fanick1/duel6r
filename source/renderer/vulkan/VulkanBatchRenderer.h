@@ -127,7 +127,10 @@ namespace Duel6 {
         
         // Command submission
         void addDrawCommand(VulkanPipeline* pipeline, const DrawCommand& command);
-        void flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass, uint32_t viewportWidth, uint32_t viewportHeight);
+        void flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass, 
+                   uint32_t viewportWidth, uint32_t viewportHeight,
+                   bool scissorEnabled, int32_t scissorX, int32_t scissorY, 
+                   int32_t scissorWidth, int32_t scissorHeight);
         
         // Buffer management
         void reserveVertexData(size_t size);

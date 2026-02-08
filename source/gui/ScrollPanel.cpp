@@ -59,7 +59,7 @@ namespace Duel6::Gui {
             control->draw(renderer, font); //TODO pass parentScissorBox
             // debugging code (draws red boxes in place of scissor boxes)
             //    renderer.setScissorTest(false);
-            //    xMatrix m2 = renderer.getViewMatrix();
+            //    Matrix m2 = renderer.getViewMatrix();
             //    renderer.setViewMatrix(Matrix::IDENTITY);
             //    renderer.quadXY(Vector(s.rx + s.x, s.ry + s.y - height - s.height + s.sy), Vector(s.width, s.height),  Color::RED);
             //    renderer.setViewMatrix(m2);

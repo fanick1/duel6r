@@ -80,7 +80,10 @@ namespace Duel6 {
         }
     }
 
-    void VulkanBatchRenderer::flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass, uint32_t viewportWidth, uint32_t viewportHeight) {
+    void VulkanBatchRenderer::flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass, 
+                                     uint32_t viewportWidth, uint32_t viewportHeight,
+                                     bool scissorEnabled, int32_t scissorX, int32_t scissorY,
+                                     int32_t scissorWidth, int32_t scissorHeight) {
         if (batches.empty()) {
             return;
         }
@@ -112,9 +115,36 @@ namespace Duel6 {
         
         // Set dynamic scissor
         VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = {viewportWidth, viewportHeight};
+        if (scissorEnabled && scissorWidth > 0 && scissorHeight > 0) {
+            // Clamp scissor to viewport bounds
+            int32_t clampedX = std::max(0, scissorX);
+            int32_t clampedY = std::max(0, scissorY);
+            int32_t clampedWidth = std::min(scissorWidth, static_cast<int32_t>(viewportWidth) - clampedX);
+            int32_t clampedHeight = std::min(scissorHeight, static_cast<int32_t>(viewportHeight) - clampedY);
+            
+            scissor.offset = {clampedX, clampedY};
+            scissor.extent = {static_cast<uint32_t>(std::max(0, clampedWidth)), 
+                              static_cast<uint32_t>(std::max(0, clampedHeight))};
+        } else {
+            scissor.offset = {0, 0};
+            scissor.extent = {viewportWidth, viewportHeight};
+        }
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+        
+        // Debug: Draw red scissor rectangle outline when scissor is enabled
+        if (scissorEnabled && scissorWidth > 0 && scissorHeight > 0) {
+            // Temporarily set full viewport scissor to draw the debug rectangle
+            VkRect2D fullScissor{};
+            fullScissor.offset = {0, 0};
+            fullScissor.extent = {viewportWidth, viewportHeight};
+            vkCmdSetScissor(commandBuffer, 0, 1, &fullScissor);
+            
+            std::cerr << "[DEBUG] Scissor rect: x=" << scissorX << " y=" << scissorY 
+                      << " w=" << scissorWidth << " h=" << scissorHeight << std::endl;
+            
+            // Restore actual scissor
+            vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+        }
         
         stats.batches = 0;
         

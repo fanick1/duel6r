@@ -13,6 +13,13 @@ namespace Duel6 {
         , surface(nullptr)
         , swapchain(nullptr)
         , memoryManager(nullptr)
+        , currentFrame(0)
+        , inFrame(false)
+        , scissorEnabled(false)
+        , scissorX(0)
+        , scissorY(0)
+        , scissorWidth(0)
+        , scissorHeight(0)
         , projectionMatrix(Matrix::IDENTITY)
         , viewMatrix(Matrix::IDENTITY)
         , modelMatrix(Matrix::IDENTITY) {
@@ -270,8 +277,56 @@ namespace Duel6 {
         // Get swapchain extent for viewport
         VkExtent2D extent = swapchain->getExtent();
         
-        // Flush all pending draw commands
-        batchRenderer->flush(commandBuffer, renderPass->getHandle(), extent.width, extent.height);
+        // Flush all pending draw commands with scissor state
+        batchRenderer->flush(commandBuffer, renderPass->getHandle(), extent.width, extent.height,
+                            scissorEnabled, scissorX, scissorY, scissorWidth, scissorHeight);
+        
+        // Debug: Draw red scissor rectangle outline when scissor is enabled (after main flush, without scissor)
+        if (scissorEnabled && scissorWidth > 0 && scissorHeight > 0) {
+            // Set orthographic projection for screen-space drawing
+            Matrix orthoProj = Matrix::orthographic(0, extent.width, 0, extent.height, -1, 1);
+            
+            // Draw scissor rectangle outline using thin quads (2 pixel width)
+            const float lineWidth = 2.0f;
+            Color red(255, 0, 0, 255);
+            
+            float x = static_cast<float>(scissorX);
+            float y = static_cast<float>(scissorY);
+            float w = static_cast<float>(scissorWidth);
+            float h = static_cast<float>(scissorHeight);
+            
+            // Temporarily enable frame drawing
+            inFrame = true;
+            Matrix savedProj = projectionMatrix;
+            Matrix savedView = viewMatrix;
+            Matrix savedModel = modelMatrix;
+            projectionMatrix = orthoProj;
+            viewMatrix = Matrix::IDENTITY;
+            modelMatrix = Matrix::IDENTITY;
+            
+            // Top edge
+            quad(Vector(x, y + h - lineWidth, 0), Vector(x, y + h, 0), 
+                 Vector(x + w, y + h, 0), Vector(x + w, y + h - lineWidth, 0), red);
+            // Bottom edge
+            quad(Vector(x, y, 0), Vector(x, y + lineWidth, 0), 
+                 Vector(x + w, y + lineWidth, 0), Vector(x + w, y, 0), red);
+            // Left edge
+            quad(Vector(x, y, 0), Vector(x, y + h, 0), 
+                 Vector(x + lineWidth, y + h, 0), Vector(x + lineWidth, y, 0), red);
+            // Right edge
+            quad(Vector(x + w - lineWidth, y, 0), Vector(x + w - lineWidth, y + h, 0), 
+                 Vector(x + w, y + h, 0), Vector(x + w, y, 0), red);
+            
+            // Restore state
+            projectionMatrix = savedProj;
+            viewMatrix = savedView;
+            modelMatrix = savedModel;
+            inFrame = false;
+            
+            // Flush debug rectangle without scissor
+            batchRenderer->flush(commandBuffer, renderPass->getHandle(), extent.width, extent.height,
+                                false, 0, 0, 0, 0);
+        }
         
         // End render pass
         renderPass->end(commandBuffer);
@@ -421,12 +476,23 @@ namespace Duel6 {
     }
 
     bool VulkanRenderer::setScissorTest(bool value) const {
-        // TODO: Implement scissor test
-        return false;
+        bool previous = scissorEnabled;
+        scissorEnabled = value;
+        return previous;
     }
 
     void VulkanRenderer::scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const {
-        // TODO: Implement scissor testing
+        scissorX = x;
+        // Vulkan Y-axis is top-down, OpenGL is bottom-up
+        // Convert from OpenGL-style (origin at bottom-left) to Vulkan-style (origin at top-left)
+        if (swapchain) {
+            VkExtent2D extent = swapchain->getExtent();
+            scissorY = static_cast<Int32>(extent.height) - y - height;
+        } else {
+            scissorY = y;
+        }
+        scissorWidth = width;
+        scissorHeight = height;
     }
 
     std::unique_ptr<RendererBuffer> VulkanRenderer::makeBuffer(const FaceList &faceList) {

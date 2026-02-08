@@ -45,6 +45,10 @@ namespace Duel6 {
         uint32_t currentFrame;
         bool inFrame;  // True between clearBuffers() and swapBuffers()
         
+        // Scissor state
+        mutable bool scissorEnabled;
+        mutable Int32 scissorX, scissorY, scissorWidth, scissorHeight;
+        
         // Matrix state
         Matrix projectionMatrix;
         Matrix viewMatrix;  
