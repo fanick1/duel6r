@@ -247,10 +247,10 @@ namespace Duel6 {
 
         for (uint32_t i = 0; i < totalPixels; ++i) {
             Color pixel = sourceImage.at(i);
-            pixelData.push_back(static_cast<uint8_t>(pixel.getRed() * 255));
-            pixelData.push_back(static_cast<uint8_t>(pixel.getGreen() * 255));
-            pixelData.push_back(static_cast<uint8_t>(pixel.getBlue() * 255));
-            pixelData.push_back(static_cast<uint8_t>(pixel.getAlpha() * 255));
+            pixelData.push_back(pixel.getRed());
+            pixelData.push_back(pixel.getGreen());
+            pixelData.push_back(pixel.getBlue());
+            pixelData.push_back(pixel.getAlpha());
         }
 
         size_t imageSize = pixelData.size();

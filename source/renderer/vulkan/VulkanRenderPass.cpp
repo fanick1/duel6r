@@ -509,7 +509,7 @@ namespace Duel6 {
             config.hasDepthBuffer = true;
             config.clearColor = true;
             config.clearDepth = true;
-            config.clearColorValue = {{0.0f, 0.0f, 0.2f, 1.0f}}; // Dark blue background
+            config.clearColorValue = {{0.0f, 0.0f, 0.0f, 1.0f}}; // Black
             return config;
         }
         

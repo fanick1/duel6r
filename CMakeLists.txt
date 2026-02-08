@@ -588,17 +588,42 @@ endif (D6R_RENDERER STREQUAL "headless")
 if (D6R_RENDERER STREQUAL "vulkan")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_RENDERER_VULKAN")
     set(D6R_SOURCES ${D6R_SOURCES}
+            source/renderer/vulkan/VulkanBatchRenderer.cpp
+            source/renderer/vulkan/VulkanBatchRenderer.h
+            source/renderer/vulkan/VulkanBuffer.cpp
+            source/renderer/vulkan/VulkanBuffer.h
+            source/renderer/vulkan/VulkanContext.cpp
             source/renderer/vulkan/VulkanContext.h
+            source/renderer/vulkan/VulkanDescriptor.cpp
+            source/renderer/vulkan/VulkanDescriptor.h
+            source/renderer/vulkan/VulkanDevice.cpp
             source/renderer/vulkan/VulkanDevice.h
+            source/renderer/vulkan/VulkanMemory.cpp
             source/renderer/vulkan/VulkanMemory.h
-            source/renderer/vulkan/VulkanRenderer.h
-            source/renderer/vulkan/VulkanSurface.h
-            source/renderer/vulkan/VulkanSwapchain.h
-            source/renderer/vulkan/VulkanTypes.h
-            source/renderer/vulkan/VulkanShader.h
+            source/renderer/vulkan/VulkanPipeline.cpp
             source/renderer/vulkan/VulkanPipeline.h
+            source/renderer/vulkan/VulkanRenderer.cpp
+            source/renderer/vulkan/VulkanRenderer.h
+            source/renderer/vulkan/VulkanRendererTarget.cpp
+            source/renderer/vulkan/VulkanRendererTarget.h
+            source/renderer/vulkan/VulkanRenderPass.cpp
             source/renderer/vulkan/VulkanRenderPass.h
-            source/renderer/vulkan/unity.cpp
+            source/renderer/vulkan/VulkanResourceManager.cpp
+            source/renderer/vulkan/VulkanResourceManager.h
+            source/renderer/vulkan/VulkanSampler.cpp
+            source/renderer/vulkan/VulkanSampler.h
+            source/renderer/vulkan/VulkanShader.cpp
+            source/renderer/vulkan/VulkanShader.h
+            source/renderer/vulkan/VulkanSurface.cpp
+            source/renderer/vulkan/VulkanSurface.h
+            source/renderer/vulkan/VulkanSwapchain.cpp
+            source/renderer/vulkan/VulkanSwapchain.h
+            source/renderer/vulkan/VulkanSync.cpp
+            source/renderer/vulkan/VulkanSync.h
+            source/renderer/vulkan/VulkanTexture.cpp
+            source/renderer/vulkan/VulkanTexture.h
+            source/renderer/vulkan/VulkanTypes.cpp
+            source/renderer/vulkan/VulkanTypes.h
             )
 endif (D6R_RENDERER STREQUAL "vulkan")
 

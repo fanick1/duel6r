@@ -81,7 +81,7 @@ namespace Duel6 {
             // Create render pass with default configuration
             RenderPassConfig renderPassConfig;
             renderPassConfig.colorFormat = swapchain->getImageFormat();
-            renderPassConfig.clearColorValue = {{0.0f, 0.0f, 0.2f, 1.0f}}; // Dark blue
+            renderPassConfig.clearColorValue = {{0.0f, 0.0f, 0.0f, 1.0f}}; // Black
             renderPass = std::make_unique<VulkanRenderPass>(*device, renderPassConfig);
             
             // Create framebuffers for the render pass
