@@ -384,8 +384,11 @@ namespace Duel6 {
         // Execute the callback - this adds draw commands to the batch renderer
         callback();
 
-        // Flush the batched commands into the offscreen render pass
-        renderer.getBatchRenderer().flush(cmdBuf, offscreenRenderPass, width, height);
+        // Flush with flipY=true so OpenGL Y-up geometry renders correctly in the
+        // offscreen framebuffer (same as the main pass). This means the image is stored
+        // "upside down" relative to Vulkan's V=0-at-top texture convention, so apply()
+        // must flip V coordinates when sampling.
+        renderer.getBatchRenderer().flush(cmdBuf, offscreenRenderPass, width, height, true);
 
         vkCmdEndRenderPass(cmdBuf);
 
@@ -411,10 +414,15 @@ namespace Duel6 {
         Vector p3(static_cast<float>(width), static_cast<float>(height), 0.0f);
         Vector p4(0.0f, static_cast<float>(height), 0.0f);
 
-        Vector t1(0.0f, 0.0f, 0.0f);
-        Vector t2(1.0f, 0.0f, 0.0f);
-        Vector t3(1.0f, 1.0f, 0.0f);
-        Vector t4(0.0f, 1.0f, 0.0f);
+
+        // V coordinates are flipped: the offscreen pass uses flipY=true (negative viewport
+        // height) so geometry renders right-side up, but this means the image is stored
+        // upside-down in Vulkan texture space (where V=0 is the top row). Flipping V here
+        // compensates so the fullscreen quad displays the offscreen content correctly.
+        Vector t1(0.0f, 1.0f, 0.0f);
+        Vector t2(1.0f, 1.0f, 0.0f);
+        Vector t3(1.0f, 0.0f, 0.0f);
+        Vector t4(0.0f, 0.0f, 0.0f);
 
         VertexFormats::MaterialVertex vertices[6] = {
             {p1, t1, 0},

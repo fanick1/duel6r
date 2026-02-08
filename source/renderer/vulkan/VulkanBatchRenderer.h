@@ -149,8 +149,18 @@ namespace Duel6 {
         
         // Command submission
         void addDrawCommand(VulkanPipeline* pipeline, const DrawCommand& command);
+        // Flush all pending draw commands into the given command buffer.
+        // flipY: when true, uses negative viewport height (VK_KHR_maintenance1) to flip
+        // the Y axis so that OpenGL-convention geometry (Y-up, origin bottom-left) renders
+        // correctly on screen. Must be true for the final on-screen render pass.
+        // For offscreen render targets whose result is later sampled as a texture, flipY
+        // must be false — Vulkan textures have V=0 at the top, so the offscreen image is
+        // already in the correct orientation for texture sampling. If flipY were true, the
+        // offscreen content would be upside-down when applied as a fullscreen quad, because
+        // the main render pass applies its own Y flip on top.
         void flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass,
-                   uint32_t viewportWidth, uint32_t viewportHeight);
+                   uint32_t viewportWidth, uint32_t viewportHeight,
+                   bool flipY = true);
         
         // Buffer management
         void reserveVertexData(size_t size);

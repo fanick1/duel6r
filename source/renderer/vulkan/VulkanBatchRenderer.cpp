@@ -80,8 +80,9 @@ namespace Duel6 {
         }
     }
 
-    void VulkanBatchRenderer::flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass, 
-                                     uint32_t viewportWidth, uint32_t viewportHeight) {
+    void VulkanBatchRenderer::flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass,
+                                     uint32_t viewportWidth, uint32_t viewportHeight,
+                                     bool flipY) {
         if (orderedBatches.empty()) {
             return;
         }
@@ -104,12 +105,18 @@ namespace Duel6 {
             return;
         }
         
-        // Set dynamic viewport (negative height flips Y to match OpenGL conventions)
+        // Set dynamic viewport. When flipY is true, use negative height
+        // (VK_KHR_maintenance1) to flip Y axis to match OpenGL conventions.
         VkViewport viewport{};
         viewport.x = 0.0f;
-        viewport.y = static_cast<float>(viewportHeight);
+        if (flipY) {
+            viewport.y = static_cast<float>(viewportHeight);
+            viewport.height = -static_cast<float>(viewportHeight);
+        } else {
+            viewport.y = 0.0f;
+            viewport.height = static_cast<float>(viewportHeight);
+        }
         viewport.width = static_cast<float>(viewportWidth);
-        viewport.height = -static_cast<float>(viewportHeight);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
