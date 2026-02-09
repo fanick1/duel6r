@@ -632,6 +632,58 @@ namespace Duel6 {
             return builder.build();
         }
 
+        std::unique_ptr<VulkanPipeline> createSimpleTexture2DPipelineWithState(
+            const VulkanDevice& device,
+            VkRenderPass renderPass,
+            VkDescriptorSetLayout textureLayout,
+            VkPrimitiveTopology topology,
+            bool depthTest,
+            bool depthWrite,
+            BlendFunc blendFunc,
+            bool wireframe,
+            uint32_t stencilMode) {
+            VulkanPipelineBuilder builder(device, renderPass);
+
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
+            auto vertexShader = shaderManager.loadShader("simple_texture_2d.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("simple_texture_2d.frag", VulkanShader::Type::Fragment);
+
+            builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
+                .setVertexInput<VertexFormats::TextureVertex2D>()
+                .setTopology(topology)
+                .setDepthTest(depthTest, depthWrite, VK_COMPARE_OP_LESS_OR_EQUAL)
+                .setCullMode(VK_CULL_MODE_NONE)
+                .setWireframe(wireframe)
+                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, 64)
+                .addPushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, 64, 20)
+                .addDescriptorSetLayout(textureLayout)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
+
+            configureStencilMode(builder, stencilMode);
+
+            switch (blendFunc) {
+                case BlendFunc::None:
+                    builder.setBlending(false);
+                    break;
+                case BlendFunc::SrcAlpha:
+                    builder.setBlending(true,
+                        VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
+                        VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+                    break;
+                case BlendFunc::SrcColor:
+                    builder.setBlending(true,
+                        VK_BLEND_FACTOR_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR, VK_BLEND_OP_ADD,
+                        VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+                    break;
+            }
+
+            return builder.build();
+        }
+
         std::unique_ptr<VulkanPipeline> createSimpleTexturePipelineWithState(
             const VulkanDevice& device,
             VkRenderPass renderPass,

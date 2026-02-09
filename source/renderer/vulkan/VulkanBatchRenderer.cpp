@@ -216,15 +216,30 @@ namespace Duel6 {
             return;
         }
         
+        // Determine vertex stride from the first command with vertex data, and align
+        // the buffer offset so that firstVertex = offset / stride is exact.
+        // Without this, batches with different vertex formats (e.g. TextureVertex2D
+        // at 20 bytes vs MaterialVertex at 28 bytes) would misalign subsequent data.
+        size_t vertexStride = 0;
+        for (const DrawCommand& cmd : batch.commands) {
+            if (cmd.vertices && cmd.vertexDataSize > 0 && cmd.vertexCount > 0) {
+                vertexStride = cmd.vertexDataSize / cmd.vertexCount;
+                break;
+            }
+        }
+        if (vertexStride > 0 && (vertexBufferOffset % vertexStride) != 0) {
+            vertexBufferOffset += vertexStride - (vertexBufferOffset % vertexStride);
+        }
+
         // Ensure current frame's vertex buffer is large enough for all data
         ensureVertexBufferCapacity(vertexBufferOffset + totalVertexDataSize);
-        
+
         // Map current frame's vertex buffer ONCE for all draw commands in this batch
         void* mappedData = vertexBuffers[currentFrame].map(device, memoryManager);
         if (!mappedData) {
             return;
         }
-        
+
         // First pass: copy all vertex data into the buffer
         size_t batchStartOffset = vertexBufferOffset;
         for (const DrawCommand& cmd : batch.commands) {

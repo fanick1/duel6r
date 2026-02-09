@@ -99,24 +99,14 @@ namespace Duel6 {
         subpass.pColorAttachments = &colorRef;
         subpass.pDepthStencilAttachment = &depthRef;
 
-        // Dependencies for layout transitions
-        std::array<VkSubpassDependency, 2> dependencies{};
-
-        dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[0].dstSubpass = 0;
-        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-        dependencies[1].srcSubpass = 0;
-        dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+        // Single dependency matching main render pass exactly for pipeline compatibility
+        VkSubpassDependency dependency{};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
         VkRenderPassCreateInfo rpInfo{};
         rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -124,8 +114,8 @@ namespace Duel6 {
         rpInfo.pAttachments = attachments.data();
         rpInfo.subpassCount = 1;
         rpInfo.pSubpasses = &subpass;
-        rpInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
-        rpInfo.pDependencies = dependencies.data();
+        rpInfo.dependencyCount = 1;
+        rpInfo.pDependencies = &dependency;
 
         VkResult result = vkCreateRenderPass(dev, &rpInfo, nullptr, &offscreenRenderPass);
         if (result != VK_SUCCESS) {
@@ -392,6 +382,18 @@ namespace Duel6 {
 
         vkCmdEndRenderPass(cmdBuf);
 
+        // Explicit barrier: ensure color attachment writes are visible to fragment shader reads.
+        // The render pass finalLayout transitions the image to SHADER_READ_ONLY_OPTIMAL,
+        // but we need an execution/memory dependency for correct synchronization.
+        VkMemoryBarrier memBarrier{};
+        memBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+        memBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        memBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(cmdBuf,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0, 1, &memBarrier, 0, nullptr, 0, nullptr);
+
         if (wasInFrame) {
             // Restart the main render pass
             renderer.beginMainRenderPass(cmdBuf);
@@ -419,18 +421,13 @@ namespace Duel6 {
         // height) so geometry renders right-side up, but this means the image is stored
         // upside-down in Vulkan texture space (where V=0 is the top row). Flipping V here
         // compensates so the fullscreen quad displays the offscreen content correctly.
-        Vector t1(0.0f, 1.0f, 0.0f);
-        Vector t2(1.0f, 1.0f, 0.0f);
-        Vector t3(1.0f, 0.0f, 0.0f);
-        Vector t4(0.0f, 0.0f, 0.0f);
-
-        VertexFormats::MaterialVertex vertices[6] = {
-            {p1, t1, 0},
-            {p2, t2, 0},
-            {p3, t3, 0},
-            {p1, t1, 0},
-            {p3, t3, 0},
-            {p4, t4, 0}
+        VertexFormats::TextureVertex2D vertices[6] = {
+            {p1, 0.0f, 1.0f},
+            {p2, 1.0f, 1.0f},
+            {p3, 1.0f, 0.0f},
+            {p1, 0.0f, 1.0f},
+            {p3, 1.0f, 0.0f},
+            {p4, 0.0f, 0.0f}
         };
 
         DrawCommand cmd;
@@ -456,9 +453,9 @@ namespace Duel6 {
         if (texLayout != VK_NULL_HANDLE) {
             // Get or create a texture pipeline for this state
             // Use a fixed hash for the apply-quad pipeline (no depth test, alpha blend)
-            size_t hash = std::hash<std::string>{}("offscreen_apply_pipeline");
+            size_t hash = std::hash<std::string>{}("offscreen_apply_pipeline_2d");
             pipeline = renderer.getPipelineCache().getOrCreatePipeline(hash, [&]() {
-                return PipelinePresets::createSimpleTexturePipelineWithState(
+                return PipelinePresets::createSimpleTexture2DPipelineWithState(
                     renderer.getDevice(), rp, texLayout,
                     VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                     false, false, BlendFunc::SrcAlpha, false, 0);

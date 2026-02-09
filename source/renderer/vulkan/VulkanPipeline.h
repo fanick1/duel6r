@@ -293,6 +293,21 @@ namespace Duel6 {
             uint32_t stencilMode = 0);
 
         /**
+         * Create a simple_texture_2d pipeline for non-array 2D textures (e.g. offscreen targets).
+         * Uses sampler2D instead of sampler2DArray, and TextureVertex2D vertex format.
+         */
+        std::unique_ptr<VulkanPipeline> createSimpleTexture2DPipelineWithState(
+            const VulkanDevice& device,
+            VkRenderPass renderPass,
+            VkDescriptorSetLayout textureLayout,
+            VkPrimitiveTopology topology,
+            bool depthTest,
+            bool depthWrite,
+            BlendFunc blendFunc,
+            bool wireframe,
+            uint32_t stencilMode = 0);
+
+        /**
          * Create a simple_texture pipeline with state parameters and a texture descriptor set layout.
          * Used for textured geometry with push constant MVP + material params.
          */
