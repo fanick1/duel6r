@@ -709,6 +709,7 @@ namespace Duel6 {
                 .setBlending(false)
                 .setColorWriteMask(0)
                 .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, 64)
+                .addPushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, 64, 20)
                 .addDescriptorSetLayout(textureLayout)
                 .setViewportDynamic()
                 .setScissorDynamic()
