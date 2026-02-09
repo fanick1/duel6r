@@ -590,7 +590,8 @@ namespace Duel6 {
             bool depthWrite,
             BlendFunc blendFunc,
             bool wireframe,
-            uint32_t stencilMode) {
+            uint32_t stencilMode,
+            bool colorWrite) {
             VulkanPipelineBuilder builder(device, renderPass);
 
             VulkanShaderManager shaderManager(device, "shaders/vulkan");
@@ -627,6 +628,10 @@ namespace Duel6 {
                         VK_BLEND_FACTOR_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR, VK_BLEND_OP_ADD,
                         VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
                     break;
+            }
+
+            if (!colorWrite) {
+                builder.setColorWriteMask(0);
             }
 
             return builder.build();
@@ -684,6 +689,33 @@ namespace Duel6 {
             return builder.build();
         }
 
+        std::unique_ptr<VulkanPipeline> createDepthBlitPipeline(
+            const VulkanDevice& device,
+            VkRenderPass renderPass,
+            VkDescriptorSetLayout textureLayout) {
+            VulkanPipelineBuilder builder(device, renderPass);
+
+            VulkanShaderManager shaderManager(device, "shaders/vulkan");
+            auto vertexShader = shaderManager.loadShader("depth_blit.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaderManager.loadShader("depth_blit.frag", VulkanShader::Type::Fragment);
+
+            return builder
+                .addShader(*vertexShader)
+                .addShader(*fragmentShader)
+                .setVertexInput<VertexFormats::TextureVertex2D>()
+                .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                .setDepthTest(true, true, VK_COMPARE_OP_ALWAYS)
+                .setCullMode(VK_CULL_MODE_NONE)
+                .setBlending(false)
+                .setColorWriteMask(0)
+                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, 64)
+                .addDescriptorSetLayout(textureLayout)
+                .setViewportDynamic()
+                .setScissorDynamic()
+                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH)
+                .build();
+        }
+
         std::unique_ptr<VulkanPipeline> createSimpleTexturePipelineWithState(
             const VulkanDevice& device,
             VkRenderPass renderPass,
@@ -693,7 +725,8 @@ namespace Duel6 {
             bool depthWrite,
             BlendFunc blendFunc,
             bool wireframe,
-            uint32_t stencilMode) {
+            uint32_t stencilMode,
+            bool colorWrite) {
             VulkanPipelineBuilder builder(device, renderPass);
 
             VulkanShaderManager shaderManager(device, "shaders/vulkan");
@@ -734,6 +767,10 @@ namespace Duel6 {
                         VK_BLEND_FACTOR_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR, VK_BLEND_OP_ADD,
                         VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
                     break;
+            }
+
+            if (!colorWrite) {
+                builder.setColorWriteMask(0);
             }
 
             return builder.build();

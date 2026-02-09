@@ -59,6 +59,10 @@ namespace Duel6 {
         VkSampler sampler;
         VkDescriptorSet colorDescriptorSet;
 
+        // Depth sampling view and descriptor set for depth blit in apply()
+        VkImageView depthSamplingView;
+        VkDescriptorSet depthDescriptorSet;
+
         // Texture ID registered with resource manager for apply() quad rendering
         TextureId offscreenTextureId;
 

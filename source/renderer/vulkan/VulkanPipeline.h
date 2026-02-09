@@ -290,7 +290,8 @@ namespace Duel6 {
             bool depthWrite,
             BlendFunc blendFunc,
             bool wireframe,
-            uint32_t stencilMode = 0);
+            uint32_t stencilMode = 0,
+            bool colorWrite = true);
 
         /**
          * Create a simple_texture_2d pipeline for non-array 2D textures (e.g. offscreen targets).
@@ -308,6 +309,15 @@ namespace Duel6 {
             uint32_t stencilMode = 0);
 
         /**
+         * Create a depth-blit pipeline that writes gl_FragDepth from a sampled depth texture.
+         * colorWriteMask=0, depthTest=ALWAYS, depthWrite=true.
+         */
+        std::unique_ptr<VulkanPipeline> createDepthBlitPipeline(
+            const VulkanDevice& device,
+            VkRenderPass renderPass,
+            VkDescriptorSetLayout textureLayout);
+
+        /**
          * Create a simple_texture pipeline with state parameters and a texture descriptor set layout.
          * Used for textured geometry with push constant MVP + material params.
          */
@@ -320,7 +330,8 @@ namespace Duel6 {
             bool depthWrite,
             BlendFunc blendFunc,
             bool wireframe,
-            uint32_t stencilMode = 0);
+            uint32_t stencilMode = 0,
+            bool colorWrite = true);
     }
 
 }

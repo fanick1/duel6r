@@ -45,6 +45,8 @@ namespace Duel6 {
         , offscreenFramebuffer(VK_NULL_HANDLE)
         , sampler(VK_NULL_HANDLE)
         , colorDescriptorSet(VK_NULL_HANDLE)
+        , depthSamplingView(VK_NULL_HANDLE)
+        , depthDescriptorSet(VK_NULL_HANDLE)
         , offscreenTextureId(INVALID_TEXTURE_ID)
         , resourcesCreated(false) {
         createResources();
@@ -77,11 +79,11 @@ namespace Duel6 {
         depthAttachment.format = mainConfig.depthFormat;
         depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
         depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depthAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
 
@@ -194,7 +196,7 @@ namespace Duel6 {
             imageInfo.arrayLayers = 1;
             imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
             imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-            imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
             imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
             imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -269,6 +271,31 @@ namespace Duel6 {
         renderer.getDescriptorManager().updateTextureDescriptorSet(
             renderer.getDevice(), colorDescriptorSet, 0, colorView, sampler);
 
+        // Create depth sampling view (depth-only aspect, required for shader sampling)
+        {
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image = depthImage;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format = mainConfig.depthFormat;
+            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            viewInfo.subresourceRange.baseMipLevel = 0;
+            viewInfo.subresourceRange.levelCount = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount = 1;
+
+            if (vkCreateImageView(dev, &viewInfo, nullptr, &depthSamplingView) != VK_SUCCESS) {
+                D6_THROW(VideoException, "Failed to create depth sampling image view");
+            }
+        }
+
+        // Allocate descriptor set for depth sampling
+        depthDescriptorSet = renderer.getDescriptorManager().allocateDescriptorSet(
+            renderer.getDevice(), texLayout);
+        renderer.getDescriptorManager().updateTextureDescriptorSet(
+            renderer.getDevice(), depthDescriptorSet, 0, depthSamplingView,
+            renderer.getSamplerManager().getNearestSampler(renderer.getDevice(), true));
+
         resourcesCreated = true;
     }
 
@@ -284,6 +311,10 @@ namespace Duel6 {
             offscreenFramebuffer = VK_NULL_HANDLE;
         }
 
+        if (depthSamplingView != VK_NULL_HANDLE) {
+            vkDestroyImageView(dev, depthSamplingView, nullptr);
+            depthSamplingView = VK_NULL_HANDLE;
+        }
         if (depthView != VK_NULL_HANDLE) {
             vkDestroyImageView(dev, depthView, nullptr);
             depthView = VK_NULL_HANDLE;
@@ -387,10 +418,10 @@ namespace Duel6 {
         // but we need an execution/memory dependency for correct synchronization.
         VkMemoryBarrier memBarrier{};
         memBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-        memBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        memBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         memBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(cmdBuf,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
             0, 1, &memBarrier, 0, nullptr, 0, nullptr);
 
@@ -464,6 +495,37 @@ namespace Duel6 {
 
         if (pipeline) {
             renderer.getBatchRenderer().addDrawCommand(pipeline, cmd);
+        }
+
+        // Depth blit: draw a fullscreen quad that writes gl_FragDepth from the offscreen
+        // depth image. This populates the main depth buffer so dynamic objects (players,
+        // bonuses) are correctly occluded by static geometry (walls).
+        {
+            DrawCommand depthCmd;
+            depthCmd.type = DrawCommand::TRIANGLES;
+            depthCmd.vertexCount = 6;
+            depthCmd.vertices = vertices;
+            depthCmd.vertexDataSize = sizeof(vertices);
+            depthCmd.projectionMatrix = renderer.getProjectionMatrix();
+            depthCmd.viewMatrix = renderer.getViewMatrix();
+            depthCmd.modelMatrix = renderer.getModelMatrix();
+            depthCmd.textureDescriptorSet = depthDescriptorSet;
+            depthCmd.modulateColor[0] = 1.0f;
+            depthCmd.modulateColor[1] = 1.0f;
+            depthCmd.modulateColor[2] = 1.0f;
+            depthCmd.modulateColor[3] = 1.0f;
+            depthCmd.alphaTest = 0;
+            depthCmd.stencilMode = 0;
+
+            size_t depthHash = std::hash<std::string>{}("depth_blit_pipeline");
+            VulkanPipeline* depthPipeline = renderer.getPipelineCache().getOrCreatePipeline(depthHash, [&]() {
+                return PipelinePresets::createDepthBlitPipeline(
+                    renderer.getDevice(), rp, texLayout);
+            });
+
+            if (depthPipeline) {
+                renderer.getBatchRenderer().addDrawCommand(depthPipeline, depthCmd);
+            }
         }
     }
 
