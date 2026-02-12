@@ -34,6 +34,7 @@
 #include <functional>
 #include <unordered_map>
 #include "VulkanShader.h"
+#include "VulkanTypes.h"
 
 namespace Duel6 {
 
