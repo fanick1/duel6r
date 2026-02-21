@@ -3,6 +3,7 @@
 #include "Control.cpp"
 #include "Desktop.cpp"
 #include "Dialog.cpp"
+#include "ModalDialog.cpp"
 #include "Image.cpp"
 #include "Label.cpp"
 #include "ListBox.cpp"

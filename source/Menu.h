@@ -43,6 +43,7 @@
 #include "Defines.h"
 #include "gui/Desktop.h"
 #include "gui/View.h"
+#include "gui/ModalDialog.h"
 #include "gui/Button.h"
 #include "gui/CheckBox.h"
 #include "gui/ListBox.h"
@@ -280,7 +281,7 @@ namespace Duel6 {
 
         void initializeGameModes();
 
-        void showMessage(const std::string &message);
+        Gui::ModalDialog::Result runModal(Gui::ModalDialog *dialog);
 
         bool detectControls(Size playerIndex);
 

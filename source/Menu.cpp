@@ -544,55 +544,68 @@ namespace Duel6 {
         }
     }
 
-    void Menu::showMessage(const std::string &message) {
-        const Float32 fontHeight = 32;
-        const std::string cancel = "[ESC] to cancel";
-        Int32 width = font.getTextWidth(message, fontHeight) + 60;
-        Int32 cancelWidth = font.getTextWidth(cancel, fontHeight);
-        Int32 height = fontHeight * 2; //2 lines
-        Int32 x = video.getScreen().getClientWidth() / 2 - width / 2,
-            y = video.getScreen().getClientHeight() / 2 - height / 2;
+    Gui::ModalDialog::Result Menu::runModal(Gui::ModalDialog *dialog) {
+#ifdef D6_RENDERER_HEADLESS
+        return Gui::ModalDialog::Result::OK;
+#endif
+        while (!dialog->isDismissed()) {
+            gui.draw(font);
+            video.screenUpdate(appService.getConsole(), font);
 
-        renderer.quadXY(Vector(x, y), Vector(width, height + 4), Color(255, 204, 204));
-        renderer.frame(Vector(x, y), Vector(width, height + 4), 2, Color::BLACK);
-
-        font.print(x + 30, y + 32, 0.5f, Color::RED, message, fontHeight);
-        font.print(x + (width - cancelWidth) / 2.0f, y + 2, 0.5f, Color::RED, cancel, fontHeight);
-        video.screenUpdate(appService.getConsole(), font);
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                switch (event.type) {
+                    case SDL_KEYDOWN:
+                    case SDL_KEYUP: {
+                        auto ke = event.key;
+                        auto state = ke.type == SDL_KEYDOWN
+                            ? SysEvent::ButtonState::PRESSED
+                            : SysEvent::ButtonState::RELEASED;
+                        KeyPressEvent kpe(ke.keysym.sym, state, ke.keysym.mod);
+                        appService.getInput().setPressed(ke.keysym.sym, kpe.isPressed());
+                        gui.keyEvent(kpe);
+                        break;
+                    }
+                    case SDL_QUIT:
+                        dialog->dismiss(Gui::ModalDialog::Result::CANCEL);
+                        break;
+                    case SDL_WINDOWEVENT:
+                        if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+                            video.resize(event.window.data1, event.window.data2);
+                        break;
+                    case SDL_JOYDEVICEADDED: {
+                        auto joy = SDL_JoystickOpen(event.jdevice.which);
+                        if (SDL_JoystickGetAttached(joy))
+                            appService.getInput().joyAttached(joy, event.jdevice.which);
+                        break;
+                    }
+                    case SDL_JOYDEVICEREMOVED:
+                        appService.getInput().joyDetached(event.jdevice.which);
+                        break;
+                }
+            }
+            SDL_Delay(16);
+        }
+        auto result = dialog->getResult();
+        dialog->close();
+        return result;
     }
     bool Menu::question(const std::string &q) {
         bool cancel;
         return question(q, cancel);
     }
-    bool Menu::question(const std::string &question, bool & cancel) {
-        showMessage(question);
-        appService.getConsole().printLine(question);
-#ifdef D6_RENDERER_HEADLESS
-        return true;
-#endif
-        SDL_Event event;
-        bool answer;
-
-        while (true) {
-            if (SDL_PollEvent(&event)) {
-                if (event.type == SDL_KEYDOWN) {
-                    if (event.key.keysym.sym == SDLK_a || event.key.keysym.sym == SDLK_y) {
-                        answer = true;
-                        break;
-                    } else if (event.key.keysym.sym == SDLK_n) {
-                        answer = false;
-                        break;
-                    } else if (event.key.keysym.sym == SDLK_ESCAPE) {
-                        answer = false;
-                        cancel = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        consumeInputEvents();
-        return answer;
+    bool Menu::question(const std::string &q, bool & cancel) {
+        appService.getConsole().printLine(q);
+        auto *dlg = new Gui::ModalDialog(gui, video.getScreen().getClientWidth(),
+            video.getScreen().getClientHeight(), q, {
+                {SDLK_y, Gui::ModalDialog::Result::OK},
+                {SDLK_a, Gui::ModalDialog::Result::OK},
+                {SDLK_n, Gui::ModalDialog::Result::NO},
+                {SDLK_ESCAPE, Gui::ModalDialog::Result::CANCEL}
+            });
+        auto result = runModal(dlg);
+        cancel = (result == Gui::ModalDialog::Result::CANCEL);
+        return (result == Gui::ModalDialog::Result::OK);
     }
 
     bool Menu::deleteQuestion() {
@@ -608,36 +621,75 @@ namespace Duel6 {
     }
 
     bool Menu::detectControls(Size playerIndex) {
-        render();
         if (playerIndex >= playerListBox->size()) {
             return false;
         }
         const std::string &name = playerListBox->getItem(playerIndex);
-        showMessage("Player " + name + ": Press any control");
         playPlayersSound(name);
 
-        bool detected = false;
-        bool cancelled = false;
-        while (!detected && !cancelled) {
-            if (processEvents(true, cancelled)) {
-                for (Size i = 0; i < controlsManager.getNumAvailable(); i++) {
-                    const PlayerControls &pc = controlsManager.get(i);
+        auto *dlg = new Gui::ModalDialog(gui, video.getScreen().getClientWidth(),
+            video.getScreen().getClientHeight(),
+            "Player " + name + ": Press any control",
+            {{SDLK_ESCAPE, Gui::ModalDialog::Result::CANCEL}});
 
-                    if ((!pc.getLeft().isJoyPadAxis() && pc.getLeft().isPressed()) ||
-                        (!pc.getRight().isJoyPadAxis() && pc.getRight().isPressed()) ||
-                        (!pc.getDown().isJoyPadAxis() && pc.getDown().isPressed()) ||
-                        (!pc.getUp().isJoyPadAxis() && pc.getUp().isPressed()) ||
-                        pc.getShoot().isPressed() ||
-                        pc.getPick().isPressed()) {
-                        controlSwitch[playerIndex]->setCurrent((Int32) i);
-                        detected = true;
+        while (!dlg->isDismissed()) {
+            gui.draw(font);
+            video.screenUpdate(appService.getConsole(), font);
+
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                switch (event.type) {
+                    case SDL_KEYDOWN:
+                    case SDL_KEYUP: {
+                        auto ke = event.key;
+                        auto state = ke.type == SDL_KEYDOWN
+                            ? SysEvent::ButtonState::PRESSED
+                            : SysEvent::ButtonState::RELEASED;
+                        KeyPressEvent kpe(ke.keysym.sym, state, ke.keysym.mod);
+                        appService.getInput().setPressed(ke.keysym.sym, kpe.isPressed());
+                        gui.keyEvent(kpe);
+                        break;
                     }
+                    case SDL_QUIT:
+                        dlg->dismiss(Gui::ModalDialog::Result::CANCEL);
+                        break;
+                    case SDL_WINDOWEVENT:
+                        if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+                            video.resize(event.window.data1, event.window.data2);
+                        break;
+                    case SDL_JOYDEVICEADDED: {
+                        auto joy = SDL_JoystickOpen(event.jdevice.which);
+                        if (SDL_JoystickGetAttached(joy))
+                            appService.getInput().joyAttached(joy, event.jdevice.which);
+                        break;
+                    }
+                    case SDL_JOYDEVICEREMOVED:
+                        appService.getInput().joyDetached(event.jdevice.which);
+                        break;
                 }
             }
+
+            // Check controller state
+            for (Size i = 0; i < controlsManager.getNumAvailable(); i++) {
+                const PlayerControls &pc = controlsManager.get(i);
+                if ((!pc.getLeft().isJoyPadAxis() && pc.getLeft().isPressed()) ||
+                    (!pc.getRight().isJoyPadAxis() && pc.getRight().isPressed()) ||
+                    (!pc.getDown().isJoyPadAxis() && pc.getDown().isPressed()) ||
+                    (!pc.getUp().isJoyPadAxis() && pc.getUp().isPressed()) ||
+                    pc.getShoot().isPressed() ||
+                    pc.getPick().isPressed()) {
+                    controlSwitch[playerIndex]->setCurrent((Int32)i);
+                    dlg->dismiss(Gui::ModalDialog::Result::OK);
+                    break;
+                }
+            }
+            SDL_Delay(16);
         }
 
+        auto result = dlg->getResult();
+        dlg->close();
         consumeInputEvents();
-        return !cancelled;
+        return (result != Gui::ModalDialog::Result::CANCEL);
     }
 
     void Menu::playPlayersSound(const std::string &name) {
