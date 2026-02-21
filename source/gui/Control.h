@@ -116,6 +116,8 @@ namespace Duel6 {
             virtual void update(Float32 elapsedTime) {
             }
 
+            virtual bool needsStencil() const { return false; }
+
             virtual void drawStencil(Renderer &renderer, const Font &font) const {}
 
             void drawStencil(Renderer &renderer, const Font &font, const ScissorBox& scissorBox) const;

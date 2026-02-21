@@ -57,20 +57,14 @@ namespace Duel6::Gui {
             renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
             renderer.scissorTest(s.rx + s.x, s.ry + s.y - height - s.height + s.sy, s.width, s.height);
             control->draw(renderer, font); //TODO pass parentScissorBox
-            // debugging code (draws red boxes in place of scissor boxes)
-            //    renderer.setScissorTest(false);
-            //    Matrix m2 = renderer.getViewMatrix();
-            //    renderer.setViewMatrix(Matrix::IDENTITY);
-            //    renderer.quadXY(Vector(s.rx + s.x, s.ry + s.y - height - s.height + s.sy), Vector(s.width, s.height),  Color::RED);
-            //    renderer.setViewMatrix(m2);
-            //    renderer.setScissorTest(true);
-
-            renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
-            control->drawStencil(renderer, font);
-            renderer.stencil(Duel6::Renderer::StencilMode::TEST);
-            control->drawWithStencilTest(renderer, font);
-            renderer.stencil(Duel6::Renderer::StencilMode::ERASE);
-            control->drawStencil(renderer, font);
+            if (control->needsStencil()) {
+                renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
+                control->drawStencil(renderer, font);
+                renderer.stencil(Duel6::Renderer::StencilMode::TEST);
+                control->drawWithStencilTest(renderer, font);
+                renderer.stencil(Duel6::Renderer::StencilMode::ERASE);
+                control->drawStencil(renderer, font);
+            }
         }
         if (!originalScissorTest) {
             renderer.setScissorTest(false);

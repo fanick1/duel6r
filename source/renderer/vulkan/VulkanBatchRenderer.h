@@ -176,6 +176,7 @@ namespace Duel6 {
         
     private:
         RenderBatch* getBatch(VulkanPipeline* pipeline);
+        bool canMergeCommands(const DrawCommand& a, const DrawCommand& b) const;
         void updateUniformBuffer(RenderBatch& batch);
         void recordDrawCommands(VkCommandBuffer commandBuffer, const RenderBatch& batch);
         VkPrimitiveTopology getVulkanTopology(DrawCommand::Type type);

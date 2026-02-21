@@ -186,12 +186,14 @@ namespace Duel6::Gui {
             renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
             renderer.scissorTest(s.rx + s.x, s.ry + s.y - s.height + s.sy, s.width, s.height);
             control->draw(renderer, font, scissorBox);
-            renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
-            control->drawStencil(renderer, font);
-            renderer.stencil(Duel6::Renderer::StencilMode::TEST);
-            control->drawWithStencilTest(renderer, font);
-            renderer.stencil(Duel6::Renderer::StencilMode::ERASE);
-            control->drawStencil(renderer, font);
+            if (control->needsStencil()) {
+                renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
+                control->drawStencil(renderer, font);
+                renderer.stencil(Duel6::Renderer::StencilMode::TEST);
+                control->drawWithStencilTest(renderer, font);
+                renderer.stencil(Duel6::Renderer::StencilMode::ERASE);
+                control->drawStencil(renderer, font);
+            }
         }
         renderer.setScissorTest(false);
         renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);

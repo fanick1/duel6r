@@ -51,13 +51,73 @@ namespace Duel6 {
         indexBufferOffset = 0;
     }
 
+    bool VulkanBatchRenderer::canMergeCommands(const DrawCommand& a, const DrawCommand& b) const {
+        // Only merge list topologies (not strips, which have topology continuity)
+        if (a.type != b.type) return false;
+        if (a.type != DrawCommand::TRIANGLES && a.type != DrawCommand::LINES && a.type != DrawCommand::POINTS) return false;
+
+        // Neither command can use index buffers
+        if (a.indices || b.indices) return false;
+
+        // Both must have vertex data with the same stride
+        if (!a.vertices || a.vertexDataSize == 0 || a.vertexCount == 0) return false;
+        if (!b.vertices || b.vertexDataSize == 0 || b.vertexCount == 0) return false;
+        size_t strideA = a.vertexDataSize / a.vertexCount;
+        size_t strideB = b.vertexDataSize / b.vertexCount;
+        if (strideA != strideB) return false;
+
+        // Same MVP matrices
+        if (std::memcmp(a.projectionMatrix.getStorage(), b.projectionMatrix.getStorage(), sizeof(Float32) * 16) != 0) return false;
+        if (std::memcmp(a.viewMatrix.getStorage(), b.viewMatrix.getStorage(), sizeof(Float32) * 16) != 0) return false;
+        if (std::memcmp(a.modelMatrix.getStorage(), b.modelMatrix.getStorage(), sizeof(Float32) * 16) != 0) return false;
+
+        // Same scissor state
+        if (a.scissorEnabled != b.scissorEnabled) return false;
+        if (a.scissorEnabled) {
+            if (a.scissorX != b.scissorX || a.scissorY != b.scissorY ||
+                a.scissorWidth != b.scissorWidth || a.scissorHeight != b.scissorHeight) return false;
+        }
+
+        // Same stencil mode
+        if (a.stencilMode != b.stencilMode) return false;
+
+        // Same texture descriptor set and material parameters
+        if (a.textureDescriptorSet != b.textureDescriptorSet) return false;
+        if (a.textureDescriptorSet != VK_NULL_HANDLE) {
+            if (std::memcmp(a.modulateColor, b.modulateColor, sizeof(a.modulateColor)) != 0) return false;
+            if (a.alphaTest != b.alphaTest) return false;
+        }
+
+        return true;
+    }
+
     void VulkanBatchRenderer::addDrawCommand(VulkanPipeline* pipeline, const DrawCommand& command) {
         if (!pipeline) {
             D6_THROW(Exception, "Pipeline cannot be null");
         }
-        
+
         RenderBatch* batch = getBatch(pipeline);
-        
+
+        // Try to merge with the last command in this batch
+        if (!batch->commands.empty() && canMergeCommands(batch->commands.back(), command)) {
+            DrawCommand& lastCmd = batch->commands.back();
+            if (command.vertices && command.vertexDataSize > 0) {
+                auto& lastStorage = batch->vertexDataStorage.back();
+                size_t oldSize = lastStorage.size();
+                lastStorage.resize(oldSize + command.vertexDataSize);
+                std::memcpy(lastStorage.data() + oldSize, command.vertices, command.vertexDataSize);
+                lastCmd.vertices = lastStorage.data();
+                lastCmd.vertexDataSize += command.vertexDataSize;
+                lastCmd.vertexCount += command.vertexCount;
+            }
+            batch->dirty = true;
+            // Update triangle stats for merged draws
+            if (command.type == DrawCommand::TRIANGLES) {
+                stats.triangles += command.vertexCount / 3;
+            }
+            return;
+        }
+
         // Copy vertex data to persistent storage
         DrawCommand cmd = command;
         if (command.vertices && command.vertexDataSize > 0) {
@@ -65,10 +125,10 @@ namespace Duel6 {
             std::memcpy(batch->vertexDataStorage.back().data(), command.vertices, command.vertexDataSize);
             cmd.vertices = batch->vertexDataStorage.back().data();
         }
-        
+
         batch->commands.push_back(cmd);
         batch->dirty = true;
-        
+
         // Update statistics
         stats.drawCalls++;
         if (command.type == DrawCommand::TRIANGLES || command.type == DrawCommand::TRIANGLE_STRIP) {

@@ -92,6 +92,8 @@ namespace Duel6 {
 
             void update(Float32 elapsedTime) override;
 
+            bool needsStencil() const override { return true; }
+
             void drawStencil(Renderer &renderer, const Font &font) const override;
 
             void draw(Renderer &renderer, const Font &font) const override;

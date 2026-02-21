@@ -111,6 +111,8 @@ namespace Duel6 {
 
             bool keyEvent(const KeyPressEvent &event) override;
 
+            bool needsStencil() const override { return true; }
+
             void drawStencil(Renderer &renderer, const Font &font) const override;
 
             void draw(Renderer &renderer, const Font &font) const override;
