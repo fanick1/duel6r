@@ -865,6 +865,12 @@ namespace Duel6 {
         return previous;
     }
 
+    void VulkanRenderer::setDeferredDrawReordering(bool enable) {
+        if (batchRenderer) {
+            batchRenderer->setDeferredMode(enable);
+        }
+    }
+
     void VulkanRenderer::scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const {
         scissorX = x;
         // Vulkan Y-axis is top-down, OpenGL is bottom-up

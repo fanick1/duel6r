@@ -51,21 +51,53 @@ namespace Duel6::Gui {
         Control::ScissorBox scissorBox{parentScissorBox.rx, parentScissorBox.ry, x, y, width, height, 0, -scrollY};
 
         bool originalScissorTest = renderer.setScissorTest(true);
+        renderer.setDeferredDrawReordering(true);
+
+
+        for (auto &control : controls) {
+            Control::ScissorBox s = control->getScissorBox(scissorBox);
+            if(s.width <= 0 || s.height <= 0) continue;
+            control->preDrawFrame(renderer);
+        }
+
         for (auto &control: controls) {
             Control::ScissorBox s = control->getScissorBox(scissorBox);
             if(s.width <= 0 || s.height <= 0) continue;
             renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
             renderer.scissorTest(s.rx + s.x, s.ry + s.y - height - s.height + s.sy, s.width, s.height);
             control->draw(renderer, font); //TODO pass parentScissorBox
+            // if (control->needsStencil()) {
+            //     renderer.setDeferredDrawReordering(false);
+            //     renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
+            //     control->drawStencil(renderer, font);
+            //     renderer.stencil(Duel6::Renderer::StencilMode::TEST);
+            //     control->drawWithStencilTest(renderer, font);
+            //     renderer.stencil(Duel6::Renderer::StencilMode::ERASE);
+            //     control->drawStencil(renderer, font);
+            //     renderer.setDeferredDrawReordering(true);
+            // }
+        }
+        renderer.setDeferredDrawReordering(false);
+
+        for (auto &control: controls) {
+            Control::ScissorBox s = control->getScissorBox(scissorBox);
+            if(s.width <= 0 || s.height <= 0) continue;
+            renderer.stencil(Duel6::Renderer::StencilMode::DISABLE);
+            renderer.scissorTest(s.rx + s.x, s.ry + s.y - height - s.height + s.sy, s.width, s.height);
+            // control->draw(renderer, font); //TODO pass parentScissorBox
             if (control->needsStencil()) {
+                renderer.setDeferredDrawReordering(false);
                 renderer.stencil(Duel6::Renderer::StencilMode::WRITE);
                 control->drawStencil(renderer, font);
                 renderer.stencil(Duel6::Renderer::StencilMode::TEST);
                 control->drawWithStencilTest(renderer, font);
                 renderer.stencil(Duel6::Renderer::StencilMode::ERASE);
                 control->drawStencil(renderer, font);
+                renderer.setDeferredDrawReordering(true);
             }
         }
+
+
         if (!originalScissorTest) {
             renderer.setScissorTest(false);
         }

@@ -123,7 +123,16 @@ namespace Duel6 {
         uint32_t flushViewportHeight;
         
         VulkanPipeline* lastPipeline;
-        
+
+        // Deferred draw reordering
+        bool deferredMode;
+        struct DeferredCommand {
+            VulkanPipeline* pipeline;
+            DrawCommand command;
+            std::vector<uint8_t> vertexData;
+        };
+        std::vector<DeferredCommand> deferredCommands;
+
         // Statistics
         struct Statistics {
             uint32_t drawCalls;
@@ -170,6 +179,9 @@ namespace Duel6 {
         const Statistics& getStatistics() const { return stats; }
         void resetStatistics() { stats.reset(); }
         
+        // Deferred draw reordering
+        void setDeferredMode(bool enable);
+
         // Utility methods
         void clear();
         bool isEmpty() const;
@@ -177,6 +189,7 @@ namespace Duel6 {
     private:
         RenderBatch* getBatch(VulkanPipeline* pipeline);
         bool canMergeCommands(const DrawCommand& a, const DrawCommand& b) const;
+        void flushDeferred();
         void updateUniformBuffer(RenderBatch& batch);
         void recordDrawCommands(VkCommandBuffer commandBuffer, const RenderBatch& batch);
         VkPrimitiveTopology getVulkanTopology(DrawCommand::Type type);

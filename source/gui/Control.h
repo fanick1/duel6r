@@ -176,6 +176,9 @@ namespace Duel6 {
             void scrollToView(Int32 X, Int32 Y, Int32 W, Int32 H);
 
             virtual void scrollCoordToView(Int32 X, Int32 Y, Int32 W, Int32 H){}
+
+            virtual void preDrawFrame(Renderer &renderer) const {}
+
         protected:
             static void drawFrame(Renderer &renderer, Int32 x, Int32 y, Int32 w, Int32 h, bool p, bool focus = false);
 

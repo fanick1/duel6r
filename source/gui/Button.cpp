@@ -92,10 +92,13 @@ namespace Duel6 {
             }
         }
 
+        void Button::preDrawFrame(Renderer &renderer) const {
+            drawFrame(renderer, x, y, width, height, pressed, focused);
+        }
+
         void Button::draw(Renderer &renderer, const Font &font) const {
             Int32 px, py;
             Int32 captionWidth = font.getTextWidth(caption, 16);
-            drawFrame(renderer, x, y, width, height, pressed, focused);
             px = x + (width / 2) - (captionWidth / 2) + -1 + pressed;
             py = y - (height / 2) - 8 - pressed;
             Color color = enabled ? Color::BLACK : Color::GRAY;

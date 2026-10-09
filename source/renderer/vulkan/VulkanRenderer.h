@@ -139,6 +139,8 @@ namespace Duel6 {
         bool setScissorTest(bool value) const override;
         void scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const override;
 
+        void setDeferredDrawReordering(bool enable) override;
+
         // Buffer and target creation
         std::unique_ptr<RendererBuffer> makeBuffer(const FaceList &faceList) override;
         std::unique_ptr<RendererTarget> makeTarget(ScreenParameters screenParameters) override;

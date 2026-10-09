@@ -98,6 +98,8 @@ namespace Duel6 {
 
             void draw(Renderer &renderer, const Font &font) const override;
 
+            void preDrawFrame(Renderer &renderer) const override;
+
             void drawWithStencilTest(Renderer &renderer, const Font &font) override;
 
             void setScrolling(bool value);

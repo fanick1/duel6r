@@ -118,8 +118,14 @@ namespace Duel6 {
             renderer.quadXY(Vector(x + 22, y - (height - 6)), Vector(width - 44, height - 7), Color::WHITE);
         }
 
-        void Spinner::draw(Renderer &renderer, const Font &font) const {
+        void Spinner::preDrawFrame(Renderer &renderer) const {
             drawFrame(renderer, x + 20, y, width - 40, height - 4, true);
+            if (focused) {
+                drawFocusFrame(renderer, x - 3, y + 2, width + 2, height - 2, 4);
+            }
+        }
+
+        void Spinner::draw(Renderer &renderer, const Font &font) const {
             Int32 px = left->getX() + 7 + (left->isPressed() ? 1 : 0);
             Int32 py = left->getY() - 4 - (left->isPressed() ? 1 : 0);
             renderer.triangle(Vector(px + 2, py), Vector(px + 2, py - 7), Vector(px - 2, py - 4), Color::BLACK);
@@ -128,9 +134,9 @@ namespace Duel6 {
             py = right->getY() - 4 - (right->isPressed() ? 1 : 0);
             renderer.triangle(Vector(px - 1, py), Vector(px + 3, py - 4), Vector(px - 1, py - 7), Color::BLACK);
 
-            if (focused) {
-                drawFocusFrame(renderer, x - 3, y + 2, width + 2, height - 2, 4);
-            }
+            // if (focused) {
+            //     drawFocusFrame(renderer, x - 3, y + 2, width + 2, height - 2, 4);
+            // }
         }
 
         void Spinner::drawWithStencilTest(Renderer &renderer, const Font &font) {

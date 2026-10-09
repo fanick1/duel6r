@@ -170,6 +170,8 @@ namespace Duel6 {
         virtual bool setScissorTest(bool value) const = 0;
 
         virtual void scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const = 0;
+
+        virtual void setDeferredDrawReordering(bool enable) {}
     };
 }
 

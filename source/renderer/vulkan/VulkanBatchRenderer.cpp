@@ -19,7 +19,8 @@ namespace Duel6 {
         , vertexBufferOffset(0)
         , indexBufferOffset(0)
         , currentFrame(0)
-        , lastPipeline(nullptr) {
+        , lastPipeline(nullptr)
+        , deferredMode(false) {
         
         // Initialize per-frame vertex and index buffers
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -43,6 +44,8 @@ namespace Duel6 {
         // Clear all batch state for the new frame
         orderedBatches.clear();
         lastPipeline = nullptr;
+        deferredMode = false;
+        deferredCommands.clear();
     }
 
     void VulkanBatchRenderer::endFrame() {
@@ -94,6 +97,19 @@ namespace Duel6 {
     void VulkanBatchRenderer::addDrawCommand(VulkanPipeline* pipeline, const DrawCommand& command) {
         if (!pipeline) {
             D6_THROW(Exception, "Pipeline cannot be null");
+        }
+
+        if (deferredMode) {
+            DeferredCommand dc;
+            dc.pipeline = pipeline;
+            dc.command = command;
+            if (command.vertices && command.vertexDataSize > 0) {
+                dc.vertexData.resize(command.vertexDataSize);
+                std::memcpy(dc.vertexData.data(), command.vertices, command.vertexDataSize);
+                dc.command.vertices = dc.vertexData.data();
+            }
+            deferredCommands.push_back(std::move(dc));
+            return;
         }
 
         RenderBatch* batch = getBatch(pipeline);
@@ -228,6 +244,65 @@ namespace Duel6 {
         vertexBufferOffset = 0;
         indexBufferOffset = 0;
         stats.reset();
+    }
+
+    void VulkanBatchRenderer::setDeferredMode(bool enable) {
+        if (deferredMode && !enable) {
+            flushDeferred();
+        }
+        deferredMode = enable;
+    }
+
+    void VulkanBatchRenderer::flushDeferred() {
+        if (deferredCommands.empty()) {
+            return;
+        }
+
+        // Stable-sort by pipeline pointer to group same-pipeline draws together
+        std::stable_sort(deferredCommands.begin(), deferredCommands.end(),
+            [](const DeferredCommand& a, const DeferredCommand& b) {
+                return a.pipeline < b.pipeline;
+            });
+
+        // Feed through the normal (non-deferred) addDrawCommand path
+        for (auto& dc : deferredCommands) {
+            RenderBatch* batch = getBatch(dc.pipeline);
+
+            if (!batch->commands.empty() && canMergeCommands(batch->commands.back(), dc.command)) {
+                DrawCommand& lastCmd = batch->commands.back();
+                if (dc.command.vertices && dc.command.vertexDataSize > 0) {
+                    auto& lastStorage = batch->vertexDataStorage.back();
+                    size_t oldSize = lastStorage.size();
+                    lastStorage.resize(oldSize + dc.command.vertexDataSize);
+                    std::memcpy(lastStorage.data() + oldSize, dc.command.vertices, dc.command.vertexDataSize);
+                    lastCmd.vertices = lastStorage.data();
+                    lastCmd.vertexDataSize += dc.command.vertexDataSize;
+                    lastCmd.vertexCount += dc.command.vertexCount;
+                }
+                batch->dirty = true;
+                if (dc.command.type == DrawCommand::TRIANGLES) {
+                    stats.triangles += dc.command.vertexCount / 3;
+                }
+            } else {
+                DrawCommand cmd = dc.command;
+                if (dc.command.vertices && dc.command.vertexDataSize > 0) {
+                    batch->vertexDataStorage.push_back(std::move(dc.vertexData));
+                    cmd.vertices = batch->vertexDataStorage.back().data();
+                }
+                batch->commands.push_back(cmd);
+                batch->dirty = true;
+                stats.drawCalls++;
+                if (dc.command.type == DrawCommand::TRIANGLES || dc.command.type == DrawCommand::TRIANGLE_STRIP) {
+                    if (dc.command.indices) {
+                        stats.triangles += dc.command.indexCount / 3;
+                    } else {
+                        stats.triangles += dc.command.vertexCount / 3;
+                    }
+                }
+            }
+        }
+
+        deferredCommands.clear();
     }
 
     bool VulkanBatchRenderer::isEmpty() const {
