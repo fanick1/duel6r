@@ -40,6 +40,7 @@
 #include "renderer/headless/HeadlessRenderer.h"
 #elif defined(D6_RENDERER_VULKAN)
 #include "renderer/vulkan/VulkanRenderer.h"
+#include <SDL2/SDL_vulkan.h>
 #endif
 
 namespace Duel6 {
@@ -76,6 +77,7 @@ namespace Duel6 {
         setMode(Mode::Orthogonal);
 
         SDL_ShowCursor(SDL_DISABLE);
+        logSizes("init");
     }
 
     Video::~Video() {
@@ -176,10 +178,36 @@ namespace Duel6 {
     }
 
     void Video::resize(int width, int height) {
+        if (width == screen.getClientWidth() && height == screen.getClientHeight()) {
+            return;
+        }
         screen.setSize(width, height);
         for (const auto &callback : resizeCallbacks) {
             callback(width, height);
         }
+        logSizes(Format("resize to {0}x{1}") << width << height);
+    }
+
+    void Video::setWindowSize(int width, int height) {
+#ifndef D6_RENDERER_HEADLESS
+        SDL_SetWindowSize(window, width, height);
+#endif
+    }
+
+    void Video::logSizes(const std::string &reason) const {
+        int windowWidth = 0, windowHeight = 0;
+        int drawableWidth = 0, drawableHeight = 0;
+#if !defined(D6_RENDERER_HEADLESS)
+        SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+#if defined(D6_RENDERER_VULKAN)
+        SDL_Vulkan_GetDrawableSize(window, &drawableWidth, &drawableHeight);
+#else
+        SDL_GL_GetDrawableSize(window, &drawableWidth, &drawableHeight);
+#endif
+#endif
+        console->printLine(Format("[video] {0}: window {1}x{2}, drawable {3}x{4}, game screen {5}x{6}")
+                           << reason << windowWidth << windowHeight << drawableWidth << drawableHeight
+                           << screen.getClientWidth() << screen.getClientHeight());
     }
 
     SDL_GLContext Video::createContext(const ScreenParameters &params, Console &console) {

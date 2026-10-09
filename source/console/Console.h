@@ -271,6 +271,7 @@ namespace Duel6 {
         unsigned long bufpos;                       // Pozice v bufferu kam se tiskne
         bool buffull;                      // Uz byl buffer prerotovan? Je plny?
         bool insert;                       // Prepinani vkladani/prepisovani
+        bool echoToStdout = false;         // Also print all output to stdout
         int curpos;                       // Pozice kursoru na radku
         int show;                         // Kolik poslednich radku ukazat
         int scroll;                       // O kolik radku je odskrolovano
@@ -299,6 +300,10 @@ namespace Duel6 {
         void render(Renderer &renderer, Int32 csX, Int32 csY, const Font &font);
 
         Console &print(const std::string &str);
+
+        void setEchoToStdout(bool echo) {
+            echoToStdout = echo;
+        }
 
         Console &printLine(const std::string &str);
 

@@ -96,6 +96,16 @@ namespace Duel6 {
         return descriptorSet;
     }
 
+    void VulkanDescriptorPool::freeDescriptorSet(const VulkanDevice& device, VkDescriptorSet descriptorSet) {
+        if (pool == VK_NULL_HANDLE || descriptorSet == VK_NULL_HANDLE) {
+            return;
+        }
+        vkFreeDescriptorSets(device.getLogicalDevice(), pool, 1, &descriptorSet);
+        if (allocatedSets > 0) {
+            allocatedSets--;
+        }
+    }
+
     // VulkanDescriptorManager implementation
     VulkanDescriptorManager::VulkanDescriptorManager(Console& console)
         : currentPoolIndex(0), maxSetsPerPool(1000), console(&console) {
@@ -118,6 +128,7 @@ namespace Duel6 {
             pool->destroy(device);
         }
         descriptorPools.clear();
+        descriptorSetOwners.clear();
 
         // Destroy descriptor set layouts
         for (auto& pair : layoutCache) {
@@ -187,21 +198,29 @@ namespace Duel6 {
 
     VkDescriptorSet VulkanDescriptorManager::allocateDescriptorSet(const VulkanDevice& device, VkDescriptorSetLayout layout) {
         VulkanDescriptorPool* pool = getAvailablePool(device);
-        if (!pool) {
-            return VK_NULL_HANDLE;
-        }
-
-        VkDescriptorSet descriptorSet = pool->allocateDescriptorSet(device, layout);
+        VkDescriptorSet descriptorSet = pool ? pool->allocateDescriptorSet(device, layout) : VK_NULL_HANDLE;
         if (descriptorSet == VK_NULL_HANDLE) {
-            // Current pool is full, try to create a new one
+            // All pools full (or fragmented) - grow with a fresh pool
             createNewPool(device);
-            pool = getAvailablePool(device);
-            if (pool) {
-                descriptorSet = pool->allocateDescriptorSet(device, layout);
-            }
+            pool = descriptorPools.back().get();
+            descriptorSet = pool->allocateDescriptorSet(device, layout);
         }
 
+        if (descriptorSet == VK_NULL_HANDLE) {
+            D6_THROW(VulkanException, "Failed to allocate descriptor set");
+        }
+
+        descriptorSetOwners[descriptorSet] = pool;
         return descriptorSet;
+    }
+
+    void VulkanDescriptorManager::freeDescriptorSet(const VulkanDevice& device, VkDescriptorSet descriptorSet) {
+        auto it = descriptorSetOwners.find(descriptorSet);
+        if (it == descriptorSetOwners.end()) {
+            return;
+        }
+        it->second->freeDescriptorSet(device, descriptorSet);
+        descriptorSetOwners.erase(it);
     }
 
     void VulkanDescriptorManager::updateTextureDescriptorSet(const VulkanDevice& device, VkDescriptorSet descriptorSet,
@@ -246,6 +265,7 @@ namespace Duel6 {
         for (auto& pool : descriptorPools) {
             pool->reset(device);
         }
+        descriptorSetOwners.clear();
         currentPoolIndex = 0;
     }
 
@@ -270,8 +290,8 @@ namespace Duel6 {
             createNewPool(device);
         }
 
-        // Find a pool that has space
-        for (size_t i = currentPoolIndex; i < descriptorPools.size(); ++i) {
+        // Find a pool that has space (scan from start: freed sets reopen earlier pools)
+        for (size_t i = 0; i < descriptorPools.size(); ++i) {
             if (descriptorPools[i]->canAllocate()) {
                 currentPoolIndex = i;
                 return descriptorPools[i].get();

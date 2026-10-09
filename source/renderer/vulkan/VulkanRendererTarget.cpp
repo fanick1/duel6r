@@ -347,7 +347,12 @@ namespace Duel6 {
         }
 
         // sampler is managed by SamplerManager, don't destroy it here
-        // colorDescriptorSet is managed by DescriptorManager pool, don't free individually
+        // Descriptor sets must go back to the pool, otherwise every resize leaks two of them
+        auto& descriptorManager = renderer.getDescriptorManager();
+        descriptorManager.freeDescriptorSet(renderer.getDevice(), colorDescriptorSet);
+        colorDescriptorSet = VK_NULL_HANDLE;
+        descriptorManager.freeDescriptorSet(renderer.getDevice(), depthDescriptorSet);
+        depthDescriptorSet = VK_NULL_HANDLE;
 
         resourcesCreated = false;
     }

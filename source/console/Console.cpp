@@ -78,6 +78,9 @@ namespace Duel6 {
         std::cout << str;
         return *this;
 #else
+        if (echoToStdout) {
+            std::cout << str << std::flush;
+        }
 
         for (size_t pos = 0; pos < str.length(); ++pos) {
             char tx = str[pos];

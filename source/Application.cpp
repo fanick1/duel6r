@@ -26,6 +26,8 @@
 */
 
 #include <SDL2/SDL_image.h>
+#include <cstdlib>
+#include "Image.h"
 #ifdef D6_SCRIPTING_LUA
     #include <lua.hpp>
 #endif
@@ -206,6 +208,7 @@ namespace Duel6 {
 
     void Application::parseCommandLineOptions(int argc, char **argv) {
         commandLineOptions.dedicated = hasCmdLineOption(argv, argv+argc, "-dedicated");
+        console.setEchoToStdout(hasCmdLineOption(argv, argv + argc, "-log-stdout"));
 
         char *window = getCmdLineOption(argv, argv+argc, "-window");
         if (window != nullptr) {
@@ -218,6 +221,27 @@ namespace Duel6 {
             commandLineOptions.windowed = false;
             commandLineOptions.windowWidth = -1;
             commandLineOptions.windowHeight = -1;
+        }
+
+        char *resize = getCmdLineOption(argv, argv + argc, "-resize");
+        if (resize != nullptr) {
+            sscanf(resize, "%dx%d", &commandLineOptions.resizeWidth, &commandLineOptions.resizeHeight);
+        }
+        char *resizeAfter = getCmdLineOption(argv, argv + argc, "-resize-after");
+        if (resizeAfter != nullptr) {
+            commandLineOptions.resizeAfter = atof(resizeAfter);
+        }
+        char *screenshot = getCmdLineOption(argv, argv + argc, "-screenshot");
+        if (screenshot != nullptr) {
+            commandLineOptions.screenshotPath = screenshot;
+        }
+        char *screenshotAfter = getCmdLineOption(argv, argv + argc, "-screenshot-after");
+        if (screenshotAfter != nullptr) {
+            commandLineOptions.screenshotAfter = atof(screenshotAfter);
+        }
+        char *quitAfter = getCmdLineOption(argv, argv + argc, "-quit-after");
+        if (quitAfter != nullptr) {
+            commandLineOptions.quitAfter = atof(quitAfter);
         }
 
         if(hasCmdLineOption(argv, argv + argc, "-publish")){
@@ -355,7 +379,9 @@ namespace Duel6 {
                     break;
                 case SDL_WINDOWEVENT: {
                     switch (event.window.event)  {
-                      case SDL_WINDOWEVENT_RESIZED:  {
+                      // SIZE_CHANGED fires for every size change; RESIZED only for external
+                      // requests and misses fullscreen toggles, maximize and min-size clamping
+                      case SDL_WINDOWEVENT_SIZE_CHANGED:  {
                         int width = event.window.data1;
                         int height = event.window.data2;
                         video->resize(width, height);
@@ -436,6 +462,32 @@ namespace Duel6 {
         netClient->flush();
     }
 
+    void Application::runAutomation() {
+        Float64 elapsed = (SDL_GetTicks() - automationStartTicks) * 0.001;
+
+        if (!automationResized && commandLineOptions.resizeWidth > 0 && elapsed >= commandLineOptions.resizeAfter) {
+            automationResized = true;
+            console.printLine(Format("[automation] resizing window to {0}x{1}")
+                              << commandLineOptions.resizeWidth << commandLineOptions.resizeHeight);
+            video->setWindowSize(commandLineOptions.resizeWidth, commandLineOptions.resizeHeight);
+        }
+
+        if (!automationScreenshotTaken && !commandLineOptions.screenshotPath.empty() &&
+            elapsed >= commandLineOptions.screenshotAfter) {
+            automationScreenshotTaken = true;
+            video->logSizes("screenshot");
+            Image image = video->getRenderer().makeScreenshot();
+            image.save(commandLineOptions.screenshotPath);
+            console.printLine(Format("[automation] screenshot {0}x{1} saved to {2}")
+                              << image.getWidth() << image.getHeight() << commandLineOptions.screenshotPath);
+        }
+
+        if (commandLineOptions.quitAfter >= 0 && elapsed >= commandLineOptions.quitAfter) {
+            console.printLine("[automation] quit");
+            requestClose = true;
+        }
+    }
+
     void Application::run() {
         Publisher publisher(commandLineOptions.gsiURL, commandLineOptions.gsiPort);
 
@@ -447,6 +499,7 @@ namespace Duel6 {
             menu->startDedicatedServer();
         }
 
+        automationStartTicks = SDL_GetTicks();
         while (Context::exists() && !requestClose) {
             Context &context = Context::getCurrent();
             if(publisher.wantsNewData()){
@@ -456,6 +509,7 @@ namespace Duel6 {
             processEvents(context);
             Float64 elapsedTime = syncUpdateAndRender(context);
             networkRun(elapsedTime);
+            runAutomation();
 
             if (context.isClosed()) {
                 Context::pop();

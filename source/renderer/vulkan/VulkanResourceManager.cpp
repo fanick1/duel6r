@@ -66,6 +66,7 @@ namespace Duel6 {
         // Clear deletion queues
         pendingTextureDeletes.clear();
         pendingBufferDeletes.clear();
+        deleteQueue.clear();
 
         // Clear available ID queues
         while (!availableTextureIds.empty()) availableTextureIds.pop();
@@ -219,27 +220,36 @@ namespace Duel6 {
     }
 
     void VulkanResourceManager::processDeletes(const VulkanDevice& device) {
-        // Process texture deletes
-        for (TextureId id : pendingTextureDeletes) {
-            auto it = textures.find(id);
-            if (it != textures.end()) {
-                destroyTextureResource(device, it->second);
-                recycleTextureId(id);
-                textures.erase(it);
-            }
-        }
+        // Called right after a frame is submitted, so this frame's deletes may still be in use
+        // by that submission and by the other frame in flight. Retire them after
+        // DELETE_DELAY_FRAMES more frames, when their fences have been waited on.
+        deleteQueue.push_back({std::move(pendingTextureDeletes), std::move(pendingBufferDeletes)});
         pendingTextureDeletes.clear();
-
-        // Process buffer deletes
-        for (BufferId id : pendingBufferDeletes) {
-            auto it = buffers.find(id);
-            if (it != buffers.end()) {
-                destroyBufferResource(device, it->second);
-                recycleBufferId(id);
-                buffers.erase(it);
-            }
-        }
         pendingBufferDeletes.clear();
+
+        while (deleteQueue.size() > DELETE_DELAY_FRAMES) {
+            DeleteBatch& batch = deleteQueue.front();
+
+            for (TextureId id : batch.textures) {
+                auto it = textures.find(id);
+                if (it != textures.end()) {
+                    destroyTextureResource(device, it->second);
+                    recycleTextureId(id);
+                    textures.erase(it);
+                }
+            }
+
+            for (BufferId id : batch.buffers) {
+                auto it = buffers.find(id);
+                if (it != buffers.end()) {
+                    destroyBufferResource(device, it->second);
+                    recycleBufferId(id);
+                    buffers.erase(it);
+                }
+            }
+
+            deleteQueue.pop_front();
+        }
 
         updateMemoryStats();
     }
@@ -326,6 +336,10 @@ namespace Duel6 {
     }
 
     void VulkanResourceManager::destroyTextureResource(const VulkanDevice& device, TextureResource& resource) {
+        if (resource.descriptorSet != VK_NULL_HANDLE) {
+            descriptorManager->freeDescriptorSet(device, resource.descriptorSet);
+            resource.descriptorSet = VK_NULL_HANDLE;
+        }
         if (resource.texture) {
             resource.texture->destroy(device, *memoryManager);
         }

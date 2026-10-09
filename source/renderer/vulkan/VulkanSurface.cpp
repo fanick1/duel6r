@@ -88,17 +88,18 @@ namespace Duel6 {
     }
 
     VkSurfaceFormatKHR VulkanSurface::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const {
-        // Prefer SRGB color space for better color representation
+        // Prefer UNORM: the game's colors and textures are already sRGB-encoded and the OpenGL
+        // renderers write them unchanged. An _SRGB format would encode them a second time
+        // and wash out the whole image (e.g. menu grey 192 shows up as 225).
         for (const auto& availableFormat : availableFormats) {
-            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && 
+            if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && 
                 availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                 return availableFormat;
             }
         }
 
-        // Fallback to UNORM if SRGB is not available
         for (const auto& availableFormat : availableFormats) {
-            if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && 
+            if (availableFormat.format == VK_FORMAT_R8G8B8A8_UNORM && 
                 availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                 return availableFormat;
             }
@@ -136,7 +137,7 @@ namespace Duel6 {
         } else {
             // Get window size from SDL
             int width, height;
-            SDL_GetWindowSize(window, &width, &height);
+            SDL_Vulkan_GetDrawableSize(window, &width, &height);
 
             VkExtent2D actualExtent = {
                 static_cast<uint32_t>(width),

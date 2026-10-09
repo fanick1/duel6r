@@ -84,6 +84,12 @@ namespace Duel6 {
 
         void resize(int width, int height);
 
+        // Request a new window size from the window system (the resize itself arrives as an SDL event)
+        void setWindowSize(int width, int height);
+
+        // Print window, drawable and game screen sizes to the console
+        void logSizes(const std::string &reason) const;
+
         void onResize(resizeCallback_t callback) {
             resizeCallbacks.push_back(callback);
         }

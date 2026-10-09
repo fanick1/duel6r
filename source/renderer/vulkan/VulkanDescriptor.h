@@ -91,6 +91,7 @@ namespace Duel6 {
         void reset(const VulkanDevice& device);
 
         VkDescriptorSet allocateDescriptorSet(const VulkanDevice& device, VkDescriptorSetLayout layout);
+        void freeDescriptorSet(const VulkanDevice& device, VkDescriptorSet descriptorSet);
         bool canAllocate() const { return allocatedSets < maxSets; }
         
         VkDescriptorPool getHandle() const { return pool; }
@@ -100,6 +101,7 @@ namespace Duel6 {
     private:
         std::unordered_map<DescriptorSetLayoutKey, VkDescriptorSetLayout, DescriptorSetLayoutKeyHash> layoutCache;
         std::vector<std::unique_ptr<VulkanDescriptorPool>> descriptorPools;
+        std::unordered_map<VkDescriptorSet, VulkanDescriptorPool*> descriptorSetOwners;
         size_t currentPoolIndex;
         uint32_t maxSetsPerPool;
         Console* console;
@@ -126,6 +128,8 @@ namespace Duel6 {
 
         // Descriptor set allocation
         VkDescriptorSet allocateDescriptorSet(const VulkanDevice& device, VkDescriptorSetLayout layout);
+        // Return a set to its pool. Caller must ensure no pending command buffer still uses it.
+        void freeDescriptorSet(const VulkanDevice& device, VkDescriptorSet descriptorSet);
         
         // Descriptor set updates
         void updateTextureDescriptorSet(const VulkanDevice& device, VkDescriptorSet descriptorSet,

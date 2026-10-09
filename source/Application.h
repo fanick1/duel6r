@@ -54,6 +54,14 @@ namespace Duel6 {
             Uint16 gsiPort = 0;
             Int32 windowWidth;
             Int32 windowHeight;
+
+            // Automation for testing: all times are seconds since the main loop started
+            Int32 resizeWidth = -1;
+            Int32 resizeHeight = -1;
+            Float64 resizeAfter = 1.0;
+            std::string screenshotPath;
+            Float64 screenshotAfter = 3.0;
+            Float64 quitAfter = -1.0;
         };
         CommandLineOptions commandLineOptions;
 
@@ -79,6 +87,9 @@ namespace Duel6 {
         std::unique_ptr<net::NetHost> netHost;
         std::unique_ptr<net::NetClient> netClient;
         bool requestClose;
+        Uint32 automationStartTicks = 0;
+        bool automationResized = false;
+        bool automationScreenshotTaken = false;
 
     public:
         Application(Int32 argc, char **argv);
@@ -110,6 +121,8 @@ namespace Duel6 {
         void parseCommandLineOptions(int argc, char **argv);
 
         void networkFlushCommands();
+
+        void runAutomation();
 
         void networkRun(const Float64 elapsedTime);
     };

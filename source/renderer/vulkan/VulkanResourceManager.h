@@ -33,6 +33,7 @@
 #include <vector>
 #include <unordered_map>
 #include <queue>
+#include <deque>
 #include "VulkanDevice.h"
 #include "VulkanMemory.h"
 #include "VulkanTexture.h"
@@ -93,6 +94,15 @@ namespace Duel6 {
         // Deletion queues for deferred cleanup
         std::vector<TextureId> pendingTextureDeletes;
         std::vector<BufferId> pendingBufferDeletes;
+
+        // Deletes queued in previous frames, oldest first. A frame's deletes are only
+        // executed once every command buffer that could reference them has finished.
+        struct DeleteBatch {
+            std::vector<TextureId> textures;
+            std::vector<BufferId> buffers;
+        };
+        static constexpr size_t DELETE_DELAY_FRAMES = 2; // = MAX_FRAMES_IN_FLIGHT
+        std::deque<DeleteBatch> deleteQueue;
 
         // Statistics
         size_t totalTextureMemory;

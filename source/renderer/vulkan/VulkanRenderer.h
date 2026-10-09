@@ -53,6 +53,13 @@ namespace Duel6 {
         // Current frame state
         uint32_t currentFrame;
         bool inFrame;  // True between clearBuffers() and swapBuffers()
+
+        // Copy of the last rendered frame for makeScreenshot(). Swapchain images may only be
+        // touched while acquired, so each frame is copied here before it is presented.
+        VkImage captureImage = VK_NULL_HANDLE;
+        VkDeviceMemory captureMemory = VK_NULL_HANDLE;
+        VkExtent2D captureExtent{};
+        bool captureValid = false;
         
         // Scissor state
         mutable bool scissorEnabled;
@@ -152,6 +159,9 @@ namespace Duel6 {
         void initialize();
         void cleanup();
         void recreateSwapchain();
+        void ensureCaptureImage(VkExtent2D extent);
+        void destroyCaptureImage();
+        void recordFrameCapture(VkCommandBuffer commandBuffer);
         void createPipelines();
         VulkanPipeline* getStatePipeline(VkPrimitiveTopology topology);
         VulkanPipeline* getTextureStatePipeline(VkPrimitiveTopology topology);

@@ -1,4 +1,6 @@
 #include "VulkanRenderer.h"
+#include <array>
+#include <SDL2/SDL_vulkan.h>
 #include "../../Format.h"
 #include "../../FaceList.h"
 #include "../../Vertex.h"
@@ -62,6 +64,8 @@ namespace Duel6 {
             surface->initialize(*context, window);
             device->initialize(*context, surface->getSurface());
             swapchain->initialize(*device, *surface);
+            console->printLine(Format("[vulkan] swapchain created: {0}x{1}")
+                               << swapchain->getExtent().width << swapchain->getExtent().height);
             memoryManager->initialize(*device, context->getInstance());
 
             // Initialize rendering components
@@ -117,6 +121,7 @@ namespace Duel6 {
 
         if (device) {
             device->waitIdle();
+            destroyCaptureImage();
         }
 
         // Cleanup rendering components
@@ -180,13 +185,14 @@ namespace Duel6 {
         }
 
         int width = 0, height = 0;
-        SDL_GetWindowSize(window, &width, &height);
+        SDL_Vulkan_GetDrawableSize(window, &width, &height);
         while (width == 0 || height == 0) {
-            SDL_GetWindowSize(window, &width, &height);
+            SDL_Vulkan_GetDrawableSize(window, &width, &height);
             SDL_WaitEvent(nullptr);
         }
 
         device->waitIdle();
+        destroyCaptureImage();
         
         // Clear batches BEFORE destroying pipelines to avoid dangling pipeline pointers
         if (batchRenderer) {
@@ -194,6 +200,8 @@ namespace Duel6 {
         }
         
         swapchain->recreate(*device, *surface);
+        console->printLine(Format("[vulkan] swapchain recreated: {0}x{1} (window {2}x{3})")
+                           << swapchain->getExtent().width << swapchain->getExtent().height << width << height);
         
         // Recreate render pass if swapchain format changed
         VkFormat newFormat = swapchain->getImageFormat();
@@ -274,49 +282,156 @@ namespace Duel6 {
         }
     }
 
+    void VulkanRenderer::ensureCaptureImage(VkExtent2D extent) {
+        if (captureImage != VK_NULL_HANDLE &&
+            captureExtent.width == extent.width && captureExtent.height == extent.height) {
+            return;
+        }
+        if (captureImage != VK_NULL_HANDLE) {
+            device->waitIdle();
+            destroyCaptureImage();
+        }
+
+        VkDevice dev = device->getLogicalDevice();
+
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.format = swapchain->getImageFormat();
+        imageInfo.extent = {extent.width, extent.height, 1};
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        if (vkCreateImage(dev, &imageInfo, nullptr, &captureImage) != VK_SUCCESS) {
+            D6_THROW(VulkanException, "Failed to create frame capture image");
+        }
+
+        VkMemoryRequirements memReqs;
+        vkGetImageMemoryRequirements(dev, captureImage, &memReqs);
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memReqs.size;
+        allocInfo.memoryTypeIndex = device->findMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        if (vkAllocateMemory(dev, &allocInfo, nullptr, &captureMemory) != VK_SUCCESS) {
+            vkDestroyImage(dev, captureImage, nullptr);
+            captureImage = VK_NULL_HANDLE;
+            D6_THROW(VulkanException, "Failed to allocate frame capture memory");
+        }
+        vkBindImageMemory(dev, captureImage, captureMemory, 0);
+
+        captureExtent = extent;
+        captureValid = false;
+    }
+
+    void VulkanRenderer::destroyCaptureImage() {
+        VkDevice dev = device->getLogicalDevice();
+        if (captureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(dev, captureImage, nullptr);
+            captureImage = VK_NULL_HANDLE;
+        }
+        if (captureMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(dev, captureMemory, nullptr);
+            captureMemory = VK_NULL_HANDLE;
+        }
+        captureExtent = {};
+        captureValid = false;
+    }
+
+    void VulkanRenderer::recordFrameCapture(VkCommandBuffer commandBuffer) {
+        VkExtent2D extent = swapchain->getExtent();
+        ensureCaptureImage(extent);
+
+        VkImage swapchainImage = swapchain->getImage(swapchain->getCurrentImageIndex());
+
+        VkImageSubresourceRange range{};
+        range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        range.levelCount = 1;
+        range.layerCount = 1;
+
+        // Swapchain image: PRESENT_SRC (render pass final layout) -> TRANSFER_SRC
+        // Capture image: previous contents discarded -> TRANSFER_DST
+        std::array<VkImageMemoryBarrier, 2> before{};
+        before[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        before[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        before[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        before[0].oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        before[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        before[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        before[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        before[0].image = swapchainImage;
+        before[0].subresourceRange = range;
+
+        before[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        before[1].srcAccessMask = 0;
+        before[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        before[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        before[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        before[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        before[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        before[1].image = captureImage;
+        before[1].subresourceRange = range;
+
+        vkCmdPipelineBarrier(commandBuffer,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(before.size()), before.data());
+
+        VkImageCopy region{};
+        region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.srcSubresource.layerCount = 1;
+        region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.dstSubresource.layerCount = 1;
+        region.extent = {extent.width, extent.height, 1};
+
+        vkCmdCopyImage(commandBuffer,
+            swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            captureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1, &region);
+
+        // Swapchain image back to PRESENT_SRC; capture image stays in TRANSFER_SRC for readback
+        std::array<VkImageMemoryBarrier, 2> after = before;
+        after[0].srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        after[0].dstAccessMask = 0;
+        after[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        after[0].newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        after[1].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        after[1].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        after[1].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        after[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+        vkCmdPipelineBarrier(commandBuffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(after.size()), after.data());
+
+        captureValid = true;
+    }
+
     Image VulkanRenderer::makeScreenshot() {
-        if (!initialized || !device || !swapchain || !memoryManager) {
+        if (!initialized || !device || !swapchain || !memoryManager || !captureValid) {
             return Image();
         }
 
         device->waitIdle();
 
-        VkExtent2D extent = swapchain->getExtent();
-        uint32_t width = extent.width;
-        uint32_t height = extent.height;
-        VkDeviceSize imageSize = width * height * 4; // RGBA 8-bit
+        uint32_t width = captureExtent.width;
+        uint32_t height = captureExtent.height;
+        VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * 4; // RGBA 8-bit
 
-        // Get the last presented swapchain image
-        uint32_t imageIndex = swapchain->getCurrentImageIndex();
-        VkImage srcImage = swapchain->getImage(imageIndex);
+        // Host-visible buffer the capture image is copied into
+        VulkanBuffer readbackBuffer = memoryManager->createBuffer(*device, imageSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-        // Create a host-visible staging buffer
-        VulkanBuffer stagingBuffer = memoryManager->createStagingBuffer(*device, imageSize);
-
-        // Record a single-time command buffer
         VkCommandBuffer cmdBuf = device->beginSingleTimeCommands();
 
-        // Transition swapchain image from PRESENT_SRC to TRANSFER_SRC
-        VkImageMemoryBarrier barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = srcImage;
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseMipLevel = 0;
-        barrier.subresourceRange.levelCount = 1;
-        barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = 1;
-        barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-        vkCmdPipelineBarrier(cmdBuf,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-            0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-        // Copy image to staging buffer
         VkBufferImageCopy region{};
         region.bufferOffset = 0;
         region.bufferRowLength = 0;   // tightly packed
@@ -328,25 +443,29 @@ namespace Duel6 {
         region.imageOffset = {0, 0, 0};
         region.imageExtent = {width, height, 1};
 
-        vkCmdCopyImageToBuffer(cmdBuf, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               stagingBuffer.buffer, 1, &region);
+        vkCmdCopyImageToBuffer(cmdBuf, captureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               readbackBuffer.buffer, 1, &region);
 
-        // Transition swapchain image back to PRESENT_SRC
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        VkBufferMemoryBarrier hostBarrier{};
+        hostBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        hostBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        hostBarrier.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+        hostBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        hostBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        hostBarrier.buffer = readbackBuffer.buffer;
+        hostBarrier.offset = 0;
+        hostBarrier.size = VK_WHOLE_SIZE;
 
         vkCmdPipelineBarrier(cmdBuf,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-            0, 0, nullptr, 0, nullptr, 1, &barrier);
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT,
+            0, 0, nullptr, 1, &hostBarrier, 0, nullptr);
 
         device->endSingleTimeCommands(cmdBuf);
 
-        // Read pixels from staging buffer
-        void* data = memoryManager->mapBuffer(*device, stagingBuffer);
+        // Read pixels from readback buffer
+        void* data = memoryManager->mapBuffer(*device, readbackBuffer);
         if (!data) {
-            memoryManager->destroyBuffer(*device, stagingBuffer);
+            memoryManager->destroyBuffer(*device, readbackBuffer);
             return Image();
         }
 
@@ -366,8 +485,8 @@ namespace Duel6 {
             }
         }
 
-        memoryManager->unmapBuffer(*device, stagingBuffer);
-        memoryManager->destroyBuffer(*device, stagingBuffer);
+        memoryManager->unmapBuffer(*device, readbackBuffer);
+        memoryManager->destroyBuffer(*device, readbackBuffer);
 
         return image;
     }
@@ -410,10 +529,26 @@ namespace Duel6 {
             return;
         }
 
-        // Handle swapchain recreation if needed
-        if (framebufferResized || !swapchain->acquireNextImage(*device)) {
+        // Not every platform reports a resize through VK_ERROR_OUT_OF_DATE_KHR (Wayland never does),
+        // so compare the drawable size with the swapchain ourselves
+        int drawableWidth = 0, drawableHeight = 0;
+        SDL_Vulkan_GetDrawableSize(window, &drawableWidth, &drawableHeight);
+        VkExtent2D extent = swapchain->getExtent();
+        if (static_cast<uint32_t>(drawableWidth) != extent.width ||
+            static_cast<uint32_t>(drawableHeight) != extent.height) {
+            framebufferResized = true;
+        }
+
+        if (framebufferResized) {
             recreateSwapchain();
-            return;
+        }
+
+        if (!swapchain->acquireNextImage(*device)) {
+            // Out of date - recreate and try once more, otherwise skip this frame
+            recreateSwapchain();
+            if (!swapchain->acquireNextImage(*device)) {
+                return;
+            }
         }
 
         // Begin frame in batch renderer
@@ -457,6 +592,9 @@ namespace Duel6 {
         
         // End render pass
         renderPass->end(commandBuffer);
+
+        // Keep a copy of the frame for screenshots while the swapchain image is still acquired
+        recordFrameCapture(commandBuffer);
         
         // End command recording 
         commandBufferManager->endFrame();
