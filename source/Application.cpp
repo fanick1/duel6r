@@ -223,13 +223,31 @@ namespace Duel6 {
             commandLineOptions.windowHeight = -1;
         }
 
+        // -resize WxH[,WxH...]
         char *resize = getCmdLineOption(argv, argv + argc, "-resize");
         if (resize != nullptr) {
-            sscanf(resize, "%dx%d", &commandLineOptions.resizeWidth, &commandLineOptions.resizeHeight);
+            std::string sizes = resize;
+            size_t pos = 0;
+            while (pos < sizes.size()) {
+                size_t end = sizes.find(',', pos);
+                std::string size = sizes.substr(pos, end == std::string::npos ? std::string::npos : end - pos);
+                Int32 width, height;
+                if (sscanf(size.c_str(), "%dx%d", &width, &height) == 2) {
+                    commandLineOptions.resizes.emplace_back(width, height);
+                }
+                if (end == std::string::npos) {
+                    break;
+                }
+                pos = end + 1;
+            }
         }
         char *resizeAfter = getCmdLineOption(argv, argv + argc, "-resize-after");
         if (resizeAfter != nullptr) {
             commandLineOptions.resizeAfter = atof(resizeAfter);
+        }
+        char *resizeInterval = getCmdLineOption(argv, argv + argc, "-resize-interval");
+        if (resizeInterval != nullptr) {
+            commandLineOptions.resizeInterval = atof(resizeInterval);
         }
         char *screenshot = getCmdLineOption(argv, argv + argc, "-screenshot");
         if (screenshot != nullptr) {
@@ -465,11 +483,12 @@ namespace Duel6 {
     void Application::runAutomation() {
         Float64 elapsed = (SDL_GetTicks() - automationStartTicks) * 0.001;
 
-        if (!automationResized && commandLineOptions.resizeWidth > 0 && elapsed >= commandLineOptions.resizeAfter) {
-            automationResized = true;
-            console.printLine(Format("[automation] resizing window to {0}x{1}")
-                              << commandLineOptions.resizeWidth << commandLineOptions.resizeHeight);
-            video->setWindowSize(commandLineOptions.resizeWidth, commandLineOptions.resizeHeight);
+        const auto &resizes = commandLineOptions.resizes;
+        if (automationResizesDone < resizes.size() &&
+            elapsed >= commandLineOptions.resizeAfter + automationResizesDone * commandLineOptions.resizeInterval) {
+            const auto &size = resizes[automationResizesDone++];
+            console.printLine(Format("[automation] resizing window to {0}x{1}") << size.first << size.second);
+            video->setWindowSize(size.first, size.second);
         }
 
         if (!automationScreenshotTaken && !commandLineOptions.screenshotPath.empty() &&

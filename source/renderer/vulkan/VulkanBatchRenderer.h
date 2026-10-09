@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <algorithm>
 #include "../../Type.h"
 #include "../../math/Math.h"
 #include "../../math/Matrix.h"
@@ -132,6 +133,46 @@ namespace Duel6 {
             std::vector<uint8_t> vertexData;
         };
         std::vector<DeferredCommand> deferredCommands;
+
+        // Screen area touched by a deferred draw, used to reorder only non-overlapping draws
+        struct DrawBounds {
+            bool empty = true;
+            bool infinite = false;
+            Float32 minX = 0, minY = 0, maxX = 0, maxY = 0;
+
+            void add(Float32 x, Float32 y) {
+                if (empty) {
+                    minX = maxX = x;
+                    minY = maxY = y;
+                    empty = false;
+                } else {
+                    minX = std::min(minX, x);
+                    maxX = std::max(maxX, x);
+                    minY = std::min(minY, y);
+                    maxY = std::max(maxY, y);
+                }
+            }
+
+            void add(const DrawBounds& other) {
+                if (other.infinite) {
+                    infinite = true;
+                } else if (!other.empty) {
+                    add(other.minX, other.minY);
+                    add(other.maxX, other.maxY);
+                }
+            }
+
+            bool overlaps(const DrawBounds& other) const {
+                if (infinite || other.infinite) {
+                    return true;
+                }
+                if (empty || other.empty) {
+                    return false;
+                }
+                return minX < other.maxX && other.minX < maxX && minY < other.maxY && other.minY < maxY;
+            }
+        };
+        static DrawBounds computeBounds(const DrawCommand& command, const DrawCommand& reference);
 
         // Statistics
         struct Statistics {

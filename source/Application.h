@@ -28,6 +28,8 @@
 #ifndef DUEL6_APPLICATION_H
 #define DUEL6_APPLICATION_H
 
+#include <utility>
+#include <vector>
 #include <memory>
 #include "Context.h"
 #include "AppService.h"
@@ -56,9 +58,9 @@ namespace Duel6 {
             Int32 windowHeight;
 
             // Automation for testing: all times are seconds since the main loop started
-            Int32 resizeWidth = -1;
-            Int32 resizeHeight = -1;
+            std::vector<std::pair<Int32, Int32>> resizes; // applied one by one, resizeInterval apart
             Float64 resizeAfter = 1.0;
+            Float64 resizeInterval = 0.5;
             std::string screenshotPath;
             Float64 screenshotAfter = 3.0;
             Float64 quitAfter = -1.0;
@@ -88,7 +90,7 @@ namespace Duel6 {
         std::unique_ptr<net::NetClient> netClient;
         bool requestClose;
         Uint32 automationStartTicks = 0;
-        bool automationResized = false;
+        size_t automationResizesDone = 0;
         bool automationScreenshotTaken = false;
 
     public:

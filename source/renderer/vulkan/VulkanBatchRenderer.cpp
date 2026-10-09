@@ -258,14 +258,44 @@ namespace Duel6 {
             return;
         }
 
-        // Stable-sort by pipeline pointer to group same-pipeline draws together
-        std::stable_sort(deferredCommands.begin(), deferredCommands.end(),
-            [](const DeferredCommand& a, const DeferredCommand& b) {
-                return a.pipeline < b.pipeline;
-            });
+        // Group same-pipeline draws together without changing what ends up on screen: a draw may move
+        // back into an earlier group with the same pipeline only if it does not overlap anything drawn
+        // in between. Otherwise e.g. a control's background quad could end up over its text.
+        struct Group {
+            VulkanPipeline* pipeline;
+            std::vector<size_t> commands;
+            DrawBounds bounds;
+        };
+        std::vector<Group> groups;
+        const DrawCommand& reference = deferredCommands.front().command;
+
+        for (size_t i = 0; i < deferredCommands.size(); ++i) {
+            const DeferredCommand& dc = deferredCommands[i];
+            DrawBounds bounds = computeBounds(dc.command, reference);
+
+            Group* target = nullptr;
+            for (size_t g = groups.size(); g-- > 0;) {
+                if (groups[g].pipeline == dc.pipeline) {
+                    target = &groups[g];
+                    break;
+                }
+                if (groups[g].bounds.overlaps(bounds)) {
+                    break; // would be drawn before something it overlaps
+                }
+            }
+
+            if (!target) {
+                groups.push_back({dc.pipeline, {}, DrawBounds()});
+                target = &groups.back();
+            }
+            target->commands.push_back(i);
+            target->bounds.add(bounds);
+        }
 
         // Feed through the normal (non-deferred) addDrawCommand path
-        for (auto& dc : deferredCommands) {
+        for (const Group& group : groups)
+        for (size_t index : group.commands) {
+            DeferredCommand& dc = deferredCommands[index];
             RenderBatch* batch = getBatch(dc.pipeline);
 
             if (!batch->commands.empty() && canMergeCommands(batch->commands.back(), dc.command)) {
@@ -303,6 +333,39 @@ namespace Duel6 {
         }
 
         deferredCommands.clear();
+    }
+
+    VulkanBatchRenderer::DrawBounds VulkanBatchRenderer::computeBounds(const DrawCommand& command,
+                                                                       const DrawCommand& reference) {
+        DrawBounds bounds;
+
+        // Bounds are compared in model space, so they are only meaningful between draws with the same
+        // transform. Anything else (different matrices, stencil, no vertex data) overlaps everything.
+        bool comparable = command.vertices && command.vertexCount > 0 && command.stencilMode == 0 &&
+            std::memcmp(command.projectionMatrix.getStorage(), reference.projectionMatrix.getStorage(), sizeof(Float32) * 16) == 0 &&
+            std::memcmp(command.viewMatrix.getStorage(), reference.viewMatrix.getStorage(), sizeof(Float32) * 16) == 0 &&
+            std::memcmp(command.modelMatrix.getStorage(), reference.modelMatrix.getStorage(), sizeof(Float32) * 16) == 0;
+        if (!comparable) {
+            bounds.infinite = true;
+            return bounds;
+        }
+
+        // Every vertex format starts with a 3-float position
+        size_t stride = command.vertexDataSize / command.vertexCount;
+        const uint8_t* data = static_cast<const uint8_t*>(command.vertices);
+        for (uint32_t v = 0; v < command.vertexCount; ++v) {
+            Float32 position[2];
+            std::memcpy(position, data + v * stride, sizeof(position));
+            bounds.add(position[0], position[1]);
+        }
+
+        // Lines and points cover pixels around their coordinates; one unit of slack (a pixel in the
+        // orthographic GUI projection) keeps touching draws from being treated as disjoint
+        bounds.minX -= 1.0f;
+        bounds.minY -= 1.0f;
+        bounds.maxX += 1.0f;
+        bounds.maxY += 1.0f;
+        return bounds;
     }
 
     bool VulkanBatchRenderer::isEmpty() const {
