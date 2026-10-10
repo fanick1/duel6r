@@ -72,8 +72,9 @@ what remains unexecuted today is error handling and hardware fallbacks only.
 
 ## Testing
 
-Builds for testing are configured with `-DD6R_AUTOMATION=ON`. `tests/render_test.py
-build-vulkan/duel6unityd` runs the basic scenarios: windowed menu, windowed game and the game toggled
+`make unit-test`, `make ui-test`, `make extended-test` and `make test` (see CLAUDE.md). Builds for ui
+testing are configured with `-DD6R_AUTOMATION=ON`. `make ui-test` (`tests/render_test.py
+build-vulkan/duel6unityd`) runs the basic scenarios: windowed menu, windowed game and the game toggled
 to fullscreen (screenshot size, frame reaching the window edges, clean exit, no validation errors).
 With `--reference build-gles3/duel6unity` every screenshot, plus one at a later water-wave phase, is
 compared with the OpenGL ES 3 build pixel by pixel. Results and game logs go to `.tmp/render_test`.

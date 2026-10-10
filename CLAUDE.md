@@ -114,25 +114,28 @@ sudo tc qdisc change dev lo root netem gap 50 delay 100ms reorder 100
 sudo tc qdisc del dev lo root
 ```
 
-### Rendering Tests
+### Tests
 
 ```bash
-# Configure the test builds with the automation flags compiled in
-cmake .. -DD6R_RENDERER=vulkan -DD6R_AUTOMATION=ON
+# Configure with the automation flags compiled in (ui tests) and, optionally, a reference
+# binary of another renderer (extended tests)
+cmake .. -DD6R_RENDERER=vulkan -DD6R_AUTOMATION=ON -DD6R_REFERENCE_BINARY=$PWD/../build-gles3/duel6unity
 
-# Basic: windowed menu, windowed game, game toggled to fullscreen (needs Pillow and a display)
-tests/render_test.py build-vulkan/duel6unityd
-
-# Extended: also compare every screenshot with the OpenGL ES 3 build pixel by pixel
-tests/render_test.py build-vulkan/duel6unityd --reference build-gles3/duel6unity
+make unit-test      # GoogleTest unit tests (tests/unit), no GPU or display needed
+make ui-test        # windowed menu, windowed game, game toggled to fullscreen (needs a display, Pillow)
+make extended-test  # ui tests plus a pixel comparison with D6R_REFERENCE_BINARY
+make test           # unit + ui tests, extended instead of ui when a reference binary is set
 ```
 
+The ui tests run `tests/render_test.py` on the unity build (also runnable directly, see its docstring)
+and link the resource directories next to the binary when missing.
 Screenshots, difference masks and game logs go to `.tmp/render_test` (git-ignored).
 The automation flags (`-seed`, `-play`, `-level`, `-fullscreen-after`, `-screenshot`, `-screenshot-after`,
 `-quit-after`, `-print-fps`) are documented in `source/automation/Automation.h`; `Automation` plugs into
 the main loop through `ApplicationListener` and exists only in `D6R_AUTOMATION` builds.
 For RenderDoc captures run the game with `SDL_VIDEODRIVER=x11`.
-Build directories need symlinks to `resources/{data,levels,profiles,sound,textures,shaders}`.
+Running the game from a build directory needs symlinks to `resources/{data,levels,profiles,sound,textures,shaders}`
+(`make ui-test` creates them).
 
 ### Command Line Arguments
 

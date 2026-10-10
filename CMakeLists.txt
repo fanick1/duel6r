@@ -907,6 +907,84 @@ endif (D6R_WITH_LUA)
 
 
 #########################################################################
+# Tests
+#   make unit-test      unit tests, no GPU or display needed (GoogleTest)
+#   make ui-test        render tests of the game binary (needs D6R_AUTOMATION=ON and a display)
+#   make extended-test  ui tests compared pixel by pixel with D6R_REFERENCE_BINARY
+#   make test           unit and ui tests, plus extended when D6R_REFERENCE_BINARY is set
+#########################################################################
+
+set(D6R_REFERENCE_BINARY "" CACHE FILEPATH "Game binary of another renderer that extended-test compares with")
+find_package(GTest QUIET)
+find_package(Python3 COMPONENTS Interpreter QUIET)
+
+if (GTest_FOUND)
+    add_executable(duel6r-unit-tests EXCLUDE_FROM_ALL
+            tests/unit/ColorTest.cpp
+            tests/unit/CommandLineTest.cpp
+            tests/unit/FormatTest.cpp
+            tests/unit/JsonTest.cpp
+            tests/unit/MathTest.cpp
+            tests/unit/TimelineTest.cpp
+            source/automation/Timeline.cpp
+            source/Color.cpp
+            source/CommandLine.cpp
+            source/File.cpp
+            source/Format.cpp
+            source/json/JsonParser.cpp
+            source/json/JsonValue.cpp
+            source/json/JsonWriter.cpp
+            source/math/Math.cpp
+            source/math/Vector.cpp
+            )
+    target_include_directories(duel6r-unit-tests PRIVATE source)
+    if (TARGET GTest::gtest_main)
+        target_link_libraries(duel6r-unit-tests GTest::gtest_main)
+    else ()
+        target_link_libraries(duel6r-unit-tests GTest::Main)
+    endif ()
+    set(D6R_UNIT_TEST_COMMAND COMMAND duel6r-unit-tests)
+    set(D6R_UNIT_TEST_DEPENDS duel6r-unit-tests)
+else ()
+    set(D6R_UNIT_TEST_COMMAND COMMAND ${CMAKE_COMMAND} -E echo "GoogleTest not found, install it to run the unit tests"
+            COMMAND ${CMAKE_COMMAND} -E false)
+    set(D6R_UNIT_TEST_DEPENDS "")
+endif ()
+
+set(D6R_RENDER_TEST ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/render_test.py $<TARGET_FILE:${D6R_UNITY_BUILD}>)
+if (NOT D6R_AUTOMATION)
+    set(D6R_UI_TEST_COMMAND COMMAND ${CMAKE_COMMAND} -E echo "The ui tests need the automation flags: cmake -DD6R_AUTOMATION=ON .."
+            COMMAND ${CMAKE_COMMAND} -E false)
+elseif (NOT Python3_FOUND)
+    set(D6R_UI_TEST_COMMAND COMMAND ${CMAKE_COMMAND} -E echo "Python 3 (with Pillow) is needed for the ui tests"
+            COMMAND ${CMAKE_COMMAND} -E false)
+else ()
+    set(D6R_UI_TEST_COMMAND
+            COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -DBINARY_DIR=$<TARGET_FILE_DIR:${D6R_UNITY_BUILD}>
+                    -P ${CMAKE_SOURCE_DIR}/tests/LinkResources.cmake
+            COMMAND ${D6R_RENDER_TEST})
+endif ()
+if (NOT D6R_REFERENCE_BINARY)
+    set(D6R_EXTENDED_TEST_COMMAND COMMAND ${CMAKE_COMMAND} -E echo
+            "Set the binary to compare with: cmake -DD6R_REFERENCE_BINARY=<path to e.g. build-gles3/duel6unity> .."
+            COMMAND ${CMAKE_COMMAND} -E false)
+else ()
+    set(D6R_EXTENDED_TEST_COMMAND ${D6R_UI_TEST_COMMAND} --reference ${D6R_REFERENCE_BINARY})
+endif ()
+
+add_custom_target(unit-test ${D6R_UNIT_TEST_COMMAND} DEPENDS ${D6R_UNIT_TEST_DEPENDS} USES_TERMINAL VERBATIM)
+add_custom_target(ui-test ${D6R_UI_TEST_COMMAND} DEPENDS ${D6R_UNITY_BUILD} USES_TERMINAL VERBATIM)
+add_custom_target(extended-test ${D6R_EXTENDED_TEST_COMMAND} DEPENDS ${D6R_UNITY_BUILD} USES_TERMINAL VERBATIM)
+if (D6R_REFERENCE_BINARY)
+    # The extended run includes the ui scenarios
+    add_custom_target(test ${D6R_UNIT_TEST_COMMAND} ${D6R_EXTENDED_TEST_COMMAND}
+            DEPENDS ${D6R_UNIT_TEST_DEPENDS} ${D6R_UNITY_BUILD} USES_TERMINAL VERBATIM)
+else ()
+    add_custom_target(test ${D6R_UNIT_TEST_COMMAND} ${D6R_UI_TEST_COMMAND}
+            DEPENDS ${D6R_UNIT_TEST_DEPENDS} ${D6R_UNITY_BUILD} USES_TERMINAL VERBATIM)
+endif ()
+
+#########################################################################
 # Debug target for investigating crashes
 #########################################################################
 
