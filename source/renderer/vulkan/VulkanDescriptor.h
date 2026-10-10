@@ -88,7 +88,6 @@ namespace Duel6 {
 
         void create(const VulkanDevice& device, uint32_t maxSets, const std::vector<VkDescriptorPoolSize>& poolSizes);
         void destroy(const VulkanDevice& device);
-        void reset(const VulkanDevice& device);
 
         VkDescriptorSet allocateDescriptorSet(const VulkanDevice& device, VkDescriptorSetLayout layout);
         void freeDescriptorSet(const VulkanDevice& device, VkDescriptorSet descriptorSet);
@@ -102,7 +101,6 @@ namespace Duel6 {
         std::unordered_map<DescriptorSetLayoutKey, VkDescriptorSetLayout, DescriptorSetLayoutKeyHash> layoutCache;
         std::vector<std::unique_ptr<VulkanDescriptorPool>> descriptorPools;
         std::unordered_map<VkDescriptorSet, VulkanDescriptorPool*> descriptorSetOwners;
-        size_t currentPoolIndex;
         uint32_t maxSetsPerPool;
         Console* console;
 
@@ -123,8 +121,6 @@ namespace Duel6 {
         
         // Standard layouts for common use cases
         VkDescriptorSetLayout getTextureLayout(const VulkanDevice& device);
-        VkDescriptorSetLayout getUniformBufferLayout(const VulkanDevice& device);
-        VkDescriptorSetLayout getCombinedLayout(const VulkanDevice& device); // UBO + Texture
 
         // Descriptor set allocation
         VkDescriptorSet allocateDescriptorSet(const VulkanDevice& device, VkDescriptorSetLayout layout);
@@ -134,13 +130,8 @@ namespace Duel6 {
         // Descriptor set updates
         void updateTextureDescriptorSet(const VulkanDevice& device, VkDescriptorSet descriptorSet,
                                        uint32_t binding, VkImageView imageView, VkSampler sampler);
-        void updateUniformBufferDescriptorSet(const VulkanDevice& device, VkDescriptorSet descriptorSet,
-                                             uint32_t binding, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
 
         // Resource management
-        void resetPools(const VulkanDevice& device);
-        size_t getLayoutCacheSize() const { return layoutCache.size(); }
-        size_t getPoolCount() const { return descriptorPools.size(); }
 
     private:
         VkDescriptorSetLayout createLayout(const VulkanDevice& device, 

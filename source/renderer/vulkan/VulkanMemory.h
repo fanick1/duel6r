@@ -58,8 +58,6 @@ namespace Duel6 {
     class VulkanMemoryManager {
     private:
         Console* console;
-        std::vector<VulkanBuffer> allocatedBuffers;
-        std::vector<VulkanImage> allocatedImages;
 
     public:
         explicit VulkanMemoryManager(Console& console);
@@ -69,8 +67,6 @@ namespace Duel6 {
         VulkanMemoryManager(const VulkanMemoryManager&) = delete;
         VulkanMemoryManager& operator=(const VulkanMemoryManager&) = delete;
 
-        void initialize(const VulkanDevice& device, VkInstance instance);
-        void cleanup(const VulkanDevice& device);
 
         // Buffer management
         VulkanBuffer createBuffer(const VulkanDevice& device, VkDeviceSize size, 
@@ -78,14 +74,13 @@ namespace Duel6 {
         void destroyBuffer(const VulkanDevice& device, VulkanBuffer& buffer);
         void* mapBuffer(const VulkanDevice& device, VulkanBuffer& buffer);
         void unmapBuffer(const VulkanDevice& device, VulkanBuffer& buffer);
-        void copyBuffer(const VulkanDevice& device, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
         // Image management
         VulkanImage createImage(const VulkanDevice& device, uint32_t width, uint32_t height, 
                                 VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, 
                                 VkMemoryPropertyFlags properties, uint32_t arrayLayers = 1);
         void destroyImage(const VulkanDevice& device, VulkanImage& image);
-        void transitionImageLayout(const VulkanDevice& device, VkImage image, VkFormat format, 
+        void transitionImageLayout(const VulkanDevice& device, VkImage image,
                                    VkImageLayout oldLayout, VkImageLayout newLayout,
                                    uint32_t arrayLayers = 1);
         void copyBufferToImage(const VulkanDevice& device, VkBuffer buffer, VkImage image, 

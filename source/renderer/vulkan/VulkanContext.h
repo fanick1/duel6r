@@ -33,7 +33,6 @@
 #include <SDL2/SDL_vulkan.h>
 #include <vector>
 #include <string>
-#include <memory>
 #include "../../Type.h"
 #include "../../Exception.h"
 #include "../../console/Console.h"
@@ -51,7 +50,6 @@ namespace Duel6 {
         VkDebugUtilsMessengerEXT debugMessenger;
         bool enableValidationLayers;
         std::vector<const char*> validationLayers;
-        std::vector<const char*> instanceExtensions;
         Console* console;
 
     public:
@@ -63,7 +61,6 @@ namespace Duel6 {
         VulkanContext& operator=(const VulkanContext&) = delete;
 
         VkInstance getInstance() const { return instance; }
-        bool hasValidationLayers() const { return enableValidationLayers; }
 
         void initialize(SDL_Window* window);
         void cleanup();

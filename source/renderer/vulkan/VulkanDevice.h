@@ -38,14 +38,9 @@ namespace Duel6 {
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
-        std::optional<uint32_t> transferFamily;
 
         bool isComplete() const {
             return graphicsFamily.has_value() && presentFamily.has_value();
-        }
-
-        bool hasTransferFamily() const {
-            return transferFamily.has_value();
         }
     };
 
@@ -55,10 +50,8 @@ namespace Duel6 {
         VkDevice logicalDevice;
         VkQueue graphicsQueue;
         VkQueue presentQueue;
-        VkQueue transferQueue;
         QueueFamilyIndices queueFamilyIndices;
         VkCommandPool graphicsCommandPool;
-        VkCommandPool transferCommandPool;
         Console* console;
 
     public:
@@ -78,16 +71,11 @@ namespace Duel6 {
         VkDevice getLogicalDevice() const { return logicalDevice; }
         VkQueue getGraphicsQueue() const { return graphicsQueue; }
         VkQueue getPresentQueue() const { return presentQueue; }
-        VkQueue getTransferQueue() const { return transferQueue; }
         const QueueFamilyIndices& getQueueFamilyIndices() const { return queueFamilyIndices; }
-        VkCommandPool getGraphicsCommandPool() const { return graphicsCommandPool; }
-        VkCommandPool getTransferCommandPool() const { return transferCommandPool; }
 
         // Device properties and capabilities
         VkPhysicalDeviceProperties getDeviceProperties() const;
-        VkPhysicalDeviceFeatures getDeviceFeatures() const;
         VkPhysicalDeviceMemoryProperties getMemoryProperties() const;
-        VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 
         // Command buffer management
@@ -96,7 +84,7 @@ namespace Duel6 {
 
     private:
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) const;
-        void createLogicalDevice(const VulkanContext& context);
+        void createLogicalDevice();
         void createCommandPools();
         std::vector<const char*> getRequiredDeviceExtensions() const;
     };

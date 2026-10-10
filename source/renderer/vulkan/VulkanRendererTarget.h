@@ -64,7 +64,6 @@ namespace Duel6 {
         VkDescriptorSet depthDescriptorSet;
 
         // Texture ID registered with resource manager for apply() quad rendering
-        TextureId offscreenTextureId;
 
         bool resourcesCreated;
 

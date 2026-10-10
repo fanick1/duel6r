@@ -35,13 +35,11 @@ namespace Duel6 {
     VulkanContext::VulkanContext(Console& console)
         : instance(VK_NULL_HANDLE)
         , debugMessenger(VK_NULL_HANDLE)
-        , enableValidationLayers(true) // Enable debug
+        , enableValidationLayers(false)
         , console(&console) {
-        
         validationLayers = {
             "VK_LAYER_KHRONOS_validation"
         };
-
 #ifdef D6_DEBUG
         enableValidationLayers = true;
 #endif

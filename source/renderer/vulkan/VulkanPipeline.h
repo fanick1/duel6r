@@ -61,17 +61,9 @@ namespace Duel6 {
         VulkanPipeline(const VulkanPipeline&) = delete;
         VulkanPipeline& operator=(const VulkanPipeline&) = delete;
 
-        // Movable
-        VulkanPipeline(VulkanPipeline&& other) noexcept;
-        VulkanPipeline& operator=(VulkanPipeline&& other) noexcept;
-
         // Getters
         VkPipeline getPipeline() const { return pipeline; }
         VkPipelineLayout getLayout() const { return pipelineLayout; }
-        const std::vector<VkDescriptorSetLayout>& getDescriptorSetLayouts() const { return descriptorSetLayouts; }
-
-        // Bind pipeline for rendering
-        void bind(VkCommandBuffer commandBuffer) const;
 
     private:
         void cleanup();
@@ -134,7 +126,6 @@ namespace Duel6 {
 
         // Shader configuration
         VulkanPipelineBuilder& addShader(const VulkanShader& shader);
-        VulkanPipelineBuilder& addShaderStage(VkShaderStageFlagBits stage, VkShaderModule module, const char* entryPoint = "main");
 
         // Vertex input configuration
         VulkanPipelineBuilder& setVertexInput(const VkVertexInputBindingDescription& binding,
@@ -214,125 +205,25 @@ namespace Duel6 {
         /**
          * Save pipeline cache to file
          */
-        void saveCacheToFile(const std::string& filename) const;
 
         /**
          * Load pipeline cache from file
          */
-        void loadCacheFromFile(const std::string& filename);
 
     private:
         void cleanup();
     };
 
-    /**
-     * Pre-defined pipeline configurations for common use cases
-     */
     namespace PipelinePresets {
-        
-        /**
-         * Create color-only pipeline (solid colors, no textures)
-         */
-        std::unique_ptr<VulkanPipeline> createColorPipeline(const VulkanDevice& device, 
-                                                            VkRenderPass renderPass,
-                                                            VkDescriptorSetLayout uniformLayout);
+        // The pipeline for everything the renderer draws, for one combination of render state
+        std::unique_ptr<VulkanPipeline> createPipeline(const VulkanDevice& device, VkRenderPass renderPass,
+                                                       VkDescriptorSetLayout textureLayout, VkPrimitiveTopology topology,
+                                                       bool depthTest, bool depthWrite, BlendFunc blendFunc,
+                                                       bool wireframe, uint32_t stencilMode, VkFrontFace frontFace);
 
-        /**
-         * Create material pipeline (textured surfaces)
-         */
-        std::unique_ptr<VulkanPipeline> createMaterialPipeline(const VulkanDevice& device, 
-                                                               VkRenderPass renderPass,
-                                                               VkDescriptorSetLayout uniformLayout,
-                                                               VkDescriptorSetLayout textureLayout,
-                                                               VkDescriptorSetLayout materialUniformLayout);
-
-        /**
-         * Create bloom filter pipeline (post-processing)
-         */
-        std::unique_ptr<VulkanPipeline> createBloomFilterPipeline(const VulkanDevice& device, 
-                                                                  VkRenderPass renderPass,
-                                                                  VkDescriptorSetLayout uniformLayout,
-                                                                  VkDescriptorSetLayout textureLayout,
-                                                                  VkDescriptorSetLayout bloomUniformLayout);
-
-        /**
-         * Create simple color pipeline using push constants (no descriptor sets needed)
-         */
-        std::unique_ptr<VulkanPipeline> createSimpleColorPipeline(const VulkanDevice& device, 
-                                                                   VkRenderPass renderPass);
-
-        /**
-         * Create line pipeline using push constants (LINE_LIST topology)
-         */
-        std::unique_ptr<VulkanPipeline> createSimpleLinePipeline(const VulkanDevice& device,
-                                                                  VkRenderPass renderPass);
-
-        /**
-         * Create line strip pipeline using push constants (LINE_STRIP topology)
-         */
-        std::unique_ptr<VulkanPipeline> createSimpleLineStripPipeline(const VulkanDevice& device,
-                                                                       VkRenderPass renderPass);
-
-        /**
-         * Create point pipeline using push constants (POINT_LIST topology)
-         */
-        std::unique_ptr<VulkanPipeline> createSimplePointPipeline(const VulkanDevice& device,
-                                                                    VkRenderPass renderPass);
-
-        /**
-         * Create a simple_color pipeline with arbitrary state parameters.
-         * Used for on-demand pipeline creation based on current render state.
-         */
-        std::unique_ptr<VulkanPipeline> createSimpleColorPipelineWithState(
-            const VulkanDevice& device,
-            VkRenderPass renderPass,
-            VkPrimitiveTopology topology,
-            bool depthTest,
-            bool depthWrite,
-            BlendFunc blendFunc,
-            bool wireframe,
-            uint32_t stencilMode = 0,
-            bool colorWrite = true);
-
-        /**
-         * Create a simple_texture_2d pipeline for non-array 2D textures (e.g. offscreen targets).
-         * Uses sampler2D instead of sampler2DArray, and TextureVertex2D vertex format.
-         */
-        std::unique_ptr<VulkanPipeline> createSimpleTexture2DPipelineWithState(
-            const VulkanDevice& device,
-            VkRenderPass renderPass,
-            VkDescriptorSetLayout textureLayout,
-            VkPrimitiveTopology topology,
-            bool depthTest,
-            bool depthWrite,
-            BlendFunc blendFunc,
-            bool wireframe,
-            uint32_t stencilMode = 0);
-
-        /**
-         * Create a depth-blit pipeline that writes gl_FragDepth from a sampled depth texture.
-         * colorWriteMask=0, depthTest=ALWAYS, depthWrite=true.
-         */
-        std::unique_ptr<VulkanPipeline> createDepthBlitPipeline(
-            const VulkanDevice& device,
-            VkRenderPass renderPass,
-            VkDescriptorSetLayout textureLayout);
-
-        /**
-         * Create a simple_texture pipeline with state parameters and a texture descriptor set layout.
-         * Used for textured geometry with push constant MVP + material params.
-         */
-        std::unique_ptr<VulkanPipeline> createSimpleTexturePipelineWithState(
-            const VulkanDevice& device,
-            VkRenderPass renderPass,
-            VkDescriptorSetLayout textureLayout,
-            VkPrimitiveTopology topology,
-            bool depthTest,
-            bool depthWrite,
-            BlendFunc blendFunc,
-            bool wireframe,
-            uint32_t stencilMode = 0,
-            bool colorWrite = true);
+        // Writes gl_FragDepth from a sampled depth image; no color output
+        std::unique_ptr<VulkanPipeline> createDepthBlitPipeline(const VulkanDevice& device, VkRenderPass renderPass,
+                                                                VkDescriptorSetLayout textureLayout);
     }
 
 }

@@ -3,241 +3,103 @@
 
 #include <vulkan/vulkan.h>
 #include <vector>
-#include <memory>
-#include <unordered_map>
-#include <algorithm>
 #include "../../Type.h"
-#include "../../math/Math.h"
 #include "../../math/Matrix.h"
-#include "../../Color.h"
-#include "VulkanPipeline.h"
-#include "VulkanDescriptor.h"
-#include "VulkanBuffer.h"
+#include "VulkanMemory.h"
+#include "VulkanTypes.h"
 
 namespace Duel6 {
 
-    // Forward declarations
     class VulkanDevice;
-    class VulkanMemoryManager;
+    class VulkanPipeline;
     class Console;
+    class Color;
 
-    // Draw command for batch rendering
+    // One draw as recorded by the renderer's immediate-mode calls and replayed by flush().
+    // Vertex data is copied into the frame's vertex buffer the moment the draw is added.
     struct DrawCommand {
-        enum Type {
-            TRIANGLES,
-            TRIANGLE_STRIP,
-            LINES,
-            LINE_STRIP,
-            POINTS
+        enum class Op {
+            Draw,
+            ClearStencil
         };
 
-        Type type;
-        uint32_t vertexCount;
-        uint32_t instanceCount;
-        uint32_t firstVertex;
-        uint32_t firstInstance;
-        
-        // Vertex data
-        const void* vertices;
-        size_t vertexDataSize;
-        
-        // Index data (optional)
-        const uint16_t* indices;
-        uint32_t indexCount;
-        
-        // Transform and material data
-        Matrix projectionMatrix;
-        Matrix viewMatrix;
-        Matrix modelMatrix;
-        Color color;
-        VkDescriptorSet textureDescriptorSet;
+        // Everything that must be equal for two draws to be issued as one
+        struct State {
+            VulkanPipeline* pipeline = nullptr;
+            VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            VkDescriptorSet texture = VK_NULL_HANDLE;  // untextured draws use the renderer's white texture
+            Float32 modulateColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+            bool alphaTest = false;
+            Float32 time = 0.0f;                       // drives the water wave animation
+            uint32_t stencilMode = 0;                  // 0 none, 1 write, 2 test, 3 erase
+            Int32 viewport[4] = {0, 0, 0, 0};          // x, y, width, height in OpenGL convention (y up)
+            bool scissorEnabled = false;
+            Int32 scissor[4] = {0, 0, 0, 0};           // same convention as the viewport
+            Matrix mvp = Matrix::IDENTITY;
 
-        // Material push constant data (used when textureDescriptorSet != VK_NULL_HANDLE)
-        Float32 modulateColor[4];
-        uint32_t alphaTest;
-        
-        // Stencil mode: 0=none, 1=write, 2=test, 3=erase, 4=clear_stencil (special)
-        uint32_t stencilMode;
+            void setModulateColor(const Color& color);
+            bool operator==(const State& other) const;
+        };
 
-        // Per-draw scissor state
-        bool scissorEnabled;
-        int32_t scissorX, scissorY, scissorWidth, scissorHeight;
-
-        DrawCommand()
-            : type(TRIANGLES)
-            , vertexCount(0)
-            , instanceCount(1)
-            , firstVertex(0)
-            , firstInstance(0)
-            , vertices(nullptr)
-            , vertexDataSize(0)
-            , indices(nullptr)
-            , indexCount(0)
-            , projectionMatrix(Matrix::IDENTITY)
-            , viewMatrix(Matrix::IDENTITY)
-            , modelMatrix(Matrix::IDENTITY)
-            , color(Color::WHITE)
-            , textureDescriptorSet(VK_NULL_HANDLE)
-            , modulateColor{1.0f, 1.0f, 1.0f, 1.0f}
-            , alphaTest(0)
-            , stencilMode(0)
-            , scissorEnabled(false)
-            , scissorX(0), scissorY(0), scissorWidth(0), scissorHeight(0) {}
+        Op op = Op::Draw;
+        State state;
+        VkBuffer vertexBuffer = VK_NULL_HANDLE;
+        VkDeviceSize vertexOffset = 0;
+        uint32_t vertexCount = 0;
     };
 
-    // Render batch for grouping similar draw calls
-    struct RenderBatch {
-        VulkanPipeline* pipeline;
-        std::vector<DrawCommand> commands;
-        std::vector<std::vector<uint8_t>> vertexDataStorage;  // Persistent storage for vertex data
-        VkDescriptorSet descriptorSet;
-        bool dirty;
-        
-        RenderBatch(VulkanPipeline* p = nullptr)
-            : pipeline(p)
-            , descriptorSet(VK_NULL_HANDLE)
-            , dirty(true) {}
-    };
-
-    // Batch renderer for efficient Vulkan rendering
+    // Collects the draws of one frame and records them into a command buffer in order.
+    //
+    // Vertices live in one host-visible, permanently mapped buffer per frame in flight, so a
+    // draw costs one copy. Consecutive draws with the same state are merged into one vkCmdDraw.
     class VulkanBatchRenderer {
-    private:
+    public:
         static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+
+        VulkanBatchRenderer(const VulkanDevice& device, VulkanMemoryManager& memoryManager, Console& console);
+        ~VulkanBatchRenderer();
+
+        VulkanBatchRenderer(const VulkanBatchRenderer&) = delete;
+        VulkanBatchRenderer& operator=(const VulkanBatchRenderer&) = delete;
+
+        // Starts reusing the given frame slot. The GPU must have finished the frame that last used it.
+        void beginFrame(uint32_t frameIndex);
+
+        void draw(const DrawCommand::State& state, const VulkanVertex* vertices, uint32_t vertexCount);
+        void clearStencil();
+
+        // Records all pending draws into the command buffer, inside a render pass whose framebuffer
+        // has the given size, and forgets them. With flipY the viewport is inverted so that
+        // OpenGL-convention geometry (y up) lands right side up; without it the image is stored
+        // upside down, like an OpenGL framebuffer object.
+        void flush(VkCommandBuffer commandBuffer, uint32_t framebufferWidth, uint32_t framebufferHeight, bool flipY);
+
+        // Drops pending draws without recording them (e.g. when their pipelines are being destroyed)
+        void discard();
+
+    private:
+        // Vertex storage of one frame slot. Normally a single buffer; when a frame needs more, further
+        // buffers are chained and the slot is consolidated into one large buffer at its next beginFrame.
+        struct FrameVertices {
+            std::vector<VulkanBuffer> buffers;
+            size_t current = 0;
+            VkDeviceSize offset = 0;
+            VkDeviceSize used = 0;
+        };
+
+        static constexpr VkDeviceSize INITIAL_BUFFER_SIZE = 2 * 1024 * 1024;
 
         const VulkanDevice& device;
         VulkanMemoryManager& memoryManager;
         Console& console;
-        
-        // Render batches in submission order (preserves stencil/state ordering)
-        std::vector<std::unique_ptr<RenderBatch>> orderedBatches;
-        
-        // Per-frame vertex/index buffers to avoid GPU/CPU data races.
-        // Indexed by currentFrame (0..MAX_FRAMES_IN_FLIGHT-1).
-        VulkanVertexBuffer vertexBuffers[MAX_FRAMES_IN_FLIGHT];
-        VulkanIndexBuffer indexBuffers[MAX_FRAMES_IN_FLIGHT];
-        size_t vertexBufferOffset;
-        size_t indexBufferOffset;
-        
-        // Current frame data
-        uint32_t currentFrame;
-        uint32_t flushViewportWidth;
-        uint32_t flushViewportHeight;
-        
-        VulkanPipeline* lastPipeline;
 
-        // Deferred draw reordering
-        bool deferredMode;
-        struct DeferredCommand {
-            VulkanPipeline* pipeline;
-            DrawCommand command;
-            std::vector<uint8_t> vertexData;
-        };
-        std::vector<DeferredCommand> deferredCommands;
+        FrameVertices frames[MAX_FRAMES_IN_FLIGHT];
+        uint32_t currentFrame = 0;
+        std::vector<DrawCommand> commands;
 
-        // Screen area touched by a deferred draw, used to reorder only non-overlapping draws
-        struct DrawBounds {
-            bool empty = true;
-            bool infinite = false;
-            Float32 minX = 0, minY = 0, maxX = 0, maxY = 0;
-
-            void add(Float32 x, Float32 y) {
-                if (empty) {
-                    minX = maxX = x;
-                    minY = maxY = y;
-                    empty = false;
-                } else {
-                    minX = std::min(minX, x);
-                    maxX = std::max(maxX, x);
-                    minY = std::min(minY, y);
-                    maxY = std::max(maxY, y);
-                }
-            }
-
-            void add(const DrawBounds& other) {
-                if (other.infinite) {
-                    infinite = true;
-                } else if (!other.empty) {
-                    add(other.minX, other.minY);
-                    add(other.maxX, other.maxY);
-                }
-            }
-
-            bool overlaps(const DrawBounds& other) const {
-                if (infinite || other.infinite) {
-                    return true;
-                }
-                if (empty || other.empty) {
-                    return false;
-                }
-                return minX < other.maxX && other.minX < maxX && minY < other.maxY && other.minY < maxY;
-            }
-        };
-        static DrawBounds computeBounds(const DrawCommand& command, const DrawCommand& reference);
-
-        // Statistics
-        struct Statistics {
-            uint32_t drawCalls;
-            uint32_t triangles;
-            uint32_t batches;
-            
-            void reset() {
-                drawCalls = 0;
-                triangles = 0;
-                batches = 0;
-            }
-        } stats;
-
-    public:
-        VulkanBatchRenderer(const VulkanDevice& device,
-                           VulkanMemoryManager& memoryManager,
-                           Console& console);
-        ~VulkanBatchRenderer();
-
-        // Frame management
-        void beginFrame(uint32_t frameIndex);
-        void endFrame();
-        
-        // Command submission
-        void addDrawCommand(VulkanPipeline* pipeline, const DrawCommand& command);
-        // Flush all pending draw commands into the given command buffer.
-        // flipY: when true, uses negative viewport height (VK_KHR_maintenance1) to flip
-        // the Y axis so that OpenGL-convention geometry (Y-up, origin bottom-left) renders
-        // correctly on screen. Must be true for the final on-screen render pass.
-        // For offscreen render targets whose result is later sampled as a texture, flipY
-        // must be false — Vulkan textures have V=0 at the top, so the offscreen image is
-        // already in the correct orientation for texture sampling. If flipY were true, the
-        // offscreen content would be upside-down when applied as a fullscreen quad, because
-        // the main render pass applies its own Y flip on top.
-        void flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass,
-                   uint32_t viewportWidth, uint32_t viewportHeight,
-                   bool flipY = true);
-        
-        // Buffer management
-        void reserveVertexData(size_t size);
-        void reserveIndexData(size_t size);
-        
-        // Statistics
-        const Statistics& getStatistics() const { return stats; }
-        void resetStatistics() { stats.reset(); }
-        
-        // Deferred draw reordering
-        void setDeferredMode(bool enable);
-
-        // Utility methods
-        void clear();
-        bool isEmpty() const;
-        
-    private:
-        RenderBatch* getBatch(VulkanPipeline* pipeline);
-        bool canMergeCommands(const DrawCommand& a, const DrawCommand& b) const;
-        void flushDeferred();
-        void updateUniformBuffer(RenderBatch& batch);
-        void recordDrawCommands(VkCommandBuffer commandBuffer, const RenderBatch& batch);
-        VkPrimitiveTopology getVulkanTopology(DrawCommand::Type type);
-        
-        // Buffer allocation helpers
-        void ensureVertexBufferCapacity(size_t requiredSize);
-        void ensureIndexBufferCapacity(size_t requiredSize);
+        VulkanBuffer createVertexBuffer(VkDeviceSize size);
+        void* allocateVertices(VkDeviceSize size, VkBuffer& buffer, VkDeviceSize& offset);
+        bool canMerge(const DrawCommand& last, const DrawCommand& next) const;
     };
 
 }

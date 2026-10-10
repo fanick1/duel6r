@@ -1,636 +1,259 @@
 #include "VulkanBatchRenderer.h"
 #include "VulkanDevice.h"
-#include "VulkanMemory.h"
-#include "../../Exception.h"
+#include "VulkanPipeline.h"
+#include "../../Color.h"
+#include "../../Format.h"
+#include "../../console/Console.h"
 #include <algorithm>
 #include <cstring>
-#include <iostream>
 
 namespace Duel6 {
 
-    VulkanBatchRenderer::VulkanBatchRenderer(const VulkanDevice& device,
-                                           VulkanMemoryManager& memoryManager,
-                                           Console& console)
-        : device(device)
-        , memoryManager(memoryManager)
-        , console(console)
-        , vertexBuffers{VulkanVertexBuffer(console), VulkanVertexBuffer(console)}
-        , indexBuffers{VulkanIndexBuffer(console, VK_INDEX_TYPE_UINT16), VulkanIndexBuffer(console, VK_INDEX_TYPE_UINT16)}
-        , vertexBufferOffset(0)
-        , indexBufferOffset(0)
-        , currentFrame(0)
-        , lastPipeline(nullptr)
-        , deferredMode(false) {
-        
-        // Initialize per-frame vertex and index buffers
-        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vertexBuffers[i].create(device, memoryManager, 1024 * 1024, false);
-            indexBuffers[i].create(device, memoryManager, 256 * 1024, false);
+    namespace {
+        // Strips are continuous, so two of them cannot be drawn as one
+        bool isListTopology(VkPrimitiveTopology topology) {
+            return topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ||
+                   topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST ||
+                   topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
         }
-        
-        stats.reset();
+
+        // Dynamic stencil state of the stencil modes (the stencil ops are baked into the pipelines)
+        void setStencilState(VkCommandBuffer commandBuffer, uint32_t mode) {
+            uint32_t writeMask = (mode == 2) ? 0 : 0xFFFFFFFF;  // TEST only compares
+            uint32_t reference = (mode == 1) ? 1 : 0;           // WRITE marks pixels with 1
+            vkCmdSetStencilCompareMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
+            vkCmdSetStencilWriteMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, writeMask);
+            vkCmdSetStencilReference(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, reference);
+        }
+
+        // OpenGL rectangle (origin bottom left, y up) -> Vulkan rectangle, clamped to the framebuffer
+        VkRect2D toVulkanRect(const Int32 rect[4], uint32_t framebufferWidth, uint32_t framebufferHeight, bool flipY) {
+            Int32 fbWidth = static_cast<Int32>(framebufferWidth);
+            Int32 fbHeight = static_cast<Int32>(framebufferHeight);
+            Int32 left = std::max(rect[0], 0);
+            Int32 top = std::max(flipY ? fbHeight - rect[1] - rect[3] : rect[1], 0);
+            Int32 right = std::min(rect[0] + rect[2], fbWidth);
+            Int32 bottom = std::min(flipY ? fbHeight - rect[1] : rect[1] + rect[3], fbHeight);
+            VkRect2D result{};
+            result.offset.x = left;
+            result.offset.y = top;
+            result.extent.width = static_cast<uint32_t>(std::max(right - left, 0));
+            result.extent.height = static_cast<uint32_t>(std::max(bottom - top, 0));
+            return result;
+        }
+    }
+
+    void DrawCommand::State::setModulateColor(const Color& color) {
+        modulateColor[0] = color.getRed() / 255.0f;
+        modulateColor[1] = color.getGreen() / 255.0f;
+        modulateColor[2] = color.getBlue() / 255.0f;
+        modulateColor[3] = color.getAlpha() / 255.0f;
+    }
+
+    bool DrawCommand::State::operator==(const State& other) const {
+        return pipeline == other.pipeline &&
+               topology == other.topology &&
+               texture == other.texture &&
+               std::memcmp(modulateColor, other.modulateColor, sizeof(modulateColor)) == 0 &&
+               alphaTest == other.alphaTest &&
+               time == other.time &&
+               stencilMode == other.stencilMode &&
+               std::memcmp(viewport, other.viewport, sizeof(viewport)) == 0 &&
+               scissorEnabled == other.scissorEnabled &&
+               (!scissorEnabled || std::memcmp(scissor, other.scissor, sizeof(scissor)) == 0) &&
+               std::memcmp(mvp.getStorage(), other.mvp.getStorage(), sizeof(Float32) * 16) == 0;
+    }
+
+    VulkanBatchRenderer::VulkanBatchRenderer(const VulkanDevice& device, VulkanMemoryManager& memoryManager, Console& console)
+        : device(device), memoryManager(memoryManager), console(console) {
+        for (FrameVertices& frame : frames) {
+            frame.buffers.push_back(createVertexBuffer(INITIAL_BUFFER_SIZE));
+        }
     }
 
     VulkanBatchRenderer::~VulkanBatchRenderer() {
-        clear();
+        for (FrameVertices& frame : frames) {
+            for (VulkanBuffer& buffer : frame.buffers) {
+                memoryManager.destroyBuffer(device, buffer);
+            }
+        }
+    }
+
+    VulkanBuffer VulkanBatchRenderer::createVertexBuffer(VkDeviceSize size) {
+        VulkanBuffer buffer = memoryManager.createBuffer(device, size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        memoryManager.mapBuffer(device, buffer);  // stays mapped for its whole life
+        return buffer;
     }
 
     void VulkanBatchRenderer::beginFrame(uint32_t frameIndex) {
         currentFrame = frameIndex % MAX_FRAMES_IN_FLIGHT;
-        vertexBufferOffset = 0;
-        indexBufferOffset = 0;
-        stats.reset();
-        
-        // Clear all batch state for the new frame
-        orderedBatches.clear();
-        lastPipeline = nullptr;
-        deferredMode = false;
-        deferredCommands.clear();
+        FrameVertices& frame = frames[currentFrame];
+
+        if (frame.buffers.size() > 1) {
+            // The last frame in this slot overflowed: replace the chain with one buffer that fits it
+            VkDeviceSize size = frame.buffers.front().size;
+            while (size < frame.used) {
+                size *= 2;
+            }
+            for (VulkanBuffer& buffer : frame.buffers) {
+                memoryManager.destroyBuffer(device, buffer);
+            }
+            frame.buffers.clear();
+            frame.buffers.push_back(createVertexBuffer(size));
+            console.printLine(Format("[vulkan] vertex buffer grown to {0} KB") << size / 1024);
+        }
+
+        frame.current = 0;
+        frame.offset = 0;
+        frame.used = 0;
+        commands.clear();
     }
 
-    void VulkanBatchRenderer::endFrame() {
-        // Reset buffer offsets for next frame
-        vertexBufferOffset = 0;
-        indexBufferOffset = 0;
+    void* VulkanBatchRenderer::allocateVertices(VkDeviceSize size, VkBuffer& buffer, VkDeviceSize& offset) {
+        FrameVertices& frame = frames[currentFrame];
+        if (frame.offset + size > frame.buffers[frame.current].size) {
+            if (frame.current + 1 == frame.buffers.size()) {
+                frame.buffers.push_back(createVertexBuffer(std::max(INITIAL_BUFFER_SIZE, size)));
+            }
+            frame.current++;
+            frame.offset = 0;
+        }
+
+        VulkanBuffer& current = frame.buffers[frame.current];
+        buffer = current.buffer;
+        offset = frame.offset;
+        frame.offset += size;
+        frame.used += size;
+        return static_cast<uint8_t*>(current.mapped) + offset;
     }
 
-    bool VulkanBatchRenderer::canMergeCommands(const DrawCommand& a, const DrawCommand& b) const {
-        // Only merge list topologies (not strips, which have topology continuity)
-        if (a.type != b.type) return false;
-        if (a.type != DrawCommand::TRIANGLES && a.type != DrawCommand::LINES && a.type != DrawCommand::POINTS) return false;
-
-        // Neither command can use index buffers
-        if (a.indices || b.indices) return false;
-
-        // Both must have vertex data with the same stride
-        if (!a.vertices || a.vertexDataSize == 0 || a.vertexCount == 0) return false;
-        if (!b.vertices || b.vertexDataSize == 0 || b.vertexCount == 0) return false;
-        size_t strideA = a.vertexDataSize / a.vertexCount;
-        size_t strideB = b.vertexDataSize / b.vertexCount;
-        if (strideA != strideB) return false;
-
-        // Same MVP matrices
-        if (std::memcmp(a.projectionMatrix.getStorage(), b.projectionMatrix.getStorage(), sizeof(Float32) * 16) != 0) return false;
-        if (std::memcmp(a.viewMatrix.getStorage(), b.viewMatrix.getStorage(), sizeof(Float32) * 16) != 0) return false;
-        if (std::memcmp(a.modelMatrix.getStorage(), b.modelMatrix.getStorage(), sizeof(Float32) * 16) != 0) return false;
-
-        // Same scissor state
-        if (a.scissorEnabled != b.scissorEnabled) return false;
-        if (a.scissorEnabled) {
-            if (a.scissorX != b.scissorX || a.scissorY != b.scissorY ||
-                a.scissorWidth != b.scissorWidth || a.scissorHeight != b.scissorHeight) return false;
-        }
-
-        // Same stencil mode
-        if (a.stencilMode != b.stencilMode) return false;
-
-        // Same texture descriptor set and material parameters
-        if (a.textureDescriptorSet != b.textureDescriptorSet) return false;
-        if (a.textureDescriptorSet != VK_NULL_HANDLE) {
-            if (std::memcmp(a.modulateColor, b.modulateColor, sizeof(a.modulateColor)) != 0) return false;
-            if (a.alphaTest != b.alphaTest) return false;
-        }
-
-        return true;
+    bool VulkanBatchRenderer::canMerge(const DrawCommand& last, const DrawCommand& next) const {
+        return last.op == DrawCommand::Op::Draw && next.op == DrawCommand::Op::Draw &&
+               isListTopology(next.state.topology) &&
+               last.vertexBuffer == next.vertexBuffer &&
+               last.vertexOffset + VkDeviceSize(last.vertexCount) * sizeof(VulkanVertex) == next.vertexOffset &&
+               last.state == next.state;
     }
 
-    void VulkanBatchRenderer::addDrawCommand(VulkanPipeline* pipeline, const DrawCommand& command) {
-        if (!pipeline) {
-            D6_THROW(Exception, "Pipeline cannot be null");
-        }
-
-        if (deferredMode) {
-            DeferredCommand dc;
-            dc.pipeline = pipeline;
-            dc.command = command;
-            if (command.vertices && command.vertexDataSize > 0) {
-                dc.vertexData.resize(command.vertexDataSize);
-                std::memcpy(dc.vertexData.data(), command.vertices, command.vertexDataSize);
-                dc.command.vertices = dc.vertexData.data();
-            }
-            deferredCommands.push_back(std::move(dc));
+    void VulkanBatchRenderer::draw(const DrawCommand::State& state, const VulkanVertex* vertices, uint32_t vertexCount) {
+        if (vertexCount == 0 || state.pipeline == nullptr || state.texture == VK_NULL_HANDLE ||
+            state.viewport[2] <= 0 || state.viewport[3] <= 0) {
             return;
         }
 
-        RenderBatch* batch = getBatch(pipeline);
+        DrawCommand command;
+        command.state = state;
+        command.vertexCount = vertexCount;
+        VkDeviceSize size = VkDeviceSize(vertexCount) * sizeof(VulkanVertex);
+        void* destination = allocateVertices(size, command.vertexBuffer, command.vertexOffset);
+        std::memcpy(destination, vertices, size);
 
-        // Try to merge with the last command in this batch
-        if (!batch->commands.empty() && canMergeCommands(batch->commands.back(), command)) {
-            DrawCommand& lastCmd = batch->commands.back();
-            if (command.vertices && command.vertexDataSize > 0) {
-                auto& lastStorage = batch->vertexDataStorage.back();
-                size_t oldSize = lastStorage.size();
-                lastStorage.resize(oldSize + command.vertexDataSize);
-                std::memcpy(lastStorage.data() + oldSize, command.vertices, command.vertexDataSize);
-                lastCmd.vertices = lastStorage.data();
-                lastCmd.vertexDataSize += command.vertexDataSize;
-                lastCmd.vertexCount += command.vertexCount;
-            }
-            batch->dirty = true;
-            // Update triangle stats for merged draws
-            if (command.type == DrawCommand::TRIANGLES) {
-                stats.triangles += command.vertexCount / 3;
-            }
-            return;
-        }
-
-        // Copy vertex data to persistent storage
-        DrawCommand cmd = command;
-        if (command.vertices && command.vertexDataSize > 0) {
-            batch->vertexDataStorage.emplace_back(command.vertexDataSize);
-            std::memcpy(batch->vertexDataStorage.back().data(), command.vertices, command.vertexDataSize);
-            cmd.vertices = batch->vertexDataStorage.back().data();
-        }
-
-        batch->commands.push_back(cmd);
-        batch->dirty = true;
-
-        // Update statistics
-        stats.drawCalls++;
-        if (command.type == DrawCommand::TRIANGLES || command.type == DrawCommand::TRIANGLE_STRIP) {
-            if (command.indices) {
-                stats.triangles += command.indexCount / 3;
-            } else {
-                stats.triangles += command.vertexCount / 3;
-            }
-        }
-    }
-
-    void VulkanBatchRenderer::flush(VkCommandBuffer commandBuffer, VkRenderPass renderPass,
-                                     uint32_t viewportWidth, uint32_t viewportHeight,
-                                     bool flipY) {
-        if (orderedBatches.empty()) {
-            return;
-        }
-        
-        // Safety check - don't try to record if command buffer is null
-        if (commandBuffer == VK_NULL_HANDLE) {
-            std::cerr << "[WARNING] VulkanBatchRenderer::flush called with null command buffer, skipping" << std::endl;
-            return;
-        }
-        
-        flushViewportWidth = viewportWidth;
-        flushViewportHeight = viewportHeight;
-
-        // Count total commands
-        size_t totalCommands = 0;
-        for (const auto& batch : orderedBatches) {
-            totalCommands += batch->commands.size();
-        }
-        if (totalCommands == 0) {
-            return;
-        }
-        
-        // Set dynamic viewport. When flipY is true, use negative height
-        // (VK_KHR_maintenance1) to flip Y axis to match OpenGL conventions.
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        if (flipY) {
-            viewport.y = static_cast<float>(viewportHeight);
-            viewport.height = -static_cast<float>(viewportHeight);
+        if (!commands.empty() && canMerge(commands.back(), command)) {
+            commands.back().vertexCount += vertexCount;
         } else {
-            viewport.y = 0.0f;
-            viewport.height = static_cast<float>(viewportHeight);
-        }
-        viewport.width = static_cast<float>(viewportWidth);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-        
-        // Set default scissor to full viewport (per-draw scissor is set in recordDrawCommands)
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = {viewportWidth, viewportHeight};
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-        
-        stats.batches = 0;
-        
-        // Process each batch IN ORDER (preserves stencil/state ordering)
-        for (auto& batch : orderedBatches) {
-            if (batch->commands.empty()) {
-                continue;
-            }
-            
-            // Update uniform buffer if dirty
-            if (batch->dirty) {
-                updateUniformBuffer(*batch);
-                batch->dirty = false;
-            }
-            
-            // Bind pipeline
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, batch->pipeline->getPipeline());
-            
-            // Set default line width for line-topology pipelines (dynamic state)
-            vkCmdSetLineWidth(commandBuffer, 1.0f);
-            
-            // Record draw commands for this batch
-            recordDrawCommands(commandBuffer, *batch);
-            
-            stats.batches++;
+            commands.push_back(command);
         }
     }
 
-    void VulkanBatchRenderer::reserveVertexData(size_t size) {
-        ensureVertexBufferCapacity(vertexBufferOffset + size);
+    void VulkanBatchRenderer::clearStencil() {
+        DrawCommand command;
+        command.op = DrawCommand::Op::ClearStencil;
+        commands.push_back(command);
     }
 
-    void VulkanBatchRenderer::reserveIndexData(size_t size) {
-        ensureIndexBufferCapacity(indexBufferOffset + size);
+    void VulkanBatchRenderer::discard() {
+        commands.clear();
     }
 
-    void VulkanBatchRenderer::clear() {
-        orderedBatches.clear();
-        lastPipeline = nullptr;
-        vertexBufferOffset = 0;
-        indexBufferOffset = 0;
-        stats.reset();
-    }
+    void VulkanBatchRenderer::flush(VkCommandBuffer commandBuffer, uint32_t framebufferWidth, uint32_t framebufferHeight, bool flipY) {
+        const VulkanPipeline* boundPipeline = nullptr;
+        VkDescriptorSet boundTexture = VK_NULL_HANDLE;
+        VkBuffer boundBuffer = VK_NULL_HANDLE;
+        VkDeviceSize boundOffset = 0;
+        uint32_t boundStencilMode = 0;
+        const DrawCommand::State* boundState = nullptr;
 
-    void VulkanBatchRenderer::setDeferredMode(bool enable) {
-        if (deferredMode && !enable) {
-            flushDeferred();
-        }
-        deferredMode = enable;
-    }
-
-    void VulkanBatchRenderer::flushDeferred() {
-        if (deferredCommands.empty()) {
-            return;
-        }
-
-        // Group same-pipeline draws together without changing what ends up on screen: a draw may move
-        // back into an earlier group with the same pipeline only if it does not overlap anything drawn
-        // in between. Otherwise e.g. a control's background quad could end up over its text.
-        struct Group {
-            VulkanPipeline* pipeline;
-            std::vector<size_t> commands;
-            DrawBounds bounds;
-        };
-        std::vector<Group> groups;
-        const DrawCommand& reference = deferredCommands.front().command;
-
-        for (size_t i = 0; i < deferredCommands.size(); ++i) {
-            const DeferredCommand& dc = deferredCommands[i];
-            DrawBounds bounds = computeBounds(dc.command, reference);
-
-            Group* target = nullptr;
-            for (size_t g = groups.size(); g-- > 0;) {
-                if (groups[g].pipeline == dc.pipeline) {
-                    target = &groups[g];
-                    break;
-                }
-                if (groups[g].bounds.overlaps(bounds)) {
-                    break; // would be drawn before something it overlaps
-                }
-            }
-
-            if (!target) {
-                groups.push_back({dc.pipeline, {}, DrawBounds()});
-                target = &groups.back();
-            }
-            target->commands.push_back(i);
-            target->bounds.add(bounds);
-        }
-
-        // Feed through the normal (non-deferred) addDrawCommand path
-        for (const Group& group : groups)
-        for (size_t index : group.commands) {
-            DeferredCommand& dc = deferredCommands[index];
-            RenderBatch* batch = getBatch(dc.pipeline);
-
-            if (!batch->commands.empty() && canMergeCommands(batch->commands.back(), dc.command)) {
-                DrawCommand& lastCmd = batch->commands.back();
-                if (dc.command.vertices && dc.command.vertexDataSize > 0) {
-                    auto& lastStorage = batch->vertexDataStorage.back();
-                    size_t oldSize = lastStorage.size();
-                    lastStorage.resize(oldSize + dc.command.vertexDataSize);
-                    std::memcpy(lastStorage.data() + oldSize, dc.command.vertices, dc.command.vertexDataSize);
-                    lastCmd.vertices = lastStorage.data();
-                    lastCmd.vertexDataSize += dc.command.vertexDataSize;
-                    lastCmd.vertexCount += dc.command.vertexCount;
-                }
-                batch->dirty = true;
-                if (dc.command.type == DrawCommand::TRIANGLES) {
-                    stats.triangles += dc.command.vertexCount / 3;
-                }
-            } else {
-                DrawCommand cmd = dc.command;
-                if (dc.command.vertices && dc.command.vertexDataSize > 0) {
-                    batch->vertexDataStorage.push_back(std::move(dc.vertexData));
-                    cmd.vertices = batch->vertexDataStorage.back().data();
-                }
-                batch->commands.push_back(cmd);
-                batch->dirty = true;
-                stats.drawCalls++;
-                if (dc.command.type == DrawCommand::TRIANGLES || dc.command.type == DrawCommand::TRIANGLE_STRIP) {
-                    if (dc.command.indices) {
-                        stats.triangles += dc.command.indexCount / 3;
-                    } else {
-                        stats.triangles += dc.command.vertexCount / 3;
-                    }
-                }
-            }
-        }
-
-        deferredCommands.clear();
-    }
-
-    VulkanBatchRenderer::DrawBounds VulkanBatchRenderer::computeBounds(const DrawCommand& command,
-                                                                       const DrawCommand& reference) {
-        DrawBounds bounds;
-
-        // Bounds are compared in model space, so they are only meaningful between draws with the same
-        // transform. Anything else (different matrices, stencil, no vertex data) overlaps everything.
-        bool comparable = command.vertices && command.vertexCount > 0 && command.stencilMode == 0 &&
-            std::memcmp(command.projectionMatrix.getStorage(), reference.projectionMatrix.getStorage(), sizeof(Float32) * 16) == 0 &&
-            std::memcmp(command.viewMatrix.getStorage(), reference.viewMatrix.getStorage(), sizeof(Float32) * 16) == 0 &&
-            std::memcmp(command.modelMatrix.getStorage(), reference.modelMatrix.getStorage(), sizeof(Float32) * 16) == 0;
-        if (!comparable) {
-            bounds.infinite = true;
-            return bounds;
-        }
-
-        // Every vertex format starts with a 3-float position
-        size_t stride = command.vertexDataSize / command.vertexCount;
-        const uint8_t* data = static_cast<const uint8_t*>(command.vertices);
-        for (uint32_t v = 0; v < command.vertexCount; ++v) {
-            Float32 position[2];
-            std::memcpy(position, data + v * stride, sizeof(position));
-            bounds.add(position[0], position[1]);
-        }
-
-        // Lines and points cover pixels around their coordinates; one unit of slack (a pixel in the
-        // orthographic GUI projection) keeps touching draws from being treated as disjoint
-        bounds.minX -= 1.0f;
-        bounds.minY -= 1.0f;
-        bounds.maxX += 1.0f;
-        bounds.maxY += 1.0f;
-        return bounds;
-    }
-
-    bool VulkanBatchRenderer::isEmpty() const {
-        for (const auto& batch : orderedBatches) {
-            if (!batch->commands.empty()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    RenderBatch* VulkanBatchRenderer::getBatch(VulkanPipeline* pipeline) {
-        // If the last batch uses the same pipeline, reuse it (preserves ordering)
-        if (!orderedBatches.empty() && orderedBatches.back()->pipeline == pipeline) {
-            return orderedBatches.back().get();
-        }
-        
-        // Create a new batch to preserve ordering
-        auto batch = std::make_unique<RenderBatch>(pipeline);
-        RenderBatch* batchPtr = batch.get();
-        orderedBatches.push_back(std::move(batch));
-        lastPipeline = pipeline;
-        return batchPtr;
-    }
-
-    void VulkanBatchRenderer::updateUniformBuffer(RenderBatch& batch) {
-        // TODO: Implement uniform buffer updates when uniform buffer management is ready
-        // For now, we'll skip uniform buffer updates
-    }
-
-    void VulkanBatchRenderer::recordDrawCommands(VkCommandBuffer commandBuffer, const RenderBatch& batch) {
-        // Bind the current frame's vertex buffer
-        VkBuffer vbHandles[] = { vertexBuffers[currentFrame].getBuffer().buffer };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbHandles, offsets);
-        
-        // Calculate total vertex data size for this batch
-        size_t totalVertexDataSize = 0;
-        for (const DrawCommand& cmd : batch.commands) {
-            if (cmd.vertices && cmd.vertexDataSize > 0) {
-                totalVertexDataSize += cmd.vertexDataSize;
-            }
-        }
-        
-        if (totalVertexDataSize == 0) {
-            return;
-        }
-        
-        // Determine vertex stride from the first command with vertex data, and align
-        // the buffer offset so that firstVertex = offset / stride is exact.
-        // Without this, batches with different vertex formats (e.g. TextureVertex2D
-        // at 20 bytes vs MaterialVertex at 28 bytes) would misalign subsequent data.
-        size_t vertexStride = 0;
-        for (const DrawCommand& cmd : batch.commands) {
-            if (cmd.vertices && cmd.vertexDataSize > 0 && cmd.vertexCount > 0) {
-                vertexStride = cmd.vertexDataSize / cmd.vertexCount;
-                break;
-            }
-        }
-        if (vertexStride > 0 && (vertexBufferOffset % vertexStride) != 0) {
-            vertexBufferOffset += vertexStride - (vertexBufferOffset % vertexStride);
-        }
-
-        // Ensure current frame's vertex buffer is large enough for all data
-        ensureVertexBufferCapacity(vertexBufferOffset + totalVertexDataSize);
-
-        // Map current frame's vertex buffer ONCE for all draw commands in this batch
-        void* mappedData = vertexBuffers[currentFrame].map(device, memoryManager);
-        if (!mappedData) {
-            return;
-        }
-
-        // First pass: copy all vertex data into the buffer
-        size_t batchStartOffset = vertexBufferOffset;
-        for (const DrawCommand& cmd : batch.commands) {
-            if (cmd.vertices && cmd.vertexDataSize > 0) {
-                std::memcpy(static_cast<char*>(mappedData) + vertexBufferOffset, cmd.vertices, cmd.vertexDataSize);
-                vertexBufferOffset += cmd.vertexDataSize;
-            }
-        }
-        
-        // Unmap ONCE after all data is written
-        vertexBuffers[currentFrame].unmap(device, memoryManager);
-        
-        // Second pass: record draw commands
-        size_t currentOffset = batchStartOffset;
-        for (const DrawCommand& cmd : batch.commands) {
-            // Handle special clear-stencil command
-            if (cmd.stencilMode == 4) {
-                VkClearAttachment clearAtt{};
-                clearAtt.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-                clearAtt.clearValue.depthStencil = {1.0f, 0};
-                VkClearRect clearRect{};
-                clearRect.rect.offset = {0, 0};
-                clearRect.rect.extent.width = flushViewportWidth;
-                clearRect.rect.extent.height = flushViewportHeight;
-                clearRect.baseArrayLayer = 0;
-                clearRect.layerCount = 1;
-                vkCmdClearAttachments(commandBuffer, 1, &clearAtt, 1, &clearRect);
+        for (const DrawCommand& command : commands) {
+            if (command.op == DrawCommand::Op::ClearStencil) {
+                VkClearAttachment attachment{};
+                attachment.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+                attachment.clearValue.depthStencil = {1.0f, 0};
+                VkClearRect rect{};
+                rect.rect.extent.width = framebufferWidth;
+                rect.rect.extent.height = framebufferHeight;
+                rect.layerCount = 1;
+                vkCmdClearAttachments(commandBuffer, 1, &attachment, 1, &rect);
                 continue;
             }
 
-            // Set dynamic stencil state based on stencil mode
-            if (cmd.stencilMode > 0 && cmd.stencilMode <= 3) {
-                switch (cmd.stencilMode) {
-                    case 1: // WRITE: reference=1, compare mask=all, write mask=all
-                        vkCmdSetStencilCompareMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
-                        vkCmdSetStencilWriteMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
-                        vkCmdSetStencilReference(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 1);
-                        break;
-                    case 2: // TEST: reference=0, compare mask=all, write mask=0
-                        vkCmdSetStencilCompareMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
-                        vkCmdSetStencilWriteMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0);
-                        vkCmdSetStencilReference(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0);
-                        break;
-                    case 3: // ERASE: reference=0, compare mask=all, write mask=all
-                        vkCmdSetStencilCompareMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
-                        vkCmdSetStencilWriteMask(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0xFFFFFFFF);
-                        vkCmdSetStencilReference(commandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, 0);
-                        break;
-                }
+            const DrawCommand::State& state = command.state;
+            VkPipelineLayout layout = state.pipeline->getLayout();
+
+            bool pipelineChanged = state.pipeline != boundPipeline;
+            if (pipelineChanged) {
+                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state.pipeline->getPipeline());
+                vkCmdSetLineWidth(commandBuffer, 1.0f);
+                boundPipeline = state.pipeline;
             }
 
-            // Set per-draw scissor
-            {
-                VkRect2D drawScissor{};
-                if (cmd.scissorEnabled && cmd.scissorWidth > 0 && cmd.scissorHeight > 0) {
-                    int32_t cx = std::max(0, cmd.scissorX);
-                    int32_t cy = std::max(0, cmd.scissorY);
-                    int32_t cw = std::min(cmd.scissorWidth, static_cast<int32_t>(flushViewportWidth) - cx);
-                    int32_t ch = std::min(cmd.scissorHeight, static_cast<int32_t>(flushViewportHeight) - cy);
-                    drawScissor.offset.x = cx;
-                    drawScissor.offset.y = cy;
-                    drawScissor.extent.width = static_cast<uint32_t>(std::max(0, cw));
-                    drawScissor.extent.height = static_cast<uint32_t>(std::max(0, ch));
+            // Viewport and scissor are dynamic in every pipeline, so they survive pipeline changes
+            if (boundState == nullptr || std::memcmp(state.viewport, boundState->viewport, sizeof(state.viewport)) != 0) {
+                VkViewport viewport{};
+                viewport.x = static_cast<float>(state.viewport[0]);
+                viewport.width = static_cast<float>(state.viewport[2]);
+                if (flipY) {
+                    viewport.y = static_cast<float>(static_cast<Int32>(framebufferHeight) - state.viewport[1]);
+                    viewport.height = -static_cast<float>(state.viewport[3]);  // VK_KHR_maintenance1
                 } else {
-                    drawScissor.offset = {0, 0};
-                    drawScissor.extent.width = flushViewportWidth;
-                    drawScissor.extent.height = flushViewportHeight;
+                    viewport.y = static_cast<float>(state.viewport[1]);
+                    viewport.height = static_cast<float>(state.viewport[3]);
                 }
-                vkCmdSetScissor(commandBuffer, 0, 1, &drawScissor);
+                viewport.maxDepth = 1.0f;
+                vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
             }
-
-            if (cmd.vertices && cmd.vertexDataSize > 0) {
-                // Push MVP matrix using push constants
-                Matrix mvp = cmd.projectionMatrix * cmd.viewMatrix * cmd.modelMatrix;
-                
-                if (cmd.textureDescriptorSet != VK_NULL_HANDLE) {
-                    // Textured draw: bind descriptor set and push extended push constants
-                    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           batch.pipeline->getLayout(), 0, 1,
-                                           &cmd.textureDescriptorSet, 0, nullptr);
-
-                    // Push vertex stage: mat4 MVP (bytes 0-63)
-                    vkCmdPushConstants(commandBuffer, batch.pipeline->getLayout(),
-                                       VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16,
-                                       mvp.getStorage());
-
-                    // Push fragment stage: vec4 modulateColor (bytes 64-79) + uint alphaTest (bytes 80-83)
-                    struct { float color[4]; uint32_t alphaTest; } materialData;
-                    materialData.color[0] = cmd.modulateColor[0];
-                    materialData.color[1] = cmd.modulateColor[1];
-                    materialData.color[2] = cmd.modulateColor[2];
-                    materialData.color[3] = cmd.modulateColor[3];
-                    materialData.alphaTest = cmd.alphaTest;
-
-                    vkCmdPushConstants(commandBuffer, batch.pipeline->getLayout(),
-                                       VK_SHADER_STAGE_FRAGMENT_BIT, 64, 20,
-                                       &materialData);
+            if (boundState == nullptr || state.scissorEnabled != boundState->scissorEnabled ||
+                (state.scissorEnabled && std::memcmp(state.scissor, boundState->scissor, sizeof(state.scissor)) != 0)) {
+                VkRect2D scissor{};
+                if (state.scissorEnabled) {
+                    scissor = toVulkanRect(state.scissor, framebufferWidth, framebufferHeight, flipY);
                 } else {
-                    // Color-only draw: push MVP only
-                    vkCmdPushConstants(commandBuffer, batch.pipeline->getLayout(),
-                                       VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16,
-                                       mvp.getStorage());
+                    scissor.extent.width = framebufferWidth;
+                    scissor.extent.height = framebufferHeight;
                 }
-                
-                // Calculate vertex size and first vertex index
-                size_t vertexSize = cmd.vertexDataSize / cmd.vertexCount;
-                uint32_t firstVertex = static_cast<uint32_t>(currentOffset / vertexSize);
-                
-                if (cmd.indices && cmd.indexCount > 0) {
-                    // Indexed drawing
-                    size_t indexDataSize = cmd.indexCount * sizeof(uint16_t);
-                    ensureIndexBufferCapacity(indexBufferOffset + indexDataSize);
-                    
-                    void* indexMappedData = indexBuffers[currentFrame].map(device, memoryManager);
-                    if (indexMappedData) {
-                        std::memcpy(static_cast<char*>(indexMappedData) + indexBufferOffset, cmd.indices, indexDataSize);
-                        indexBuffers[currentFrame].unmap(device, memoryManager);
-                    }
-                    
-                    vkCmdBindIndexBuffer(commandBuffer, indexBuffers[currentFrame].getBuffer().buffer, 
-                                        indexBufferOffset, VK_INDEX_TYPE_UINT16);
-                    vkCmdDrawIndexed(commandBuffer, cmd.indexCount, cmd.instanceCount,
-                                    0, firstVertex, cmd.firstInstance);
-                    
-                    indexBufferOffset += indexDataSize;
-                } else {
-                    // Non-indexed drawing
-                    vkCmdDraw(commandBuffer, cmd.vertexCount, cmd.instanceCount,
-                             firstVertex, cmd.firstInstance);
-                }
-                
-                currentOffset += cmd.vertexDataSize;
+                vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
             }
-        }
-    }
 
-    VkPrimitiveTopology VulkanBatchRenderer::getVulkanTopology(DrawCommand::Type type) {
-        switch (type) {
-            case DrawCommand::TRIANGLES:
-                return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-            case DrawCommand::TRIANGLE_STRIP:
-                return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-            case DrawCommand::LINES:
-                return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-            case DrawCommand::LINE_STRIP:
-                return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
-            case DrawCommand::POINTS:
-                return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-            default:
-                return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        }
-    }
-
-    void VulkanBatchRenderer::ensureVertexBufferCapacity(size_t requiredSize) {
-        VulkanVertexBuffer& vb = vertexBuffers[currentFrame];
-        if (requiredSize > vb.getCapacity()) {
-            // Grow buffer by 50% or to required size, whichever is larger
-            size_t newSize = std::max(requiredSize, static_cast<size_t>(vb.getCapacity() * 3 / 2));
-            
-            // Create new buffer
-            VulkanVertexBuffer newBuffer(console);
-            newBuffer.create(device, memoryManager, newSize, false);
-            
-            // Copy existing data if any
-            if (vertexBufferOffset > 0) {
-                // TODO: Implement buffer copy operation
-                // For now, we'll lose the data and start fresh
+            // Stencil state is dynamic only in the stencil pipelines, so it is set again after a pipeline change
+            if (state.stencilMode != 0 && (pipelineChanged || state.stencilMode != boundStencilMode)) {
+                setStencilState(commandBuffer, state.stencilMode);
             }
-            
-            vb = std::move(newBuffer);
-            vertexBufferOffset = 0;
-        }
-    }
+            boundStencilMode = state.stencilMode;
 
-    void VulkanBatchRenderer::ensureIndexBufferCapacity(size_t requiredSize) {
-        VulkanIndexBuffer& ib = indexBuffers[currentFrame];
-        if (requiredSize > ib.getCapacity()) {
-            // Grow buffer by 50% or to required size, whichever is larger
-            size_t newSize = std::max(requiredSize, static_cast<size_t>(ib.getCapacity() * 3 / 2));
-            
-            // Create new buffer
-            VulkanIndexBuffer newBuffer(console, VK_INDEX_TYPE_UINT16);
-            newBuffer.create(device, memoryManager, newSize, false);
-            
-            // Copy existing data if any
-            if (indexBufferOffset > 0) {
-                // TODO: Implement buffer copy operation
-                // For now, we'll lose the data and start fresh
+            if (pipelineChanged || state.texture != boundTexture) {
+                vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &state.texture, 0, nullptr);
+                boundTexture = state.texture;
             }
-            
-            ib = std::move(newBuffer);
-            indexBufferOffset = 0;
+
+            PushConstants constants{};
+            std::memcpy(constants.mvp, state.mvp.getStorage(), sizeof(constants.mvp));
+            std::memcpy(constants.modulateColor, state.modulateColor, sizeof(constants.modulateColor));
+            constants.alphaTest = state.alphaTest ? 1u : 0u;
+            constants.time = state.time;
+            vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                               sizeof(constants), &constants);
+
+            if (command.vertexBuffer != boundBuffer || command.vertexOffset != boundOffset) {
+                vkCmdBindVertexBuffers(commandBuffer, 0, 1, &command.vertexBuffer, &command.vertexOffset);
+                boundBuffer = command.vertexBuffer;
+                boundOffset = command.vertexOffset;
+            }
+
+            vkCmdDraw(commandBuffer, command.vertexCount, 1, 0, 0);
+            boundState = &state;
         }
+
+        commands.clear();
     }
 
 }

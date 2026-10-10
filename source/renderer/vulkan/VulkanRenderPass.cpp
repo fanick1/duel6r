@@ -30,8 +30,6 @@
 #include "VulkanSwapchain.h"
 #include "../../Exception.h"
 #include "../../VideoException.h"
-#include <array>
-#include <iostream>
 
 namespace Duel6 {
 
@@ -47,41 +45,7 @@ namespace Duel6 {
         cleanup();
     }
 
-    VulkanRenderPass::VulkanRenderPass(VulkanRenderPass&& other) noexcept
-        : device(other.device), renderPass(other.renderPass), config(other.config),
-          framebuffers(std::move(other.framebuffers)), colorImageViews(std::move(other.colorImageViews)),
-          depthImage(other.depthImage), depthImageView(other.depthImageView), depthImageMemory(other.depthImageMemory),
-          width(other.width), height(other.height) {
-        other.device = nullptr;
-        other.renderPass = VK_NULL_HANDLE;
-        other.depthImage = VK_NULL_HANDLE;
-        other.depthImageView = VK_NULL_HANDLE;
-        other.depthImageMemory = VK_NULL_HANDLE;
-    }
 
-    VulkanRenderPass& VulkanRenderPass::operator=(VulkanRenderPass&& other) noexcept {
-        if (this != &other) {
-            cleanup();
-            
-            device = other.device;
-            renderPass = other.renderPass;
-            config = other.config;
-            framebuffers = std::move(other.framebuffers);
-            colorImageViews = std::move(other.colorImageViews);
-            depthImage = other.depthImage;
-            depthImageView = other.depthImageView;
-            depthImageMemory = other.depthImageMemory;
-            width = other.width;
-            height = other.height;
-            
-            other.device = nullptr;
-            other.renderPass = VK_NULL_HANDLE;
-            other.depthImage = VK_NULL_HANDLE;
-            other.depthImageView = VK_NULL_HANDLE;
-            other.depthImageMemory = VK_NULL_HANDLE;
-        }
-        return *this;
-    }
 
     void VulkanRenderPass::createFramebuffers(const VulkanSwapchain& swapchain) {
         width = swapchain.getExtent().width;
@@ -167,12 +131,6 @@ namespace Duel6 {
         vkCmdEndRenderPass(commandBuffer);
     }
 
-    VkFramebuffer VulkanRenderPass::getFramebuffer(uint32_t index) const {
-        if (index >= framebuffers.size()) {
-            D6_THROW(Exception, "Framebuffer index out of range");
-        }
-        return framebuffers[index];
-    }
 
     void VulkanRenderPass::createRenderPass() {
         std::vector<VkAttachmentDescription> attachments;
@@ -422,10 +380,6 @@ namespace Duel6 {
         currentFrame = (currentFrame + 1) % maxFramesInFlight;
     }
 
-    void VulkanCommandBufferManager::reset() {
-        VkCommandBuffer commandBuffer = getCurrentCommandBuffer();
-        vkResetCommandBuffer(commandBuffer, 0);
-    }
 
     void VulkanCommandBufferManager::submit(VkQueue queue, const std::vector<VkSemaphore>& waitSemaphores,
                                             const std::vector<VkPipelineStageFlags>& waitStages,
@@ -460,86 +414,5 @@ namespace Duel6 {
     }
 
     // Render Pass Manager implementation
-    VulkanRenderPassManager::VulkanRenderPassManager(const VulkanDevice& device, uint32_t maxFramesInFlight)
-        : device(&device) {
-        commandBufferManager = std::make_unique<VulkanCommandBufferManager>(device, maxFramesInFlight);
-    }
-
-    void VulkanRenderPassManager::addRenderPass(std::unique_ptr<VulkanRenderPass> renderPass) {
-        renderPasses.push_back(std::move(renderPass));
-    }
-
-    VulkanRenderPass* VulkanRenderPassManager::getRenderPass(size_t index) const {
-        if (index >= renderPasses.size()) {
-            return nullptr;
-        }
-        return renderPasses[index].get();
-    }
-
-    void VulkanRenderPassManager::beginFrame() {
-        commandBufferManager->reset();
-        commandBufferManager->beginFrame();
-    }
-
-    void VulkanRenderPassManager::endFrame() {
-        commandBufferManager->endFrame();
-        commandBufferManager->nextFrame();
-    }
-
-    void VulkanRenderPassManager::submit(VkQueue queue, const std::vector<VkSemaphore>& waitSemaphores,
-                                         const std::vector<VkSemaphore>& signalSemaphores,
-                                         VkFence fence) {
-        std::vector<VkPipelineStageFlags> waitStages(waitSemaphores.size(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        commandBufferManager->submit(queue, waitSemaphores, waitStages, signalSemaphores, fence);
-    }
-
-    void VulkanRenderPassManager::recreateFramebuffers(const VulkanSwapchain& swapchain) {
-        for (auto& renderPass : renderPasses) {
-            renderPass->recreateFramebuffers(swapchain);
-        }
-    }
-
-    // Render Pass Presets implementation
-    namespace RenderPassPresets {
-        
-        RenderPassConfig createMainSceneConfig(VkFormat swapchainFormat, VkFormat depthFormat) {
-            RenderPassConfig config;
-            config.colorFormat = swapchainFormat;
-            config.depthFormat = depthFormat;
-            config.hasDepthBuffer = true;
-            config.clearColor = true;
-            config.clearDepth = true;
-            config.clearColorValue = {{0.0f, 0.0f, 0.0f, 1.0f}}; // Black
-            return config;
-        }
-        
-        RenderPassConfig createBloomConfig(VkFormat colorFormat) {
-            RenderPassConfig config;
-            config.colorFormat = colorFormat;
-            config.hasDepthBuffer = false;
-            config.hasBloomTarget = true;
-            config.clearColor = true;
-            config.clearColorValue = {{0.0f, 0.0f, 0.0f, 0.0f}}; // Transparent
-            return config;
-        }
-        
-        RenderPassConfig createPostProcessConfig(VkFormat colorFormat) {
-            RenderPassConfig config;
-            config.colorFormat = colorFormat;
-            config.hasDepthBuffer = false;
-            config.clearColor = true;
-            config.clearColorValue = {{0.0f, 0.0f, 0.0f, 1.0f}}; // Black
-            return config;
-        }
-        
-        RenderPassConfig createShadowMapConfig(VkFormat depthFormat) {
-            RenderPassConfig config;
-            config.depthFormat = depthFormat;
-            config.hasDepthBuffer = true;
-            config.clearColor = false;
-            config.clearDepth = true;
-            return config;
-        }
-    }
 
 }

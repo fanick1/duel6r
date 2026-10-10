@@ -30,7 +30,6 @@
 
 #include <vulkan/vulkan.h>
 #include <vector>
-#include <memory>
 
 namespace Duel6 {
 
@@ -46,7 +45,6 @@ namespace Duel6 {
         VkFormat depthFormat = VK_FORMAT_D32_SFLOAT_S8_UINT;
         VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
         bool hasDepthBuffer = true;
-        bool hasBloomTarget = false;
         bool clearColor = true;
         bool clearDepth = true;
         VkClearColorValue clearColorValue = {{0.0f, 0.0f, 0.0f, 1.0f}};
@@ -81,10 +79,6 @@ namespace Duel6 {
         VulkanRenderPass(const VulkanRenderPass&) = delete;
         VulkanRenderPass& operator=(const VulkanRenderPass&) = delete;
 
-        // Movable
-        VulkanRenderPass(VulkanRenderPass&& other) noexcept;
-        VulkanRenderPass& operator=(VulkanRenderPass&& other) noexcept;
-
         /**
          * Create framebuffers for swapchain images
          */
@@ -109,10 +103,6 @@ namespace Duel6 {
         // Getters
         VkRenderPass getHandle() const { return renderPass; }
         const RenderPassConfig& getConfig() const { return config; }
-        uint32_t getWidth() const { return width; }
-        uint32_t getHeight() const { return height; }
-        size_t getFramebufferCount() const { return framebuffers.size(); }
-        VkFramebuffer getFramebuffer(uint32_t index) const;
 
     private:
         void createRenderPass();
@@ -122,31 +112,6 @@ namespace Duel6 {
         void cleanupDepthResources();
     };
 
-    /**
-     * Render pass factory for creating common render pass configurations
-     */
-    namespace RenderPassPresets {
-        
-        /**
-         * Create main scene render pass (color + depth)
-         */
-        RenderPassConfig createMainSceneConfig(VkFormat swapchainFormat, VkFormat depthFormat = VK_FORMAT_D32_SFLOAT);
-        
-        /**
-         * Create bloom render pass (multiple render targets)
-         */
-        RenderPassConfig createBloomConfig(VkFormat colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT);
-        
-        /**
-         * Create post-processing render pass (color only)
-         */
-        RenderPassConfig createPostProcessConfig(VkFormat colorFormat);
-        
-        /**
-         * Create shadow map render pass (depth only)
-         */
-        RenderPassConfig createShadowMapConfig(VkFormat depthFormat = VK_FORMAT_D32_SFLOAT);
-    }
 
     /**
      * Command buffer manager for render pass recording
@@ -190,7 +155,6 @@ namespace Duel6 {
         /**
          * Reset command buffer for current frame
          */
-        void reset();
 
         /**
          * Submit command buffer to queue
@@ -201,8 +165,6 @@ namespace Duel6 {
                     VkFence fence = VK_NULL_HANDLE) const;
 
         // Getters
-        uint32_t getCurrentFrame() const { return currentFrame; }
-        uint32_t getMaxFramesInFlight() const { return maxFramesInFlight; }
 
     private:
         void createCommandPool();
@@ -210,55 +172,6 @@ namespace Duel6 {
         void cleanup();
     };
 
-    /**
-     * Render pass manager for organizing multiple render passes
-     */
-    class VulkanRenderPassManager {
-    private:
-        const VulkanDevice* device;
-        std::vector<std::unique_ptr<VulkanRenderPass>> renderPasses;
-        std::unique_ptr<VulkanCommandBufferManager> commandBufferManager;
-
-    public:
-        VulkanRenderPassManager(const VulkanDevice& device, uint32_t maxFramesInFlight = 2);
-        ~VulkanRenderPassManager() = default;
-
-        /**
-         * Add a render pass
-         */
-        void addRenderPass(std::unique_ptr<VulkanRenderPass> renderPass);
-
-        /**
-         * Get render pass by index
-         */
-        VulkanRenderPass* getRenderPass(size_t index) const;
-
-        /**
-         * Begin frame rendering
-         */
-        void beginFrame();
-
-        /**
-         * End frame rendering
-         */
-        void endFrame();
-
-        /**
-         * Submit all recorded commands
-         */
-        void submit(VkQueue queue, const std::vector<VkSemaphore>& waitSemaphores = {},
-                    const std::vector<VkSemaphore>& signalSemaphores = {},
-                    VkFence fence = VK_NULL_HANDLE);
-
-        /**
-         * Recreate all framebuffers (e.g., on window resize)
-         */
-        void recreateFramebuffers(const VulkanSwapchain& swapchain);
-
-        // Getters
-        VulkanCommandBufferManager* getCommandBufferManager() const { return commandBufferManager.get(); }
-        size_t getRenderPassCount() const { return renderPasses.size(); }
-    };
 
 }
 

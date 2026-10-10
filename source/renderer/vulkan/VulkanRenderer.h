@@ -9,6 +9,7 @@
 #include "VulkanSwapchain.h"
 #include "VulkanMemory.h"
 #include "VulkanBatchRenderer.h"
+#include "VulkanPipeline.h"
 #include "VulkanDescriptor.h"
 #include "VulkanRenderPass.h"
 #include "VulkanRendererTarget.h"
@@ -23,7 +24,6 @@ namespace Duel6 {
         SDL_Window* window;
         Console* console;
         bool initialized;
-        bool framebufferResized;
 
         // Core Vulkan components
         std::unique_ptr<VulkanContext> context;
@@ -40,11 +40,6 @@ namespace Duel6 {
         
         // Pipeline cache
         std::unique_ptr<VulkanPipelineCache> pipelineCache;
-        VulkanPipeline* colorPipeline; // Pipeline for colored triangles
-        VulkanPipeline* linePipeline;  // Pipeline for line primitives
-        VulkanPipeline* lineStripPipeline; // Pipeline for line strip primitives
-        VulkanPipeline* pointPipeline; // Pipeline for point primitives
-        VulkanPipeline* texturePipeline; // Pipeline for textured geometry
 
         // Resource management (textures)
         std::unique_ptr<VulkanSamplerManager> samplerManager;
@@ -66,7 +61,6 @@ namespace Duel6 {
 
         // Viewport state (stored, applied at flush)
         mutable Int32 viewportX, viewportY, viewportWidth, viewportHeight;
-        mutable bool viewportDirty;  // true when setViewport was called
 
         // Scissor extents
         mutable Int32 scissorX, scissorY, scissorWidth, scissorHeight;
@@ -88,6 +82,8 @@ namespace Duel6 {
         BlendFunc currentBlendFunc;
         bool wireframeEnabled;
         VkDescriptorSetLayout textureDescriptorSetLayout; // Layout for texture-only descriptor sets
+        VkDescriptorSet whiteTexture = VK_NULL_HANDLE;    // 1x1 white, sampled by untextured draws
+        bool offscreen = false;                           // drawing into an (upside down) offscreen target
 
     public:
         explicit VulkanRenderer(SDL_Window* window, Console& console);
@@ -116,11 +112,9 @@ namespace Duel6 {
         
         // Matrix methods
         void setProjectionMatrix(const Matrix &m) override;
-        Matrix getProjectionMatrix() const override;
         void setViewMatrix(const Matrix &m) override;
         Matrix getViewMatrix() const override;
         void setModelMatrix(const Matrix &m) override;
-        Matrix getModelMatrix() const override;
 
         // Geometry rendering
         void triangle(const Vector &p1, const Vector &p2, const Vector &p3, const Color &color) override;
@@ -146,14 +140,12 @@ namespace Duel6 {
         bool setScissorTest(bool value) const override;
         void scissorTest(Int32 x, Int32 y, Int32 width, Int32 height) const override;
 
-        void setDeferredDrawReordering(bool enable) override;
 
         // Buffer and target creation
         std::unique_ptr<RendererBuffer> makeBuffer(const FaceList &faceList) override;
         std::unique_ptr<RendererTarget> makeTarget(ScreenParameters screenParameters) override;
 
         // Window resize handling
-        void onFramebufferResize();
 
     private:
         void initialize();
@@ -162,42 +154,35 @@ namespace Duel6 {
         void ensureCaptureImage(VkExtent2D extent);
         void destroyCaptureImage();
         void recordFrameCapture(VkCommandBuffer commandBuffer);
-        void createPipelines();
-        VulkanPipeline* getStatePipeline(VkPrimitiveTopology topology);
-        VulkanPipeline* getTextureStatePipeline(VkPrimitiveTopology topology);
-        VulkanPipeline* getColorPipeline();
-        VulkanPipeline* getLinePipeline();
-        VulkanPipeline* getLineStripPipeline();
-        VulkanPipeline* getPointPipeline();
-        VulkanPipeline* getTexturePipeline();
+        VulkanPipeline* getPipeline(VkPrimitiveTopology topology);
 
     public:
         // Called by VulkanRendererBuffer to render pre-built material vertices
-        void renderMaterialVertices(const void* vertices, uint32_t vertexCount,
-                                    size_t vertexDataSize, const Material& material);
+        // Draw state (stencil, viewport, scissor, transform) of the next draw
+        DrawCommand::State makeDrawState(VkPrimitiveTopology topology) const;
+        // Submits vertices with the current render state; untextured when material is null
+        void submitVertices(VkPrimitiveTopology topology, const VulkanVertex* vertices, uint32_t vertexCount,
+                            const Material* material);
+        // Pipeline for an explicit render state (lazily created and cached)
+        VulkanPipeline* getPipeline(VkPrimitiveTopology topology, bool depthTest, bool depthWrite,
+                                    BlendFunc blendFunc, bool wireframe, uint32_t stencilMode);
 
         // Accessors for VulkanRendererTarget offscreen rendering
         VulkanDevice& getDevice() { return *device; }
         const VulkanDevice& getDevice() const { return *device; }
-        VulkanMemoryManager& getMemoryManager() { return *memoryManager; }
         VulkanBatchRenderer& getBatchRenderer() { return *batchRenderer; }
         VulkanDescriptorManager& getDescriptorManager() { return *descriptorManager; }
         VulkanSamplerManager& getSamplerManager() { return *samplerManager; }
-        VulkanResourceManager& getResourceManager() { return *resourceManager; }
         VulkanRenderPass& getMainRenderPass() { return *renderPass; }
-        VulkanSwapchain& getSwapchain() { return *swapchain; }
-        VulkanCommandBufferManager& getCommandBufferManager() { return *commandBufferManager; }
         VulkanPipelineCache& getPipelineCache() { return *pipelineCache; }
         VkDescriptorSetLayout getTextureDescriptorSetLayout() const { return textureDescriptorSetLayout; }
         bool isInFrame() const { return inFrame; }
         void setInFrame(bool value) { inFrame = value; }
+        void setOffscreen(bool value) { offscreen = value; }
         uint32_t getCurrentFrameIndex() const { return currentFrame; }
         bool isInitialized() const { return initialized; }
 
         // Flush and manage render pass for offscreen rendering
-        void stampDrawState(DrawCommand& cmd) const;
-        void flushAndEndRenderPass(VkCommandBuffer cmdBuf);
-        void beginMainRenderPass(VkCommandBuffer cmdBuf);
     };
 }
 

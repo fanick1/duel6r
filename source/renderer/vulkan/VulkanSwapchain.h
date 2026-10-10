@@ -72,7 +72,6 @@ namespace Duel6 {
         void present(const VulkanDevice& device);
 
         // Getters
-        VkSwapchainKHR getSwapchain() const { return swapchain; }
         VkFormat getImageFormat() const { return swapchainImageFormat; }
         VkExtent2D getExtent() const { return swapchainExtent; }
         // Use currentFrame for acquisition semaphore (before we know imageIndex)

@@ -31,9 +31,7 @@
 #include "VulkanTypes.h"
 #include "../../Exception.h"
 #include "../../VideoException.h"
-#include <array>
 #include <algorithm>
-#include <fstream>
 #include <functional>
 
 namespace Duel6 {
@@ -47,34 +45,8 @@ namespace Duel6 {
         cleanup();
     }
 
-    VulkanPipeline::VulkanPipeline(VulkanPipeline&& other) noexcept
-        : device(other.device), pipeline(other.pipeline), pipelineLayout(other.pipelineLayout),
-          renderPass(other.renderPass), descriptorSetLayouts(std::move(other.descriptorSetLayouts)) {
-        other.device = nullptr;
-        other.pipeline = VK_NULL_HANDLE;
-        other.pipelineLayout = VK_NULL_HANDLE;
-    }
 
-    VulkanPipeline& VulkanPipeline::operator=(VulkanPipeline&& other) noexcept {
-        if (this != &other) {
-            cleanup();
-            
-            device = other.device;
-            pipeline = other.pipeline;
-            pipelineLayout = other.pipelineLayout;
-            renderPass = other.renderPass;
-            descriptorSetLayouts = std::move(other.descriptorSetLayouts);
-            
-            other.device = nullptr;
-            other.pipeline = VK_NULL_HANDLE;
-            other.pipelineLayout = VK_NULL_HANDLE;
-        }
-        return *this;
-    }
 
-    void VulkanPipeline::bind(VkCommandBuffer commandBuffer) const {
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    }
 
     void VulkanPipeline::cleanup() {
         if (device != nullptr) {
@@ -99,17 +71,6 @@ namespace Duel6 {
         shaderStages.push_back(shader.getStageCreateInfo());
         return *this;
     }
-
-    VulkanPipelineBuilder& VulkanPipelineBuilder::addShaderStage(VkShaderStageFlagBits stage, VkShaderModule module, const char* entryPoint) {
-        VkPipelineShaderStageCreateInfo stageInfo{};
-        stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stageInfo.stage = stage;
-        stageInfo.module = module;
-        stageInfo.pName = entryPoint;
-        shaderStages.push_back(stageInfo);
-        return *this;
-    }
-
     VulkanPipelineBuilder& VulkanPipelineBuilder::setVertexInput(const VkVertexInputBindingDescription& binding,
                                                                  const std::vector<VkVertexInputAttributeDescription>& attributes) {
         vertexBinding = binding;
@@ -379,52 +340,6 @@ namespace Duel6 {
         cachedPipelines[hash] = std::move(pipeline);
         return pipelinePtr;
     }
-
-    void VulkanPipelineCache::saveCacheToFile(const std::string& filename) const {
-        size_t dataSize = 0;
-        VkResult result = vkGetPipelineCacheData(device->getLogicalDevice(), pipelineCache, &dataSize, nullptr);
-        if (result != VK_SUCCESS || dataSize == 0) {
-            return;
-        }
-
-        std::vector<uint8_t> data(dataSize);
-        result = vkGetPipelineCacheData(device->getLogicalDevice(), pipelineCache, &dataSize, data.data());
-        if (result != VK_SUCCESS) {
-            return;
-        }
-
-        std::ofstream file(filename, std::ios::binary);
-        if (file.is_open()) {
-            file.write(reinterpret_cast<const char*>(data.data()), dataSize);
-        }
-    }
-
-    void VulkanPipelineCache::loadCacheFromFile(const std::string& filename) {
-        std::ifstream file(filename, std::ios::binary | std::ios::ate);
-        if (!file.is_open()) {
-            return;
-        }
-
-        size_t fileSize = static_cast<size_t>(file.tellg());
-        std::vector<uint8_t> data(fileSize);
-        file.seekg(0);
-        file.read(reinterpret_cast<char*>(data.data()), fileSize);
-        file.close();
-
-        // Recreate pipeline cache with loaded data
-        cleanup();
-
-        VkPipelineCacheCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-        createInfo.initialDataSize = fileSize;
-        createInfo.pInitialData = data.data();
-
-        VkResult result = vkCreatePipelineCache(device->getLogicalDevice(), &createInfo, nullptr, &pipelineCache);
-        if (result != VK_SUCCESS) {
-            D6_THROW(VideoException, "Failed to create pipeline cache from file: " + std::to_string(result));
-        }
-    }
-
     void VulkanPipelineCache::cleanup() {
         if (pipelineCache != VK_NULL_HANDLE && device != nullptr) {
             vkDestroyPipelineCache(device->getLogicalDevice(), pipelineCache, nullptr);
@@ -437,237 +352,64 @@ namespace Duel6 {
      * Pipeline Presets - Common pipeline configurations
      */
     namespace PipelinePresets {
+        namespace {
+            // Stencil ops are pipeline state; reference and masks are set per draw (dynamic)
+            void configureStencilMode(VulkanPipelineBuilder& builder, uint32_t stencilMode) {
+                builder.addDynamicState(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK);
+                builder.addDynamicState(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK);
+                builder.addDynamicState(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
+                switch (stencilMode) {
+                    case 1: // WRITE: mark pixels with the reference value
+                        builder.setStencilTest(true, VK_COMPARE_OP_NOT_EQUAL,
+                                               VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE);
+                        break;
+                    case 2: // TEST: draw only where not marked
+                        builder.setStencilTest(true, VK_COMPARE_OP_NOT_EQUAL,
+                                               VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP);
+                        break;
+                    case 3: // ERASE: clear the marks, no color output
+                        builder.setStencilTest(true, VK_COMPARE_OP_NOT_EQUAL,
+                                               VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE);
+                        builder.setColorWriteMask(0);
+                        break;
+                    default:
+                        builder.setStencilTest(false);
+                        break;
+                }
+            }
 
-        std::unique_ptr<VulkanPipeline> createColorPipeline(const VulkanDevice& device, 
-                                                            VkRenderPass renderPass,
-                                                            VkDescriptorSetLayout uniformLayout) {
-            VulkanPipelineBuilder builder(device, renderPass);
-            
-            // Load vertex and fragment shaders for colored geometry
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("color.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("color.frag", VulkanShader::Type::Fragment);
-            
-            return builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::ColorVertex>()
-                .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-                .setDepthTest(true, true, VK_COMPARE_OP_LESS_OR_EQUAL)
-                .setCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE)
-                .addDescriptorSetLayout(uniformLayout)
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .build();
-        }
-
-        std::unique_ptr<VulkanPipeline> createSimpleColorPipeline(const VulkanDevice& device, 
-                                                                   VkRenderPass renderPass) {
-            VulkanPipelineBuilder builder(device, renderPass);
-            
-            // Load simple_color shaders that use push constants instead of UBO
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("simple_color.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("simple_color.frag", VulkanShader::Type::Fragment);
-            
-            return builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::ColorVertex>()
-                .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-                .setDepthTest(false, false)  // Disable depth test for 2D UI
-                .setCullMode(VK_CULL_MODE_NONE)  // No culling for 2D UI
-                .setBlending(true)  // Enable alpha blending
-                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)  // mat4 MVP
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH)
-                .build();
-        }
-
-        std::unique_ptr<VulkanPipeline> createSimpleLinePipeline(const VulkanDevice& device,
-                                                                  VkRenderPass renderPass) {
-            VulkanPipelineBuilder builder(device, renderPass);
-
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("simple_color.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("simple_color.frag", VulkanShader::Type::Fragment);
-
-            return builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::ColorVertex>()
-                .setTopology(VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
-                .setDepthTest(false, false)
-                .setCullMode(VK_CULL_MODE_NONE)
-                .setBlending(true)
-                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH)
-                .build();
-        }
-
-        std::unique_ptr<VulkanPipeline> createSimpleLineStripPipeline(const VulkanDevice& device,
-                                                                       VkRenderPass renderPass) {
-            VulkanPipelineBuilder builder(device, renderPass);
-
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("simple_color.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("simple_color.frag", VulkanShader::Type::Fragment);
-
-            return builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::ColorVertex>()
-                .setTopology(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP)
-                .setDepthTest(false, false)
-                .setCullMode(VK_CULL_MODE_NONE)
-                .setBlending(true)
-                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH)
-                .build();
-        }
-
-        std::unique_ptr<VulkanPipeline> createSimplePointPipeline(const VulkanDevice& device,
-                                                                    VkRenderPass renderPass) {
-            VulkanPipelineBuilder builder(device, renderPass);
-
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("simple_color.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("simple_color.frag", VulkanShader::Type::Fragment);
-
-            return builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::ColorVertex>()
-                .setTopology(VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
-                .setDepthTest(false, false)
-                .setCullMode(VK_CULL_MODE_NONE)
-                .setBlending(true)
-                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH)
-                .build();
-        }
-
-        // Helper to configure stencil on a pipeline builder based on stencilMode
-        // stencilMode: 0=none, 1=write(REPLACE), 2=test(KEEP), 3=erase(REPLACE+no color write)
-        static void configureStencilMode(VulkanPipelineBuilder& builder, uint32_t stencilMode) {
-            // Always add dynamic stencil states for reference/mask control
-            builder.addDynamicState(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK);
-            builder.addDynamicState(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK);
-            builder.addDynamicState(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
-            
-            switch (stencilMode) {
-                case 1: // WRITE: stencil test + replace, color write enabled
-                    builder.setStencilTest(true, VK_COMPARE_OP_NOT_EQUAL,
-                                           VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE);
-                    break;
-                case 2: // TEST: stencil test + keep, color write enabled
-                    builder.setStencilTest(true, VK_COMPARE_OP_NOT_EQUAL,
-                                           VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP);
-                    break;
-                case 3: // ERASE: stencil test + replace, color write DISABLED
-                    builder.setStencilTest(true, VK_COMPARE_OP_NOT_EQUAL,
-                                           VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_REPLACE);
-                    builder.setColorWriteMask(0); // No color output
-                    break;
-                default: // 0 = NONE/DISABLE
-                    builder.setStencilTest(false);
-                    break;
+            // Everything the two pipelines share: shaders, vertex format, push constants, texture binding.
+            // The shader objects must outlive build().
+            // OpenGL geometry is clockwise (glFrontFace(GL_CW)); the y flip of the main pass keeps it so,
+            // the upside-down offscreen pass inverts it
+            VulkanPipelineBuilder& configureCommon(VulkanPipelineBuilder& builder, const VulkanShader& vertexShader,
+                                                   const VulkanShader& fragmentShader, VkDescriptorSetLayout textureLayout,
+                                                   VkFrontFace frontFace) {
+                return builder
+                    .addShader(vertexShader)
+                    .addShader(fragmentShader)
+                    .setVertexInput<VulkanVertex>()
+                    .setCullMode(VK_CULL_MODE_BACK_BIT, frontFace)
+                    .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, PUSH_CONSTANTS_SIZE)
+                    .addDescriptorSetLayout(textureLayout)
+                    .setViewportDynamic()
+                    .setScissorDynamic()
+                    .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
             }
         }
 
-        std::unique_ptr<VulkanPipeline> createSimpleColorPipelineWithState(
-            const VulkanDevice& device,
-            VkRenderPass renderPass,
-            VkPrimitiveTopology topology,
-            bool depthTest,
-            bool depthWrite,
-            BlendFunc blendFunc,
-            bool wireframe,
-            uint32_t stencilMode,
-            bool colorWrite) {
+        std::unique_ptr<VulkanPipeline> createPipeline(const VulkanDevice& device, VkRenderPass renderPass,
+                                                       VkDescriptorSetLayout textureLayout, VkPrimitiveTopology topology,
+                                                       bool depthTest, bool depthWrite, BlendFunc blendFunc,
+                                                       bool wireframe, uint32_t stencilMode, VkFrontFace frontFace) {
             VulkanPipelineBuilder builder(device, renderPass);
-
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("simple_color.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("simple_color.frag", VulkanShader::Type::Fragment);
-
-            builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::ColorVertex>()
+            VulkanShaderManager shaders(device, "shaders/vulkan");
+            auto vertexShader = shaders.loadShader("main.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaders.loadShader("main.frag", VulkanShader::Type::Fragment);
+            configureCommon(builder, *vertexShader, *fragmentShader, textureLayout, frontFace)
                 .setTopology(topology)
-                .setDepthTest(depthTest, depthWrite, VK_COMPARE_OP_LESS_OR_EQUAL)
-                .setCullMode(VK_CULL_MODE_NONE)
-                .setWireframe(wireframe)
-                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 16)
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
-
-            configureStencilMode(builder, stencilMode);
-
-            // Configure blending based on BlendFunc
-            switch (blendFunc) {
-                case BlendFunc::None:
-                    builder.setBlending(false);
-                    break;
-                case BlendFunc::SrcAlpha:
-                    builder.setBlending(true,
-                        VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
-                        VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
-                    break;
-                case BlendFunc::SrcColor:
-                    builder.setBlending(true,
-                        VK_BLEND_FACTOR_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR, VK_BLEND_OP_ADD,
-                        VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
-                    break;
-            }
-
-            if (!colorWrite) {
-                builder.setColorWriteMask(0);
-            }
-
-            return builder.build();
-        }
-
-        std::unique_ptr<VulkanPipeline> createSimpleTexture2DPipelineWithState(
-            const VulkanDevice& device,
-            VkRenderPass renderPass,
-            VkDescriptorSetLayout textureLayout,
-            VkPrimitiveTopology topology,
-            bool depthTest,
-            bool depthWrite,
-            BlendFunc blendFunc,
-            bool wireframe,
-            uint32_t stencilMode) {
-            VulkanPipelineBuilder builder(device, renderPass);
-
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("simple_texture_2d.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("simple_texture_2d.frag", VulkanShader::Type::Fragment);
-
-            builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::TextureVertex2D>()
-                .setTopology(topology)
-                .setDepthTest(depthTest, depthWrite, VK_COMPARE_OP_LESS_OR_EQUAL)
-                .setCullMode(VK_CULL_MODE_NONE)
-                .setWireframe(wireframe)
-                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, 64)
-                .addPushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, 64, 20)
-                .addDescriptorSetLayout(textureLayout)
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
-
+                .setDepthTest(depthTest, depthWrite)  // VK_COMPARE_OP_LESS, like the OpenGL default
+                .setWireframe(wireframe);
             configureStencilMode(builder, stencilMode);
 
             switch (blendFunc) {
@@ -685,155 +427,22 @@ namespace Duel6 {
                         VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
                     break;
             }
-
             return builder.build();
         }
 
-        std::unique_ptr<VulkanPipeline> createDepthBlitPipeline(
-            const VulkanDevice& device,
-            VkRenderPass renderPass,
-            VkDescriptorSetLayout textureLayout) {
+        std::unique_ptr<VulkanPipeline> createDepthBlitPipeline(const VulkanDevice& device, VkRenderPass renderPass,
+                                                                VkDescriptorSetLayout textureLayout) {
             VulkanPipelineBuilder builder(device, renderPass);
-
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("depth_blit.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("depth_blit.frag", VulkanShader::Type::Fragment);
-
-            return builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::TextureVertex2D>()
+            VulkanShaderManager shaders(device, "shaders/vulkan");
+            auto vertexShader = shaders.loadShader("main.vert", VulkanShader::Type::Vertex);
+            auto fragmentShader = shaders.loadShader("depth_blit.frag", VulkanShader::Type::Fragment);
+            return configureCommon(builder, *vertexShader, *fragmentShader, textureLayout, VK_FRONT_FACE_CLOCKWISE)
                 .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                 .setDepthTest(true, true, VK_COMPARE_OP_ALWAYS)
-                .setCullMode(VK_CULL_MODE_NONE)
                 .setBlending(false)
                 .setColorWriteMask(0)
-                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, 64)
-                .addPushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, 64, 20)
-                .addDescriptorSetLayout(textureLayout)
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH)
                 .build();
         }
-
-        std::unique_ptr<VulkanPipeline> createSimpleTexturePipelineWithState(
-            const VulkanDevice& device,
-            VkRenderPass renderPass,
-            VkDescriptorSetLayout textureLayout,
-            VkPrimitiveTopology topology,
-            bool depthTest,
-            bool depthWrite,
-            BlendFunc blendFunc,
-            bool wireframe,
-            uint32_t stencilMode,
-            bool colorWrite) {
-            VulkanPipelineBuilder builder(device, renderPass);
-
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("simple_texture.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("simple_texture.frag", VulkanShader::Type::Fragment);
-
-            builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::MaterialVertex>()
-                .setTopology(topology)
-                .setDepthTest(depthTest, depthWrite, VK_COMPARE_OP_LESS_OR_EQUAL)
-                .setCullMode(VK_CULL_MODE_NONE)
-                .setWireframe(wireframe)
-                // Push constants: mat4 MVP for vertex stage + material params for fragment stage
-                .addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, 64)               // mat4 MVP
-                .addPushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, 64, 20)             // vec4 modulateColor + uint alphaTest
-                // Descriptor set 0 = texture sampler
-                .addDescriptorSetLayout(textureLayout)
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
-
-            configureStencilMode(builder, stencilMode);
-
-            // Configure blending
-            switch (blendFunc) {
-                case BlendFunc::None:
-                    builder.setBlending(false);
-                    break;
-                case BlendFunc::SrcAlpha:
-                    builder.setBlending(true,
-                        VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
-                        VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
-                    break;
-                case BlendFunc::SrcColor:
-                    builder.setBlending(true,
-                        VK_BLEND_FACTOR_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR, VK_BLEND_OP_ADD,
-                        VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
-                    break;
-            }
-
-            if (!colorWrite) {
-                builder.setColorWriteMask(0);
-            }
-
-            return builder.build();
-        }
-
-        std::unique_ptr<VulkanPipeline> createMaterialPipeline(const VulkanDevice& device, 
-                                                               VkRenderPass renderPass,
-                                                               VkDescriptorSetLayout uniformLayout,
-                                                               VkDescriptorSetLayout textureLayout,
-                                                               VkDescriptorSetLayout materialUniformLayout) {
-            VulkanPipelineBuilder builder(device, renderPass);
-            
-            // Load vertex and fragment shaders for textured geometry
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("material.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("material.frag", VulkanShader::Type::Fragment);
-            
-            return builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::MaterialVertex>()
-                .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-                .setDepthTest(true, true, VK_COMPARE_OP_LESS_OR_EQUAL)
-                .setCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE)
-                .addDescriptorSetLayout(uniformLayout)
-                .addDescriptorSetLayout(textureLayout)
-                .addDescriptorSetLayout(materialUniformLayout)
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .build();
-        }
-
-        std::unique_ptr<VulkanPipeline> createBloomFilterPipeline(const VulkanDevice& device, 
-                                                                  VkRenderPass renderPass,
-                                                                  VkDescriptorSetLayout uniformLayout,
-                                                                  VkDescriptorSetLayout textureLayout,
-                                                                  VkDescriptorSetLayout bloomUniformLayout) {
-            VulkanPipelineBuilder builder(device, renderPass);
-            
-            // Load vertex and fragment shaders for bloom filter post-processing
-            VulkanShaderManager shaderManager(device, "shaders/vulkan");
-            auto vertexShader = shaderManager.loadShader("color.vert", VulkanShader::Type::Vertex);
-            auto fragmentShader = shaderManager.loadShader("bloom_filter.frag", VulkanShader::Type::Fragment);
-            
-            return builder
-                .addShader(*vertexShader)
-                .addShader(*fragmentShader)
-                .setVertexInput<VertexFormats::ColorVertex>()  // Simple vertex for fullscreen quad
-                .setTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-                .setDepthTest(false, false, VK_COMPARE_OP_ALWAYS)
-                .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE)
-                .setBlending(true, 
-                            VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
-                            VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD)
-                .addDescriptorSetLayout(uniformLayout)
-                .addDescriptorSetLayout(textureLayout)
-                .addDescriptorSetLayout(bloomUniformLayout)
-                .setViewportDynamic()
-                .setScissorDynamic()
-                .build();
-        }
-
     }
 
 }

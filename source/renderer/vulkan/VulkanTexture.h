@@ -29,7 +29,6 @@
 #define DUEL6_RENDERER_VULKANTEXTURE_H
 
 #include <vulkan/vulkan.h>
-#include <memory>
 #include "VulkanMemory.h"
 #include "VulkanDevice.h"
 #include "VulkanTypes.h"
@@ -42,8 +41,6 @@ namespace Duel6 {
     class VulkanTexture {
     private:
         VulkanImage image;
-        VkSampler sampler;
-        VkDescriptorSet descriptorSet;
         uint32_t width;
         uint32_t height;
         uint32_t depth;  // Array layers (1 for regular 2D, >1 for 2D array)
@@ -55,48 +52,30 @@ namespace Duel6 {
         explicit VulkanTexture(Console& console);
         ~VulkanTexture();
 
-        // Non-copyable but moveable
+        // Non-copyable
         VulkanTexture(const VulkanTexture&) = delete;
         VulkanTexture& operator=(const VulkanTexture&) = delete;
-        VulkanTexture(VulkanTexture&& other) noexcept;
-        VulkanTexture& operator=(VulkanTexture&& other) noexcept;
 
         // Create texture from Image
-        void create(const VulkanDevice& device, VulkanMemoryManager& memoryManager, 
-                   const Image& image, TextureFilter filter, bool clamp);
+        void create(const VulkanDevice& device, VulkanMemoryManager& memoryManager, const Image& image);
         
-        // Create empty texture with specific dimensions
-        void create(const VulkanDevice& device, VulkanMemoryManager& memoryManager,
-                   uint32_t width, uint32_t height, VkFormat format, TextureFilter filter, bool clamp);
 
         void destroy(const VulkanDevice& device, VulkanMemoryManager& memoryManager);
 
         // Update texture data
-        void updateData(const VulkanDevice& device, VulkanMemoryManager& memoryManager, const Image& image);
-        void updateSubData(const VulkanDevice& device, VulkanMemoryManager& memoryManager,
-                          uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data);
 
         // Getters
         const VulkanImage& getImage() const { return image; }
-        VkSampler getSampler() const { return sampler; }
-        VkDescriptorSet getDescriptorSet() const { return descriptorSet; }
         uint32_t getWidth() const { return width; }
         uint32_t getHeight() const { return height; }
         uint32_t getDepth() const { return depth; }
-        VkFormat getFormat() const { return format; }
-        bool valid() const { return isValid; }
 
         // Set descriptor set (called by descriptor manager)
-        void setDescriptorSet(VkDescriptorSet ds) { descriptorSet = ds; }
 
     private:
-        void createSampler(const VulkanDevice& device, TextureFilter filter, bool clamp);
-        VkFormat selectFormat(const Image& image) const;
         void uploadImageData(const VulkanDevice& device, VulkanMemoryManager& memoryManager, const Image& image);
     };
 
-    // Texture handle type for the renderer interface
-    using TextureHandle = std::shared_ptr<VulkanTexture>;
 }
 
 #endif

@@ -40,9 +40,6 @@ namespace Duel6 {
         }
     }
 
-    void VulkanSamplerManager::initialize() {
-        console->printLine("...Vulkan sampler manager initialized");
-    }
 
     void VulkanSamplerManager::cleanup(const VulkanDevice& device) {
         for (auto& pair : samplerCache) {
@@ -52,9 +49,8 @@ namespace Duel6 {
         console->printLine(Format("...Vulkan sampler manager cleaned up"));
     }
 
-    VkSampler VulkanSamplerManager::getSampler(const VulkanDevice& device, TextureFilter filter, bool clamp,
-                                              bool anisotropyEnable, float maxAnisotropy) {
-        SamplerKey key = {filter, clamp, anisotropyEnable, maxAnisotropy};
+        VkSampler VulkanSamplerManager::getSampler(const VulkanDevice& device, TextureFilter filter, bool clamp) {
+        SamplerKey key = {filter, clamp};
         
         auto it = samplerCache.find(key);
         if (it != samplerCache.end()) {
@@ -85,14 +81,8 @@ namespace Duel6 {
         samplerInfo.addressModeV = toVulkanAddressMode(key.clamp);
         samplerInfo.addressModeW = toVulkanAddressMode(key.clamp);
         
-        // Anisotropic filtering
-        if (key.anisotropyEnable && device.getDeviceFeatures().samplerAnisotropy) {
-            samplerInfo.anisotropyEnable = VK_TRUE;
-            samplerInfo.maxAnisotropy = std::min(key.maxAnisotropy, device.getDeviceProperties().limits.maxSamplerAnisotropy);
-        } else {
-            samplerInfo.anisotropyEnable = VK_FALSE;
-            samplerInfo.maxAnisotropy = 1.0f;
-        }
+                samplerInfo.anisotropyEnable = VK_FALSE;
+        samplerInfo.maxAnisotropy = 1.0f;
 
         samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
         samplerInfo.unnormalizedCoordinates = VK_FALSE;

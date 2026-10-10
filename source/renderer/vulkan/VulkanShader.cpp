@@ -31,18 +31,14 @@
 #include "../../Exception.h"
 #include "../../VideoException.h"
 #include <fstream>
-#include <iostream>
 
 namespace Duel6 {
 
     // VulkanShader implementation
-    VulkanShader::VulkanShader(const VulkanDevice& device, Type type, const std::vector<uint32_t>& spirvCode, const std::string& entryPoint)
-        : device(&device), shaderModule(VK_NULL_HANDLE), shaderType(type), entryPoint(entryPoint) {
-        createShaderModule(spirvCode);
-    }
+    
 
-    VulkanShader::VulkanShader(const VulkanDevice& device, Type type, const std::string& spirvFilePath, const std::string& entryPoint)
-        : device(&device), shaderModule(VK_NULL_HANDLE), shaderType(type), entryPoint(entryPoint) {
+        VulkanShader::VulkanShader(const VulkanDevice& device, Type type, const std::string& spirvFilePath)
+        : device(&device), shaderModule(VK_NULL_HANDLE), shaderType(type) {
         auto spirvCode = loadSpirvFromFile(spirvFilePath);
         createShaderModule(spirvCode);
     }
@@ -51,34 +47,14 @@ namespace Duel6 {
         cleanup();
     }
 
-    VulkanShader::VulkanShader(VulkanShader&& other) noexcept
-        : device(other.device), shaderModule(other.shaderModule), 
-          shaderType(other.shaderType), entryPoint(std::move(other.entryPoint)) {
-        other.device = nullptr;
-        other.shaderModule = VK_NULL_HANDLE;
-    }
 
-    VulkanShader& VulkanShader::operator=(VulkanShader&& other) noexcept {
-        if (this != &other) {
-            cleanup();
-            
-            device = other.device;
-            shaderModule = other.shaderModule;
-            shaderType = other.shaderType;
-            entryPoint = std::move(other.entryPoint);
-            
-            other.device = nullptr;
-            other.shaderModule = VK_NULL_HANDLE;
-        }
-        return *this;
-    }
 
     VkPipelineShaderStageCreateInfo VulkanShader::getStageCreateInfo() const {
         VkPipelineShaderStageCreateInfo stageInfo{};
         stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         stageInfo.stage = getStageFlags();
         stageInfo.module = shaderModule;
-        stageInfo.pName = entryPoint.c_str();
+        stageInfo.pName = "main";
         return stageInfo;
     }
 
@@ -131,35 +107,8 @@ namespace Duel6 {
     }
 
     std::unique_ptr<VulkanShader> VulkanShaderManager::loadShader(const std::string& filename, VulkanShader::Type type) {
-        std::string fullPath = getShaderPath(filename + getShaderExtension(type));
-        return std::make_unique<VulkanShader>(*device, type, fullPath);
+                return std::make_unique<VulkanShader>(*device, type, shaderDirectory + "/" + filename + ".spv");
     }
 
-    std::pair<std::unique_ptr<VulkanShader>, std::unique_ptr<VulkanShader>> 
-    VulkanShaderManager::createShaderPair(const std::string& baseName) {
-        auto vertexShader = loadShader(baseName + ".vert", VulkanShader::Type::Vertex);
-        auto fragmentShader = loadShader(baseName + ".frag", VulkanShader::Type::Fragment);
-        
-        return std::make_pair(std::move(vertexShader), std::move(fragmentShader));
-    }
-
-    std::string VulkanShaderManager::getShaderPath(const std::string& filename) const {
-        return shaderDirectory + "/" + filename;
-    }
-
-    std::string VulkanShaderManager::getShaderExtension(VulkanShader::Type type) const {
-        switch (type) {
-            case VulkanShader::Type::Vertex:
-                return ".spv";
-            case VulkanShader::Type::Fragment:
-                return ".spv";
-            case VulkanShader::Type::Geometry:
-                return ".spv";
-            case VulkanShader::Type::Compute:
-                return ".spv";
-            default:
-                return ".spv";
-        }
-    }
 
 }

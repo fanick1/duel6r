@@ -47,7 +47,6 @@ namespace Duel6 {
         , colorDescriptorSet(VK_NULL_HANDLE)
         , depthSamplingView(VK_NULL_HANDLE)
         , depthDescriptorSet(VK_NULL_HANDLE)
-        , offscreenTextureId(INVALID_TEXTURE_ID)
         , resourcesCreated(false) {
         createResources();
     }
@@ -172,7 +171,7 @@ namespace Duel6 {
             VkImageViewCreateInfo viewInfo{};
             viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             viewInfo.image = colorImage;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;  // sampled as sampler2DArray like every texture
             viewInfo.format = mainConfig.colorFormat;
             viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             viewInfo.subresourceRange.baseMipLevel = 0;
@@ -228,7 +227,7 @@ namespace Duel6 {
             VkImageViewCreateInfo viewInfo{};
             viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             viewInfo.image = depthImage;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;  // sampled as sampler2DArray like every texture
             viewInfo.format = mainConfig.depthFormat;
             viewInfo.subresourceRange.aspectMask = aspectMask;
             viewInfo.subresourceRange.baseMipLevel = 0;
@@ -276,7 +275,7 @@ namespace Duel6 {
             VkImageViewCreateInfo viewInfo{};
             viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             viewInfo.image = depthImage;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;  // sampled as sampler2DArray like every texture
             viewInfo.format = mainConfig.depthFormat;
             viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
             viewInfo.subresourceRange.baseMipLevel = 0;
@@ -367,20 +366,15 @@ namespace Duel6 {
             return;
         }
 
-        bool wasInFrame = renderer.isInFrame();
-        VkCommandBuffer cmdBuf;
-
-        if (wasInFrame) {
-            // We're inside the main frame. Need to:
-            // 1. Flush pending draws and end the main render pass
-            // 2. Do offscreen rendering
-            // 3. Restart the main render pass
-            cmdBuf = renderer.getCommandBufferManager().getCurrentCommandBuffer();
-            renderer.flushAndEndRenderPass(cmdBuf);
-        } else {
-            // Not in a frame - use a single-time command buffer
-            cmdBuf = renderer.getDevice().beginSingleTimeCommands();
+                // The game rerenders between frames (round start, resize, level change); supporting it
+        // mid-frame would mean interrupting the main render pass for nothing
+        if (renderer.isInFrame()) {
+            D6_THROW(VideoException, "Offscreen targets can only be rendered between frames");
         }
+
+        // The frame slot's vertex buffer may still be read by the GPU: wait before the batch renderer writes into it
+        renderer.getDevice().waitIdle();
+        VkCommandBuffer cmdBuf = renderer.getDevice().beginSingleTimeCommands();
 
         // Begin offscreen render pass
         VkRenderPassBeginInfo rpBegin{};
@@ -402,19 +396,15 @@ namespace Duel6 {
         // Set inFrame so renderer draw calls work
         renderer.setInFrame(true);
 
-        // Begin batch frame if we weren't in a frame
-        if (!wasInFrame) {
-            renderer.getBatchRenderer().beginFrame(renderer.getCurrentFrameIndex());
-        }
+                renderer.getBatchRenderer().beginFrame(renderer.getCurrentFrameIndex());
 
-        // Execute the callback - this adds draw commands to the batch renderer
+        // The callback adds draw commands; the pass is rendered upside down like an OpenGL
+        // framebuffer object, so shared-edge pixels are rasterised exactly as the OpenGL renderers do
+        renderer.setOffscreen(true);
         callback();
+        renderer.setOffscreen(false);
 
-        // Flush with flipY=true so OpenGL Y-up geometry renders correctly in the
-        // offscreen framebuffer (same as the main pass). This means the image is stored
-        // "upside down" relative to Vulkan's V=0-at-top texture convention, so apply()
-        // must flip V coordinates when sampling.
-        renderer.getBatchRenderer().flush(cmdBuf, offscreenRenderPass, width, height, true);
+                renderer.getBatchRenderer().flush(cmdBuf, width, height, false);
 
         vkCmdEndRenderPass(cmdBuf);
 
@@ -430,14 +420,8 @@ namespace Duel6 {
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
             0, 1, &memBarrier, 0, nullptr, 0, nullptr);
 
-        if (wasInFrame) {
-            // Restart the main render pass
-            renderer.beginMainRenderPass(cmdBuf);
-        } else {
-            renderer.getBatchRenderer().endFrame();
-            renderer.setInFrame(false);
-            renderer.getDevice().endSingleTimeCommands(cmdBuf);
-        }
+                renderer.setInFrame(false);
+        renderer.getDevice().endSingleTimeCommands(cmdBuf);
     }
 
     void VulkanRendererTarget::apply(const Color& modulateColor) {
@@ -445,93 +429,37 @@ namespace Duel6 {
             return;
         }
 
-        // Draw a fullscreen textured quad using the offscreen color image
-        // Use the existing texture pipeline by submitting a textured quad draw command
+        // Fullscreen quad. The offscreen image is stored bottom row first, which is texture V = 0.
         Vector p1(0.0f, 0.0f, 0.0f);
         Vector p2(static_cast<float>(width), 0.0f, 0.0f);
         Vector p3(static_cast<float>(width), static_cast<float>(height), 0.0f);
         Vector p4(0.0f, static_cast<float>(height), 0.0f);
-
-
-        // V coordinates are flipped: the offscreen pass uses flipY=true (negative viewport
-        // height) so geometry renders right-side up, but this means the image is stored
-        // upside-down in Vulkan texture space (where V=0 is the top row). Flipping V here
-        // compensates so the fullscreen quad displays the offscreen content correctly.
-        VertexFormats::TextureVertex2D vertices[6] = {
-            {p1, 0.0f, 1.0f},
-            {p2, 1.0f, 1.0f},
-            {p3, 1.0f, 0.0f},
-            {p1, 0.0f, 1.0f},
-            {p3, 1.0f, 0.0f},
-            {p4, 0.0f, 0.0f}
+        // Clockwise like all game geometry (back faces are culled)
+        uint32_t white = 0xFFFFFFFF;
+        VulkanVertex vertices[6] = {
+            {p1, Vector(0, 0, 0), white, 0}, {p4, Vector(0, 1, 0), white, 0}, {p3, Vector(1, 1, 0), white, 0},
+            {p1, Vector(0, 0, 0), white, 0}, {p3, Vector(1, 1, 0), white, 0}, {p2, Vector(1, 0, 0), white, 0}
         };
 
-        DrawCommand cmd;
-        cmd.type = DrawCommand::TRIANGLES;
-        cmd.vertexCount = 6;
-        cmd.vertices = vertices;
-        cmd.vertexDataSize = sizeof(vertices);
-        cmd.projectionMatrix = renderer.getProjectionMatrix();
-        cmd.viewMatrix = renderer.getViewMatrix();
-        cmd.modelMatrix = renderer.getModelMatrix();
-        cmd.textureDescriptorSet = colorDescriptorSet;
-        cmd.modulateColor[0] = modulateColor.getRed() / 255.0f;
-        cmd.modulateColor[1] = modulateColor.getGreen() / 255.0f;
-        cmd.modulateColor[2] = modulateColor.getBlue() / 255.0f;
-        cmd.modulateColor[3] = modulateColor.getAlpha() / 255.0f;
-        cmd.alphaTest = 0;
-        cmd.stencilMode = 0;
+        // Color: blend the offscreen image over the cleared frame
+        DrawCommand::State state = renderer.makeDrawState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        state.stencilMode = 0;
+        state.texture = colorDescriptorSet;
+        state.setModulateColor(modulateColor);
+        state.pipeline = renderer.getPipeline(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false, false, BlendFunc::SrcAlpha, false, 0);
+        renderer.getBatchRenderer().draw(state, vertices, 6);
 
-        VulkanPipeline* pipeline = nullptr;
+        // Depth: copy the offscreen depth so that dynamic objects are occluded by the static walls
+        DrawCommand::State depthState = renderer.makeDrawState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        depthState.stencilMode = 0;
+        depthState.texture = depthDescriptorSet;
         VkRenderPass rp = renderer.getMainRenderPass().getHandle();
         VkDescriptorSetLayout texLayout = renderer.getTextureDescriptorSetLayout();
-
-        if (texLayout != VK_NULL_HANDLE) {
-            // Get or create a texture pipeline for this state
-            // Use a fixed hash for the apply-quad pipeline (no depth test, alpha blend)
-            size_t hash = std::hash<std::string>{}("offscreen_apply_pipeline_2d");
-            pipeline = renderer.getPipelineCache().getOrCreatePipeline(hash, [&]() {
-                return PipelinePresets::createSimpleTexture2DPipelineWithState(
-                    renderer.getDevice(), rp, texLayout,
-                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                    false, false, BlendFunc::SrcAlpha, false, 0);
+        depthState.pipeline = renderer.getPipelineCache().getOrCreatePipeline(
+            std::hash<std::string>{}("depth_blit"), [&]() {
+                return PipelinePresets::createDepthBlitPipeline(renderer.getDevice(), rp, texLayout);
             });
-        }
-
-        if (pipeline) {
-            renderer.getBatchRenderer().addDrawCommand(pipeline, cmd);
-        }
-
-        // Depth blit: draw a fullscreen quad that writes gl_FragDepth from the offscreen
-        // depth image. This populates the main depth buffer so dynamic objects (players,
-        // bonuses) are correctly occluded by static geometry (walls).
-        {
-            DrawCommand depthCmd;
-            depthCmd.type = DrawCommand::TRIANGLES;
-            depthCmd.vertexCount = 6;
-            depthCmd.vertices = vertices;
-            depthCmd.vertexDataSize = sizeof(vertices);
-            depthCmd.projectionMatrix = renderer.getProjectionMatrix();
-            depthCmd.viewMatrix = renderer.getViewMatrix();
-            depthCmd.modelMatrix = renderer.getModelMatrix();
-            depthCmd.textureDescriptorSet = depthDescriptorSet;
-            depthCmd.modulateColor[0] = 1.0f;
-            depthCmd.modulateColor[1] = 1.0f;
-            depthCmd.modulateColor[2] = 1.0f;
-            depthCmd.modulateColor[3] = 1.0f;
-            depthCmd.alphaTest = 0;
-            depthCmd.stencilMode = 0;
-
-            size_t depthHash = std::hash<std::string>{}("depth_blit_pipeline");
-            VulkanPipeline* depthPipeline = renderer.getPipelineCache().getOrCreatePipeline(depthHash, [&]() {
-                return PipelinePresets::createDepthBlitPipeline(
-                    renderer.getDevice(), rp, texLayout);
-            });
-
-            if (depthPipeline) {
-                renderer.getBatchRenderer().addDrawCommand(depthPipeline, depthCmd);
-            }
-        }
+        renderer.getBatchRenderer().draw(depthState, vertices, 6);
     }
 
     void VulkanRendererTarget::resize(Int32 newWidth, Int32 newHeight) {

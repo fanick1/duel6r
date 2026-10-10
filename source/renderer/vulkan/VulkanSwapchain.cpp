@@ -27,7 +27,6 @@
 
 #include "VulkanSwapchain.h"
 #include "../../Format.h"
-#include <algorithm>
 
 namespace Duel6 {
     VulkanSwapchain::VulkanSwapchain(Console& console)

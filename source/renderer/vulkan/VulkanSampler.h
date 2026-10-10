@@ -37,22 +37,16 @@
 namespace Duel6 {
     struct SamplerKey {
         TextureFilter filter;
-        bool clamp;
-        bool anisotropyEnable;
-        float maxAnisotropy;
+                bool clamp;
 
         bool operator==(const SamplerKey& other) const {
-            return filter == other.filter && clamp == other.clamp && 
-                   anisotropyEnable == other.anisotropyEnable && maxAnisotropy == other.maxAnisotropy;
+                        return filter == other.filter && clamp == other.clamp;
         }
     };
 
     struct SamplerKeyHash {
         std::size_t operator()(const SamplerKey& k) const {
-            return std::hash<int>()(static_cast<int>(k.filter)) ^
-                   (std::hash<bool>()(k.clamp) << 1) ^
-                   (std::hash<bool>()(k.anisotropyEnable) << 2) ^
-                   (std::hash<float>()(k.maxAnisotropy) << 3);
+                        return std::hash<int>()(static_cast<int>(k.filter)) ^ (std::hash<bool>()(k.clamp) << 1);
         }
     };
 
@@ -69,18 +63,14 @@ namespace Duel6 {
         VulkanSamplerManager(const VulkanSamplerManager&) = delete;
         VulkanSamplerManager& operator=(const VulkanSamplerManager&) = delete;
 
-        void initialize();
         void cleanup(const VulkanDevice& device);
 
         // Get or create sampler with specified parameters
-        VkSampler getSampler(const VulkanDevice& device, TextureFilter filter, bool clamp, 
-                            bool anisotropyEnable = false, float maxAnisotropy = 1.0f);
+                VkSampler getSampler(const VulkanDevice& device, TextureFilter filter, bool clamp);
 
         // Get commonly used samplers
         VkSampler getNearestSampler(const VulkanDevice& device, bool clamp = false);
         VkSampler getLinearSampler(const VulkanDevice& device, bool clamp = false);
-
-        size_t getCacheSize() const { return samplerCache.size(); }
 
     private:
         VkSampler createSampler(const VulkanDevice& device, const SamplerKey& key);

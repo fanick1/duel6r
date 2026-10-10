@@ -45,27 +45,23 @@ namespace Duel6 {
     public:
         enum class Type {
             Vertex = VK_SHADER_STAGE_VERTEX_BIT,
-            Fragment = VK_SHADER_STAGE_FRAGMENT_BIT,
-            Geometry = VK_SHADER_STAGE_GEOMETRY_BIT,
-            Compute = VK_SHADER_STAGE_COMPUTE_BIT
+                        Fragment = VK_SHADER_STAGE_FRAGMENT_BIT
         };
 
     private:
         const VulkanDevice* device;
         VkShaderModule shaderModule;
         Type shaderType;
-        std::string entryPoint;
 
     public:
         /**
          * Create shader from SPIR-V binary data
          */
-        VulkanShader(const VulkanDevice& device, Type type, const std::vector<uint32_t>& spirvCode, const std::string& entryPoint = "main");
         
         /**
          * Create shader from SPIR-V file
          */
-        VulkanShader(const VulkanDevice& device, Type type, const std::string& spirvFilePath, const std::string& entryPoint = "main");
+        VulkanShader(const VulkanDevice& device, Type type, const std::string& spirvFilePath);
         
         ~VulkanShader();
 
@@ -73,15 +69,9 @@ namespace Duel6 {
         VulkanShader(const VulkanShader&) = delete;
         VulkanShader& operator=(const VulkanShader&) = delete;
 
-        // Movable
-        VulkanShader(VulkanShader&& other) noexcept;
-        VulkanShader& operator=(VulkanShader&& other) noexcept;
-
         // Getters
-        VkShaderModule getModule() const { return shaderModule; }
         Type getType() const { return shaderType; }
         VkShaderStageFlagBits getStageFlags() const { return static_cast<VkShaderStageFlagBits>(shaderType); }
-        const std::string& getEntryPoint() const { return entryPoint; }
 
         // Create pipeline shader stage info
         VkPipelineShaderStageCreateInfo getStageCreateInfo() const;
@@ -123,21 +113,16 @@ namespace Duel6 {
          * @param baseName Base name (e.g., "color" for "color.vert.spv" and "color.frag.spv")
          * @return Pair of vertex and fragment shaders
          */
-        std::pair<std::unique_ptr<VulkanShader>, std::unique_ptr<VulkanShader>> 
-        createShaderPair(const std::string& baseName);
 
         /**
          * Set shader directory path
          */
-        void setShaderDirectory(const std::string& directory) { shaderDirectory = directory; }
 
         /**
          * Get full path to shader file
          */
-        std::string getShaderPath(const std::string& filename) const;
 
     private:
-        std::string getShaderExtension(VulkanShader::Type type) const;
     };
 
 }

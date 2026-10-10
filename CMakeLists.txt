@@ -592,8 +592,6 @@ if (D6R_RENDERER STREQUAL "vulkan")
     set(D6R_SOURCES ${D6R_SOURCES}
             source/renderer/vulkan/VulkanBatchRenderer.cpp
             source/renderer/vulkan/VulkanBatchRenderer.h
-            source/renderer/vulkan/VulkanBuffer.cpp
-            source/renderer/vulkan/VulkanBuffer.h
             source/renderer/vulkan/VulkanContext.cpp
             source/renderer/vulkan/VulkanContext.h
             source/renderer/vulkan/VulkanDescriptor.cpp
@@ -620,8 +618,6 @@ if (D6R_RENDERER STREQUAL "vulkan")
             source/renderer/vulkan/VulkanSurface.h
             source/renderer/vulkan/VulkanSwapchain.cpp
             source/renderer/vulkan/VulkanSwapchain.h
-            source/renderer/vulkan/VulkanSync.cpp
-            source/renderer/vulkan/VulkanSync.h
             source/renderer/vulkan/VulkanTexture.cpp
             source/renderer/vulkan/VulkanTexture.h
             source/renderer/vulkan/VulkanTypes.cpp
@@ -782,6 +778,9 @@ if (D6R_RENDERER STREQUAL "vulkan")
             
             # Make main target depend on shaders
             add_dependencies(duel6r vulkan_shaders)
+            if(TARGET duel6unity)
+                add_dependencies(duel6unity vulkan_shaders)
+            endif()
         endfunction()
         
         # Compile shaders if any exist

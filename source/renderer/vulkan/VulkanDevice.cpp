@@ -35,9 +35,7 @@ namespace Duel6 {
         , logicalDevice(VK_NULL_HANDLE)
         , graphicsQueue(VK_NULL_HANDLE)
         , presentQueue(VK_NULL_HANDLE)
-        , transferQueue(VK_NULL_HANDLE)
         , graphicsCommandPool(VK_NULL_HANDLE)
-        , transferCommandPool(VK_NULL_HANDLE)
         , console(&console) {
     }
 
@@ -51,7 +49,7 @@ namespace Duel6 {
         queueFamilyIndices = findQueueFamilies(physicalDevice, surface);
 
         // Create logical device
-        createLogicalDevice(context);
+        createLogicalDevice();
 
         // Create command pools
         createCommandPools();
@@ -64,18 +62,10 @@ namespace Duel6 {
         if (logicalDevice != VK_NULL_HANDLE) {
             vkDeviceWaitIdle(logicalDevice);
 
-            // Store the original graphics command pool handle before nullifying it
-            VkCommandPool originalGraphicsCommandPool = graphicsCommandPool;
-            
             if (graphicsCommandPool != VK_NULL_HANDLE) {
                 vkDestroyCommandPool(logicalDevice, graphicsCommandPool, nullptr);
                 graphicsCommandPool = VK_NULL_HANDLE;
             }
-
-            if (transferCommandPool != VK_NULL_HANDLE && transferCommandPool != originalGraphicsCommandPool) {
-                vkDestroyCommandPool(logicalDevice, transferCommandPool, nullptr);
-            }
-            transferCommandPool = VK_NULL_HANDLE;
 
             vkDestroyDevice(logicalDevice, nullptr);
             logicalDevice = VK_NULL_HANDLE;
@@ -84,7 +74,6 @@ namespace Duel6 {
         physicalDevice = VK_NULL_HANDLE;
         graphicsQueue = VK_NULL_HANDLE;
         presentQueue = VK_NULL_HANDLE;
-        transferQueue = VK_NULL_HANDLE;
     }
 
     void VulkanDevice::waitIdle() const {
@@ -116,36 +105,21 @@ namespace Duel6 {
                 indices.presentFamily = i;
             }
 
-            // Transfer queue (prefer dedicated transfer queue)
-            if ((queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) && 
-                !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-                indices.transferFamily = i;
-            }
-
             if (indices.isComplete()) {
                 break;
             }
             i++;
         }
 
-        // If no dedicated transfer queue, use graphics queue
-        if (!indices.transferFamily.has_value() && indices.graphicsFamily.has_value()) {
-            indices.transferFamily = indices.graphicsFamily;
-        }
-
         return indices;
     }
 
-    void VulkanDevice::createLogicalDevice(const VulkanContext& context) {
+    void VulkanDevice::createLogicalDevice() {
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<uint32_t> uniqueQueueFamilies = {
             queueFamilyIndices.graphicsFamily.value(),
             queueFamilyIndices.presentFamily.value()
         };
-
-        if (queueFamilyIndices.transferFamily.has_value()) {
-            uniqueQueueFamilies.insert(queueFamilyIndices.transferFamily.value());
-        }
 
         float queuePriority = 1.0f;
         for (uint32_t queueFamily : uniqueQueueFamilies) {
@@ -162,10 +136,6 @@ namespace Duel6 {
         vkGetPhysicalDeviceFeatures(physicalDevice, &availableFeatures);
         
         VkPhysicalDeviceFeatures deviceFeatures{};
-        // Enable features only if available
-        if (availableFeatures.samplerAnisotropy) {
-            deviceFeatures.samplerAnisotropy = VK_TRUE;
-        }
         if (availableFeatures.fillModeNonSolid) {
             deviceFeatures.fillModeNonSolid = VK_TRUE;
         }
@@ -193,19 +163,10 @@ namespace Duel6 {
         // Retrieve queue handles
         vkGetDeviceQueue(logicalDevice, queueFamilyIndices.graphicsFamily.value(), 0, &graphicsQueue);
         vkGetDeviceQueue(logicalDevice, queueFamilyIndices.presentFamily.value(), 0, &presentQueue);
-        
-        if (queueFamilyIndices.transferFamily.has_value()) {
-            vkGetDeviceQueue(logicalDevice, queueFamilyIndices.transferFamily.value(), 0, &transferQueue);
-        } else {
-            transferQueue = graphicsQueue;
-        }
 
         console->printLine("...Vulkan logical device created");
         console->printLine(Format("...Graphics queue family: {0}") << queueFamilyIndices.graphicsFamily.value());
         console->printLine(Format("...Present queue family: {0}") << queueFamilyIndices.presentFamily.value());
-        if (queueFamilyIndices.transferFamily.has_value()) {
-            console->printLine(Format("...Transfer queue family: {0}") << queueFamilyIndices.transferFamily.value());
-        }
     }
 
     void VulkanDevice::createCommandPools() {
@@ -220,24 +181,7 @@ namespace Duel6 {
             D6_THROW(VulkanException, Format("Failed to create graphics command pool, error: {0}") << result);
         }
 
-        // Transfer command pool (might be the same as graphics)
-        if (queueFamilyIndices.transferFamily.has_value() && 
-            queueFamilyIndices.transferFamily.value() != queueFamilyIndices.graphicsFamily.value()) {
-            
-            VkCommandPoolCreateInfo transferPoolInfo{};
-            transferPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            transferPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-            transferPoolInfo.queueFamilyIndex = queueFamilyIndices.transferFamily.value();
-
-            result = vkCreateCommandPool(logicalDevice, &transferPoolInfo, nullptr, &transferCommandPool);
-            if (result != VK_SUCCESS) {
-                D6_THROW(VulkanException, Format("Failed to create transfer command pool, error: {0}") << result);
-            }
-        } else {
-            transferCommandPool = graphicsCommandPool;
-        }
-
-        console->printLine("...Vulkan command pools created");
+        console->printLine("...Vulkan command pool created");
     }
 
     std::vector<const char*> VulkanDevice::getRequiredDeviceExtensions() const {
@@ -253,35 +197,12 @@ namespace Duel6 {
         return properties;
     }
 
-    VkPhysicalDeviceFeatures VulkanDevice::getDeviceFeatures() const {
-        VkPhysicalDeviceFeatures features;
-        vkGetPhysicalDeviceFeatures(physicalDevice, &features);
-        return features;
-    }
 
     VkPhysicalDeviceMemoryProperties VulkanDevice::getMemoryProperties() const {
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
         return memProperties;
     }
-
-    VkFormat VulkanDevice::findSupportedFormat(const std::vector<VkFormat>& candidates, 
-                                               VkImageTiling tiling, 
-                                               VkFormatFeatureFlags features) const {
-        for (VkFormat format : candidates) {
-            VkFormatProperties props;
-            vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
-
-            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
-                return format;
-            } else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
-                return format;
-            }
-        }
-
-        D6_THROW(VulkanException, "Failed to find supported format");
-    }
-
     uint32_t VulkanDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
         VkPhysicalDeviceMemoryProperties memProperties = getMemoryProperties();
 
@@ -299,7 +220,7 @@ namespace Duel6 {
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = transferCommandPool;
+        allocInfo.commandPool = graphicsCommandPool;
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
@@ -322,9 +243,9 @@ namespace Duel6 {
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
 
-        vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(transferQueue);
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(graphicsQueue);
 
-        vkFreeCommandBuffers(logicalDevice, transferCommandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(logicalDevice, graphicsCommandPool, 1, &commandBuffer);
     }
 }

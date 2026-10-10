@@ -68,13 +68,6 @@ namespace Duel6 {
         allocatedSets = 0;
     }
 
-    void VulkanDescriptorPool::reset(const VulkanDevice& device) {
-        if (pool != VK_NULL_HANDLE) {
-            vkResetDescriptorPool(device.getLogicalDevice(), pool, 0);
-            allocatedSets = 0;
-        }
-    }
-
     VkDescriptorSet VulkanDescriptorPool::allocateDescriptorSet(const VulkanDevice& device, VkDescriptorSetLayout layout) {
         if (!canAllocate()) {
             return VK_NULL_HANDLE;
@@ -108,7 +101,7 @@ namespace Duel6 {
 
     // VulkanDescriptorManager implementation
     VulkanDescriptorManager::VulkanDescriptorManager(Console& console)
-        : currentPoolIndex(0), maxSetsPerPool(1000), console(&console) {
+        : maxSetsPerPool(1000), console(&console) {
     }
 
     VulkanDescriptorManager::~VulkanDescriptorManager() {
@@ -136,7 +129,6 @@ namespace Duel6 {
         }
         layoutCache.clear();
 
-        currentPoolIndex = 0;
         console->printLine("...Vulkan descriptor manager cleaned up");
     }
 
@@ -161,37 +153,6 @@ namespace Duel6 {
         bindings[0].descriptorCount = 1;
         bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         bindings[0].pImmutableSamplers = nullptr;
-
-        return getOrCreateLayout(device, bindings);
-    }
-
-    VkDescriptorSetLayout VulkanDescriptorManager::getUniformBufferLayout(const VulkanDevice& device) {
-        std::vector<VkDescriptorSetLayoutBinding> bindings(1);
-        bindings[0].binding = 0;
-        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        bindings[0].descriptorCount = 1;
-        bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        bindings[0].pImmutableSamplers = nullptr;
-
-        return getOrCreateLayout(device, bindings);
-    }
-
-    VkDescriptorSetLayout VulkanDescriptorManager::getCombinedLayout(const VulkanDevice& device) {
-        std::vector<VkDescriptorSetLayoutBinding> bindings(2);
-        
-        // Uniform buffer binding
-        bindings[0].binding = 0;
-        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        bindings[0].descriptorCount = 1;
-        bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        bindings[0].pImmutableSamplers = nullptr;
-
-        // Combined image sampler binding
-        bindings[1].binding = 1;
-        bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        bindings[1].descriptorCount = 1;
-        bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        bindings[1].pImmutableSamplers = nullptr;
 
         return getOrCreateLayout(device, bindings);
     }
@@ -242,33 +203,6 @@ namespace Duel6 {
         vkUpdateDescriptorSets(device.getLogicalDevice(), 1, &descriptorWrite, 0, nullptr);
     }
 
-    void VulkanDescriptorManager::updateUniformBufferDescriptorSet(const VulkanDevice& device, VkDescriptorSet descriptorSet,
-                                                                  uint32_t binding, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range) {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = buffer;
-        bufferInfo.offset = offset;
-        bufferInfo.range = range;
-
-        VkWriteDescriptorSet descriptorWrite{};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = descriptorSet;
-        descriptorWrite.dstBinding = binding;
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pBufferInfo = &bufferInfo;
-
-        vkUpdateDescriptorSets(device.getLogicalDevice(), 1, &descriptorWrite, 0, nullptr);
-    }
-
-    void VulkanDescriptorManager::resetPools(const VulkanDevice& device) {
-        for (auto& pool : descriptorPools) {
-            pool->reset(device);
-        }
-        descriptorSetOwners.clear();
-        currentPoolIndex = 0;
-    }
-
     VkDescriptorSetLayout VulkanDescriptorManager::createLayout(const VulkanDevice& device,
                                                                const std::vector<VkDescriptorSetLayoutBinding>& bindings) {
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -293,7 +227,6 @@ namespace Duel6 {
         // Find a pool that has space (scan from start: freed sets reopen earlier pools)
         for (size_t i = 0; i < descriptorPools.size(); ++i) {
             if (descriptorPools[i]->canAllocate()) {
-                currentPoolIndex = i;
                 return descriptorPools[i].get();
             }
         }
@@ -306,7 +239,6 @@ namespace Duel6 {
         auto pool = std::make_unique<VulkanDescriptorPool>(*console);
 
         std::vector<VkDescriptorPoolSize> poolSizes = {
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, maxSetsPerPool},
             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxSetsPerPool}
         };
 
