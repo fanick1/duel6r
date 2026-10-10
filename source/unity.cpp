@@ -6,6 +6,7 @@
 #include "ChatInput.cpp"
 #include "ChatMessageQueue.cpp"
 #include "Color.cpp"
+#include "CommandLine.cpp"
 #include "ConsoleCommands.cpp"
 #include "Context.cpp"
 #include "Elevator.cpp"

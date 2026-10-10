@@ -37,6 +37,7 @@
 #include "Menu.h"
 #include "ConsoleCommands.h"
 #include "Application.h"
+#include "CommandLine.h"
 #include "FontException.h"
 #include "net/NetHost.h"
 #include "net/NetClient.h"
@@ -48,18 +49,6 @@
 namespace Duel6 {
     namespace {
         const Float64 updateTime = 1.0 / D6_UPDATE_FREQUENCY;
-
-        char *getCmdLineOption(char **begin, char **end, const std::string &option) {
-            char **itr = std::find(begin, end, option);
-            if (itr != end && ++itr != end) {
-                return *itr;
-            }
-            return nullptr;
-        }
-
-        bool hasCmdLineOption(char **begin, char **end, const std::string &option) {
-            return std::find(begin, end, option) != end;
-        }
     }
 
     namespace {
@@ -97,7 +86,7 @@ namespace Duel6 {
             : console(Console::ExpandFlag), input(console), controlsManager(input), sound(32, console),
               scriptContext(console, sound, gameSettings), scriptManager(scriptContext),
               requestClose(false) {
-        parseCommandLineOptions(argc, argv);
+        parseCommandLineOptions(CommandLine(argc, argv));
         if (commandLineOptions.seed != 0) {
             Math::seed(commandLineOptions.seed);
         }
@@ -209,11 +198,11 @@ namespace Duel6 {
         SDL_Quit();
     }
 
-    void Application::parseCommandLineOptions(int argc, char **argv) {
-        commandLineOptions.dedicated = hasCmdLineOption(argv, argv+argc, "-dedicated");
-        console.setEchoToStdout(hasCmdLineOption(argv, argv + argc, "-log-stdout"));
+    void Application::parseCommandLineOptions(const CommandLine &commandLine) {
+        commandLineOptions.dedicated = commandLine.has("-dedicated");
+        console.setEchoToStdout(commandLine.has("-log-stdout"));
 
-        char *window = getCmdLineOption(argv, argv+argc, "-window");
+        const char *window = commandLine.get("-window");
         if (window != nullptr) {
             Int32 width, height;
             sscanf(window, "%dx%d", &width, &height);
@@ -226,19 +215,19 @@ namespace Duel6 {
             commandLineOptions.windowHeight = -1;
         }
 
-        char *seed = getCmdLineOption(argv, argv + argc, "-seed");
+        const char *seed = commandLine.get("-seed");
         if (seed != nullptr) {
             commandLineOptions.seed = static_cast<Uint32>(strtoul(seed, nullptr, 10));
         }
-        commandLineOptions.play = hasCmdLineOption(argv, argv + argc, "-play");
-        char *level = getCmdLineOption(argv, argv + argc, "-level");
+        commandLineOptions.play = commandLine.has("-play");
+        const char *level = commandLine.get("-level");
         if (level != nullptr) {
             commandLineOptions.level = level;
         }
-        commandLineOptions.splitScreen = hasCmdLineOption(argv, argv + argc, "-split-screen");
+        commandLineOptions.splitScreen = commandLine.has("-split-screen");
 
         // -resize WxH[,WxH...]
-        char *resize = getCmdLineOption(argv, argv + argc, "-resize");
+        const char *resize = commandLine.get("-resize");
         if (resize != nullptr) {
             std::string sizes = resize;
             size_t pos = 0;
@@ -256,7 +245,7 @@ namespace Duel6 {
             }
         }
         auto readSeconds = [&](const char *option, Float64 &target) {
-            char *value = getCmdLineOption(argv, argv + argc, option);
+            const char *value = commandLine.get(option);
             if (value != nullptr) {
                 target = atof(value);
             }
@@ -266,23 +255,23 @@ namespace Duel6 {
         readSeconds("-fullscreen-after", commandLineOptions.fullscreenAfter);
         readSeconds("-screenshot-after", commandLineOptions.screenshotAfter);
         readSeconds("-quit-after", commandLineOptions.quitAfter);
-        commandLineOptions.printFps = hasCmdLineOption(argv, argv + argc, "-print-fps");
-        char *screenshot = getCmdLineOption(argv, argv + argc, "-screenshot");
+        commandLineOptions.printFps = commandLine.has("-print-fps");
+        const char *screenshot = commandLine.get("-screenshot");
         if (screenshot != nullptr) {
             commandLineOptions.screenshotPath = screenshot;
         }
 
-        if(hasCmdLineOption(argv, argv + argc, "-publish")){
+        if(commandLine.has("-publish")){
             commandLineOptions.gameStateIntegration = true;
 
-            char *url = getCmdLineOption(argv, argv + argc, "-url");
+            const char *url = commandLine.get("-url");
             if (url != nullptr) {
                 char urlCstr[256];
                 sscanf(url, "%s", urlCstr);
                 commandLineOptions.gsiURL = std::string(urlCstr);
             }
 
-            char *port = getCmdLineOption(argv, argv + argc, "-port");
+            const char *port = commandLine.get("-port");
             if (port != nullptr) {
                 Uint16 portNo;
                 sscanf(port, "%hu", &portNo);

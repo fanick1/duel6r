@@ -165,6 +165,8 @@ set(D6R_SOURCES
         source/ChatMessageQueue.h
         source/Color.cpp
         source/Color.h
+        source/CommandLine.cpp
+        source/CommandLine.h
         source/ConsoleCommands.cpp
         source/ConsoleCommands.h
         source/Context.cpp

@@ -44,6 +44,7 @@
 #include "net/ServerGameProxy.h"
 
 namespace Duel6 {
+    class CommandLine;
     class Recorder;
 
     class Application {
@@ -129,7 +130,7 @@ namespace Duel6 {
 
         Float64 syncUpdateAndRender(Context &context);
 
-        void parseCommandLineOptions(int argc, char **argv);
+        void parseCommandLineOptions(const CommandLine &commandLine);
 
         void networkFlushCommands();
 
