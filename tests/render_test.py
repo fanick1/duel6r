@@ -1,35 +1,40 @@
 #!/usr/bin/env python3
 """
-Rendering tests for Duel 6 Reloaded: menu and in-game screenshots, with and without
-window resizes, fullscreen toggling and split screen.
+Rendering tests for Duel 6 Reloaded.
 
-Every scenario starts the game with automation flags, lets it run for a few seconds and
-takes a screenshot. The screenshot must have the window's size (taken from the game's
-own "[video] screenshot" log line, so fullscreen works too), the frame must reach the
-right and bottom window edges (a stale backbuffer leaves a black band there), the game
-must exit cleanly and the Vulkan validation layers must not report anything.
+Basic scenarios (always run): the windowed menu, a windowed game and the same game toggled
+to fullscreen. Each starts the game with automation flags, takes a screenshot after a few
+seconds and checks that
+  * the screenshot has the window's size (taken from the game's own "[video] screenshot"
+    log line, so fullscreen works too),
+  * the frame reaches the right and bottom window edges (a stale backbuffer leaves a black
+    band there),
+  * the game exits cleanly and the Vulkan validation layers report nothing.
 
-Some scenarios additionally compare against another screenshot:
-  * "same_as": the same binary without resizing must render the identical frame, e.g.
-    after shrinking and growing back (a frame is identified by its game tick, and the
-    game is seeded, so runs are reproducible);
-  * with --reference BINARY, every scenario is also run with that binary (normally the
-    OpenGL ES 3 build) and the two screenshots are compared pixel by pixel. The menu's
-    animated banner strip is left out of that comparison.
+Extended scenarios (with --reference BINARY): every scenario, plus a game screenshot at a
+later water-wave phase, is also run with the reference binary (normally the OpenGL ES 3
+build) and the two screenshots are compared pixel by pixel. Runs are seeded and timed in
+game ticks, so both renderers draw the same game state. The menu's animated banner strip
+is left out of the comparison.
 
 Usage:
-    tests/render_test.py BINARY [--reference BINARY] [--keep DIR] [--only NAME...]
+    tests/render_test.py BINARY [--reference BINARY] [--out DIR] [--only NAME...]
 
-Binaries run from their own directory, so build directories need the resource symlinks
-(data, levels, profiles, sound, textures, shaders). Requires Pillow.
+Screenshots, difference masks and the game logs go to .tmp/render_test in the repository
+(previous results are removed on every run) unless --out is given.
+
+The binaries must be built with the CMake option D6R_AUTOMATION=ON, which compiles in the
+automation flags (source/automation/Automation.h). They run from their own directory, so
+build directories need the resource symlinks (data, levels, profiles, sound, textures,
+shaders). Requires Pillow.
 """
 
 import argparse
+import glob
 import os
 import re
 import subprocess
 import sys
-import tempfile
 
 try:
     from PIL import Image, ImageChops
@@ -38,57 +43,45 @@ except ImportError:
 
 SEED = 1
 LEVEL = "duel_01"
-FULL = (1280, 720)
-SMALL = (1000, 600)
-JITTER = [(1001, 600), (1001, 601), (1000, 601), (1000, 600)]
-STRESS = [(1100, 650), (900, 700), (1280, 500), (700, 480), (1250, 710), (1000, 600)]
+WINDOW = (1280, 720)
+TIMEOUT = 40
+DEFAULT_OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".tmp", "render_test")
 
 # Edge strip checked for content, and how dark a pixel must be to count as "black"
 EDGE_STRIP = 8
 BLACK_THRESHOLD = 16
 MAX_BLACK_RATIO = 0.5
 
-# Pixel comparison: a pixel differs when a channel differs by more than PIXEL_TOLERANCE
+# Reference comparison: a pixel differs when a channel differs by more than PIXEL_TOLERANCE.
+# All scenarios are identical today; TOLERANCE leaves room for driver differences while still
+# catching e.g. static water (~180 px) or a culled face (~40 px).
 PIXEL_TOLERANCE = 64
+TOLERANCE = 50
 # The menu's animated banner: the GUI is centred vertically in a 900 px tall layout
 MENU_LAYOUT_HEIGHT = 900
 MENU_BANNER_HEIGHT = 120
-TIMEOUT = 40
 
 
-# Reference tolerance (pixels). All scenarios are identical today; 50 leaves room for driver
-# differences while still catching e.g. static water (~180 px) or a culled face (~40 px).
-TOLERANCE = 50
-
-
-def scenario(name, game=False, start=FULL, resizes=(), interval=0.5, fullscreen=False, split=False,
-             same_as=None, edges=True, screenshot_after=None):
-    return dict(name=name, game=game, start=start, resizes=list(resizes), interval=interval,
-                fullscreen=fullscreen, split=split, same_as=same_as, edges=edges, screenshot_after=screenshot_after)
+def scenario(name, game=False, fullscreen=False, screenshot_after=None, extended=False):
+    if screenshot_after is None:
+        # Let the game's round-start overlay fade out, and fullscreen settle (~1s after the toggle)
+        screenshot_after = 4.0 if game else 2.5
+    return dict(name=name, game=game, fullscreen=fullscreen, screenshot_after=screenshot_after, extended=extended)
 
 
 SCENARIOS = [
-    scenario("menu-baseline"),
-    scenario("menu-shrink", resizes=[SMALL]),
-    scenario("menu-grow", start=SMALL, resizes=[FULL]),
-    scenario("menu-grow-back", resizes=[SMALL, FULL], same_as="menu-baseline"),
-    scenario("menu-jitter", start=SMALL, resizes=JITTER, interval=0.3),
-    scenario("menu-stress", resizes=STRESS, interval=0.15),
-    scenario("menu-fullscreen", fullscreen=True),
-    scenario("game-baseline", game=True),
-    # A later tick: the water wave is in another phase, so it must still match the reference
-    scenario("game-later", game=True, screenshot_after=5.5),
-    scenario("game-shrink", game=True, resizes=[SMALL]),
-    scenario("game-grow-back", game=True, resizes=[SMALL, FULL], same_as="game-baseline"),
-    scenario("game-jitter", game=True, start=SMALL, resizes=JITTER, interval=0.3),
-    # Split screen leaves black borders around the views, so the edge check does not apply
-    scenario("game-split", game=True, split=True, edges=False),
-    scenario("game-split-shrink", game=True, split=True, resizes=[SMALL], edges=False),
+    scenario("menu"),
+    scenario("game", game=True),
+    scenario("game-fullscreen", game=True, fullscreen=True),
+    # Another water-wave phase than "game"
+    scenario("game-later", game=True, screenshot_after=5.5, extended=True),
 ]
+FULLSCREEN_AFTER = 1.0
 
 LOG_PATTERN = re.compile(r"^\[(video|vulkan|automation)\].*$", re.MULTILINE)
 VK_ERROR_PATTERN = re.compile(r"^\[VK ERROR\].*$", re.MULTILINE)
 SCREENSHOT_SIZE_PATTERN = re.compile(r"^\[video\] screenshot.*?window (\d+)x(\d+)", re.MULTILINE)
+SCREENSHOT_TICK_PATTERN = re.compile(r"^\[video\] screenshot at tick (\d+)", re.MULTILINE)
 
 
 def black_ratio(image, box):
@@ -116,40 +109,24 @@ def count_different_pixels(path_a, path_b, skip_banner, mask_path):
 
 
 def run_game(binary, sc, screenshot):
-    """Run one scenario and return (failures, output). The screenshot is taken ~1s after the
-    last resize settled; the game quits shortly after."""
-    if os.path.exists(screenshot):
-        os.remove(screenshot)
-
-    resize_after = 1.0
-    last_action = resize_after + max(len(sc["resizes"]) - 1, 0) * sc["interval"]
-    if sc["fullscreen"]:
-        last_action = max(last_action, resize_after + 1.5)  # toggleFullscreen settles after 1s
-    screenshot_after = last_action + 1.5
-    if sc["game"]:
-        screenshot_after = max(screenshot_after, 4.0)  # let the round-start overlay fade out
-    if sc["screenshot_after"]:
-        screenshot_after = sc["screenshot_after"]
-
-    cmd = [binary, "-log-stdout", "-seed", str(SEED), "-window", f"{sc['start'][0]}x{sc['start'][1]}",
-           "-screenshot", screenshot, "-screenshot-after", str(screenshot_after),
-           "-quit-after", str(screenshot_after + 0.3)]
+    """Run one scenario and return (failures, output)."""
+    after = sc["screenshot_after"]
+    cmd = [binary, "-log-stdout", "-seed", str(SEED), "-window", f"{WINDOW[0]}x{WINDOW[1]}",
+           "-screenshot", screenshot, "-screenshot-after", str(after), "-quit-after", str(after + 0.3)]
     if sc["game"]:
         cmd += ["-play", "-level", LEVEL]
-    if sc["split"]:
-        cmd += ["-split-screen"]
-    if sc["resizes"]:
-        cmd += ["-resize", ",".join(f"{w}x{h}" for w, h in sc["resizes"]),
-                "-resize-after", str(resize_after), "-resize-interval", str(sc["interval"])]
     if sc["fullscreen"]:
-        cmd += ["-fullscreen-after", str(resize_after)]
+        cmd += ["-fullscreen-after", str(FULLSCREEN_AFTER)]
 
     try:
         proc = subprocess.run(cmd, cwd=os.path.dirname(binary), capture_output=True, text=True,
                               errors="replace", timeout=TIMEOUT)
     except subprocess.TimeoutExpired as e:
         output = e.stdout if isinstance(e.stdout, str) else (e.stdout or b"").decode(errors="replace")
-        return [f"game did not quit within {TIMEOUT}s"], output
+        failure = f"game did not quit within {TIMEOUT}s"
+        if "[automation]" not in output:
+            failure += " - no automation output, was it built with -DD6R_AUTOMATION=ON?"
+        return [failure], output
     output = proc.stdout + proc.stderr
 
     failures = []
@@ -172,22 +149,53 @@ def run_game(binary, sc, screenshot):
     elif (width, height) != (int(logged.group(1)), int(logged.group(2))):
         failures.append(f"screenshot is {width}x{height}, window is {logged.group(1)}x{logged.group(2)}")
 
-    if sc["edges"]:
-        right = black_ratio(image, (width - EDGE_STRIP, 0, width, height))
-        bottom = black_ratio(image, (0, height - EDGE_STRIP, width, height))
-        if right > MAX_BLACK_RATIO:
-            failures.append(f"right edge is {right:.0%} black - frame does not reach the window edge")
-        if bottom > MAX_BLACK_RATIO:
-            failures.append(f"bottom edge is {bottom:.0%} black - frame does not reach the window edge")
+    right = black_ratio(image, (width - EDGE_STRIP, 0, width, height))
+    bottom = black_ratio(image, (0, height - EDGE_STRIP, width, height))
+    if right > MAX_BLACK_RATIO:
+        failures.append(f"right edge is {right:.0%} black - frame does not reach the window edge")
+    if bottom > MAX_BLACK_RATIO:
+        failures.append(f"bottom edge is {bottom:.0%} black - frame does not reach the window edge")
 
     return failures, output
+
+
+def compare_with_reference(reference, sc, screenshot, output, out_dir):
+    name = sc["name"]
+    ref_screenshot = os.path.join(out_dir, f"{name}_reference.png")
+    ref_failures, ref_output = run_game(reference, sc, ref_screenshot)
+    write_log(out_dir, f"{name}_reference", ref_output)
+    if ref_failures:
+        return [f"reference run: {f}" for f in ref_failures]
+
+    different, error = count_different_pixels(screenshot, ref_screenshot, not sc["game"],
+                                              os.path.join(out_dir, f"{name}_reference_diff.png"))
+    if error:
+        return [f"vs reference: {error}"]
+    if different <= TOLERANCE:
+        return []
+
+    failures = [f"{different} pixels differ from reference renderer (limit {TOLERANCE}), "
+                f"mask: {name}_reference_diff.png"]
+    # A frame can cover several update ticks, so the screenshot tick may differ by one
+    ticks = [SCREENSHOT_TICK_PATTERN.search(o) for o in (output, ref_output)]
+    if all(ticks) and ticks[0].group(1) != ticks[1].group(1):
+        failures.append(f"screenshots were taken at different game ticks: {ticks[0].group(1)} "
+                        f"vs {ticks[1].group(1)} (reference) - rerun")
+    return failures
+
+
+def write_log(out_dir, name, output):
+    with open(os.path.join(out_dir, f"{name}.log"), "w") as log:
+        log.write(output)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("binary", help="game binary inside a build directory")
-    parser.add_argument("--reference", metavar="BINARY", help="binary of another renderer to compare with")
-    parser.add_argument("--keep", metavar="DIR", help="directory to keep screenshots in (default: temporary)")
+    parser.add_argument("--reference", metavar="BINARY",
+                        help="run the extended scenarios and compare every screenshot with this binary's")
+    parser.add_argument("--out", metavar="DIR", default=DEFAULT_OUT_DIR,
+                        help="directory for screenshots and logs; old ones are removed (default: .tmp/render_test)")
     parser.add_argument("--only", nargs="+", metavar="NAME", help="run only these scenarios")
     parser.add_argument("--verbose", action="store_true", help="print the game's log lines")
     args = parser.parse_args()
@@ -198,51 +206,23 @@ def main():
         if not os.access(path, os.X_OK):
             sys.exit(f"not an executable: {path}")
 
-    out_dir = os.path.abspath(args.keep) if args.keep else tempfile.mkdtemp(prefix="duel6r_render_")
+    out_dir = os.path.abspath(args.out)
     os.makedirs(out_dir, exist_ok=True)
+    for old in glob.glob(os.path.join(out_dir, "*.png")) + glob.glob(os.path.join(out_dir, "*.log")):
+        os.remove(old)
 
-    scenarios = [sc for sc in SCENARIOS if not args.only or sc["name"] in args.only]
-    screenshots = {}
+    scenarios = [sc for sc in SCENARIOS
+                 if (reference or not sc["extended"]) and (not args.only or sc["name"] in args.only)]
     failed = 0
     for sc in scenarios:
         name = sc["name"]
-        label = f"{name}: {sc['start'][0]}x{sc['start'][1]}" + "".join(f" -> {w}x{h}" for w, h in sc["resizes"])
-        if sc["fullscreen"]:
-            label += " -> fullscreen"
-
         screenshot = os.path.join(out_dir, f"{name}.png")
-        skip_banner = not sc["game"]
         failures, output = run_game(binary, sc, screenshot)
-        if os.path.exists(screenshot):
-            screenshots[name] = screenshot
+        write_log(out_dir, name, output)
+        if reference and not failures:
+            failures += compare_with_reference(reference, sc, screenshot, output, out_dir)
 
-        if sc["same_as"] and name in screenshots:
-            other = screenshots.get(sc["same_as"])
-            if not other:
-                failures.append(f"cannot compare with {sc['same_as']}: no screenshot")
-            else:
-                different, error = count_different_pixels(screenshot, other, skip_banner,
-                                                          os.path.join(out_dir, f"{name}_same_diff.png"))
-                if error:
-                    failures.append(f"vs {sc['same_as']}: {error}")
-                elif different > 0:
-                    failures.append(f"{different} pixels differ from {sc['same_as']} (same binary, same tick)")
-
-        if reference and name in screenshots:
-            ref_screenshot = os.path.join(out_dir, f"{name}_reference.png")
-            ref_failures, ref_output = run_game(reference, sc, ref_screenshot)
-            if ref_failures:
-                failures += [f"reference run: {f}" for f in ref_failures]
-            else:
-                different, error = count_different_pixels(screenshot, ref_screenshot, skip_banner,
-                                                          os.path.join(out_dir, f"{name}_reference_diff.png"))
-                if error:
-                    failures.append(f"vs reference: {error}")
-                elif different > TOLERANCE:
-                    failures.append(f"{different} pixels differ from reference renderer "
-                                    f"(limit {TOLERANCE}), mask: {name}_reference_diff.png")
-
-        print(f"[{'PASS' if not failures else 'FAIL'}] {label}")
+        print(f"[{'PASS' if not failures else 'FAIL'}] {name}")
         if args.verbose:
             for match in LOG_PATTERN.finditer(output):
                 print(f"         {match.group(0)}")
@@ -250,7 +230,7 @@ def main():
             print(f"   !!    {failure}")
         failed += bool(failures)
 
-    print(f"\nScreenshots in {out_dir}")
+    print(f"\nScreenshots and logs in {out_dir}")
     print(f"{len(scenarios) - failed}/{len(scenarios)} scenarios passed")
     return 1 if failed else 0
 

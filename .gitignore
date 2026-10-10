@@ -16,3 +16,4 @@ build-cov
 .cache
 profile_0.json
 
+.tmp

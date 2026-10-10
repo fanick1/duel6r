@@ -117,14 +117,21 @@ sudo tc qdisc del dev lo root
 ### Rendering Tests
 
 ```bash
-# Compare the Vulkan build against the OpenGL ES 3 build: menu and in-game screenshots,
-# with window resizes, fullscreen toggle and split screen (needs Pillow and a display)
+# Configure the test builds with the automation flags compiled in
+cmake .. -DD6R_RENDERER=vulkan -DD6R_AUTOMATION=ON
+
+# Basic: windowed menu, windowed game, game toggled to fullscreen (needs Pillow and a display)
+tests/render_test.py build-vulkan/duel6unityd
+
+# Extended: also compare every screenshot with the OpenGL ES 3 build pixel by pixel
 tests/render_test.py build-vulkan/duel6unityd --reference build-gles3/duel6unity
 ```
 
-The game's automation flags used by the test (`-seed`, `-play`, `-level`, `-split-screen`, `-resize`,
-`-fullscreen-after`, `-screenshot`, `-quit-after`, `-log-stdout`, `-print-fps`) live in
-`Application::parseCommandLineOptions`. For RenderDoc captures run the game with `SDL_VIDEODRIVER=x11`.
+Screenshots, difference masks and game logs go to `.tmp/render_test` (git-ignored).
+The automation flags (`-seed`, `-play`, `-level`, `-fullscreen-after`, `-screenshot`, `-screenshot-after`,
+`-quit-after`, `-print-fps`) are documented in `source/automation/Automation.h`; `Automation` plugs into
+the main loop through `ApplicationListener` and exists only in `D6R_AUTOMATION` builds.
+For RenderDoc captures run the game with `SDL_VIDEODRIVER=x11`.
 Build directories need symlinks to `resources/{data,levels,profiles,sound,textures,shaders}`.
 
 ### Command Line Arguments

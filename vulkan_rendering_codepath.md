@@ -41,7 +41,7 @@ Application::syncUpdateAndRender()
 │   ├── ... draw calls ...                ← all deferred to the batch renderer
 │   └── (control returns)
 │
-└── video.screenUpdate(console, font, capture)   (Video.cpp:92)
+└── video.screenUpdate(console, font)   (Video.cpp:92)
     ├── renderConsole()
     └── swapBuffers()  →  VulkanRenderer::swapBuffers()        (VulkanRenderer.cpp:555)
         ├── batchRenderer->flush(cmd, width, height, flipY=true)  ← records ALL draws
@@ -59,7 +59,7 @@ purpose (`Menu::render`), so it shows ~59 fps; in-game rendering is capped by th
 ### Files
 - Frame start: `VulkanRenderer::clearBuffers()` — `VulkanRenderer.cpp:513`
 - Frame end: `VulkanRenderer::swapBuffers()` — `VulkanRenderer.cpp:555`
-- Video swap: `Video::screenUpdate()` / `Video::swapBuffers()` — `Video.cpp:92` / `:115`
+- Video swap: `Video::screenUpdate()` / `Video::swapBuffers()` — `Video.cpp:92` / `:123`
 
 ---
 
@@ -434,9 +434,10 @@ text colour arrives as `modulateColor`.
 
 `swapBuffers()` copies every presented frame into a device-local capture image
 (`recordFrameCapture`, `VulkanRenderer.cpp:334`). `makeScreenshot()` (`:405`) waits for the device,
-copies the capture image into a host-visible buffer and converts BGRA → RGBA. `Video::screenUpdate`
-therefore captures *after* the swap for Vulkan and *before* it for OpenGL, where the back buffer is
-undefined once swapped.
+copies the capture image into a host-visible buffer and converts BGRA → RGBA.
+`Video::captureNextFrame(callback)` hands the next presented frame to a callback (used by the test
+automation); `Video::screenUpdate` reads it *after* the swap for Vulkan and *before* it for OpenGL,
+where the back buffer is undefined once swapped.
 
 ### Synchronisation (`VulkanSwapchain.cpp:181`)
 
@@ -474,8 +475,9 @@ Practical notes:
 - `VkClearRect` for the stencil clear must match the render area, not a hard-coded size.
 - Validation layers are enabled in `D6_DEBUG` builds only.
 - RenderDoc: run with `SDL_VIDEODRIVER=x11`; its layer has no Wayland surface support.
-- Tests: `tests/render_test.py build-vulkan/duel6unityd --reference build-gles3/duel6unity` compares
-  menu and in-game screenshots (resizes, fullscreen, split screen) against ES3 pixel by pixel.
+- Tests: `tests/render_test.py build-vulkan/duel6unityd` checks the windowed menu, a windowed game and
+  the game toggled to fullscreen; with `--reference build-gles3/duel6unity` the screenshots are also
+  compared with ES3 pixel by pixel. Both builds need `-DD6R_AUTOMATION=ON`.
 
 ---
 
@@ -493,4 +495,4 @@ Practical notes:
 | `WorldRenderer.cpp` | `renderStaticGeometry()`, `renderBackground()`, `view()`, `fullScreen()`, `splitScreen()`, `prerender()` | 598, 652, 665, 723, 748, 769 |
 | `Sprite.cpp` | `Sprite::render()` | 156 |
 | `Font.cpp` | `Font::print()` | 80 |
-| `Video.cpp` | `screenUpdate()`, `resize()` | 92, 190 |
+| `Video.cpp` | `screenUpdate()`, `resize()` | 92, 200 |

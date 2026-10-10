@@ -72,19 +72,24 @@ what remains unexecuted today is error handling and hardware fallbacks only.
 
 ## Testing
 
-`tests/render_test.py build-vulkan/duel6unityd --reference build-gles3/duel6unity` runs menu and
-in-game scenarios with resizes, jitter, fullscreen toggle and split screen, and compares screenshots
-against the OpenGL ES 3 build pixel by pixel (see the script's docstring). Every scenario is
-pixel-identical today, including two water-wave phases and split screen. The game's automation flags
-(`-seed -play -level -split-screen -resize -fullscreen-after -screenshot -quit-after -log-stdout`) are
-in `Application::parseCommandLineOptions`. Game runs are seeded and timed in game ticks, so two
-renderers screenshot the same frame.
+Builds for testing are configured with `-DD6R_AUTOMATION=ON`. `tests/render_test.py
+build-vulkan/duel6unityd` runs the basic scenarios: windowed menu, windowed game and the game toggled
+to fullscreen (screenshot size, frame reaching the window edges, clean exit, no validation errors).
+With `--reference build-gles3/duel6unity` every screenshot, plus one at a later water-wave phase, is
+compared with the OpenGL ES 3 build pixel by pixel. Results and game logs go to `.tmp/render_test`.
+The automation flags are documented in `source/automation/Automation.h`. Game runs are seeded and
+timed in game ticks, so two renderers screenshot the same frame.
+
+Known reference failure: ES3 renders the fullscreen game's static level only into the start-up
+window size, because `GLES3RendererTarget::resize` does not reallocate its textures. Vulkan is correct.
 
 ## Other backends
 
-The shared `Renderer` interface is unchanged. The only change outside the Vulkan directory is in
-`makeScreenshot()` of es3 and gl4, which now reads from the default framebuffer (the offscreen target
-left its FBO bound). gl1, gl4, es3, headless and vulkan compile; es2 fails at configure time at HEAD
+The shared `Renderer` interface is unchanged. The only backend change outside the Vulkan directory
+is in `makeScreenshot()` of es3 and gl4, which now reads from the default framebuffer (the offscreen
+target left its FBO bound). Outside the renderers, the test automation lives in `source/automation/`
+and reaches the application only through `ApplicationListener` (main loop start and update ticks)
+and `Video::captureNextFrame`. gl1, gl4, es3, headless and vulkan compile; es2 fails at configure time at HEAD
 too (its CMake list names a `GLES2Types.h` that does not exist).
 
 ## Performance notes
