@@ -43,6 +43,7 @@ namespace Duel6 {
         Texture depthTexture;
 
         GLuint width, height;
+        GLuint depthBufferFormat;
         GLES3Renderer &renderer;
 
     public:

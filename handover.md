@@ -80,14 +80,12 @@ compared with the OpenGL ES 3 build pixel by pixel. Results and game logs go to 
 The automation flags are documented in `source/automation/Automation.h`. Game runs are seeded and
 timed in game ticks, so two renderers screenshot the same frame.
 
-Known reference failure: ES3 renders the fullscreen game's static level only into the start-up
-window size, because `GLES3RendererTarget::resize` does not reallocate its textures. Vulkan is correct.
-
 ## Other backends
 
-The shared `Renderer` interface is unchanged. The only backend change outside the Vulkan directory
-is in `makeScreenshot()` of es3 and gl4, which now reads from the default framebuffer (the offscreen
-target left its FBO bound). Outside the renderers, the test automation lives in `source/automation/`
+The shared `Renderer` interface is unchanged. Backend changes outside the Vulkan directory:
+`makeScreenshot()` of es3 and gl4 reads from the default framebuffer (the offscreen target left its
+FBO bound), and `GLES3RendererTarget::resize` reallocates its textures like the GL4 target does
+(before, a window grown past its start-up size showed the level only in the old area). Outside the renderers, the test automation lives in `source/automation/`
 and reaches the application only through `ApplicationListener` (main loop start and update ticks)
 and `Video::captureNextFrame`. gl1, gl4, es3, headless and vulkan compile; es2 fails at configure time at HEAD
 too (its CMake list names a `GLES2Types.h` that does not exist).

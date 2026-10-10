@@ -34,7 +34,6 @@ namespace Duel6 {
             : width(screenParameters.getClientWidth()),
               height(screenParameters.getClientHeight()),
               renderer(renderer) {
-        GLuint depthBufferFormat;
         switch (screenParameters.getDepthBits()) {
             case 16: depthBufferFormat = GL_DEPTH_COMPONENT16; break;
             case 24: depthBufferFormat = GL_DEPTH_COMPONENT24; break;
@@ -113,6 +112,12 @@ namespace Duel6 {
     void GLES3RendererTarget::resize(Int32 width, Int32 height) {
         this->width = width;
         this->height = height;
+        glBindTexture(GL_TEXTURE_2D_ARRAY, texture);
+        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, depthTexture);
+        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, depthBufferFormat, width, height, 1, 0, GL_DEPTH_COMPONENT,
+                     GL_UNSIGNED_INT, nullptr);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
     }
 
     void GLES3RendererTarget::rerender() {
