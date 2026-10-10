@@ -23,7 +23,6 @@ cmake ..
 # Configure with specific renderer
 cmake .. -DD6R_RENDERER=gl1    # OpenGL 1
 cmake .. -DD6R_RENDERER=gl4    # OpenGL 4
-cmake .. -DD6R_RENDERER=es2    # OpenGL ES 2
 cmake .. -DD6R_RENDERER=es3    # OpenGL ES 3 (default)
 cmake .. -DD6R_RENDERER=headless  # Headless (for servers)
 
@@ -114,6 +113,19 @@ sudo tc qdisc add dev lo root netem gap 10 delay 100ms reorder 100
 sudo tc qdisc change dev lo root netem gap 50 delay 100ms reorder 100
 sudo tc qdisc del dev lo root
 ```
+
+### Rendering Tests
+
+```bash
+# Compare the Vulkan build against the OpenGL ES 3 build: menu and in-game screenshots,
+# with window resizes, fullscreen toggle and split screen (needs Pillow and a display)
+tests/render_test.py build-vulkan/duel6unityd --reference build-gles3/duel6unity
+```
+
+The game's automation flags used by the test (`-seed`, `-play`, `-level`, `-split-screen`, `-resize`,
+`-fullscreen-after`, `-screenshot`, `-quit-after`, `-log-stdout`, `-print-fps`) live in
+`Application::parseCommandLineOptions`. For RenderDoc captures run the game with `SDL_VIDEODRIVER=x11`.
+Build directories need symlinks to `resources/{data,levels,profiles,sound,textures,shaders}`.
 
 ### Command Line Arguments
 

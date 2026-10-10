@@ -98,6 +98,9 @@ namespace Duel6 {
               scriptContext(console, sound, gameSettings), scriptManager(scriptContext),
               requestClose(false) {
         parseCommandLineOptions(argc, argv);
+        if (commandLineOptions.seed != 0) {
+            Math::seed(commandLineOptions.seed);
+        }
 
 #ifndef D6_RENDERER_HEADLESS
         if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -223,6 +226,17 @@ namespace Duel6 {
             commandLineOptions.windowHeight = -1;
         }
 
+        char *seed = getCmdLineOption(argv, argv + argc, "-seed");
+        if (seed != nullptr) {
+            commandLineOptions.seed = static_cast<Uint32>(strtoul(seed, nullptr, 10));
+        }
+        commandLineOptions.play = hasCmdLineOption(argv, argv + argc, "-play");
+        char *level = getCmdLineOption(argv, argv + argc, "-level");
+        if (level != nullptr) {
+            commandLineOptions.level = level;
+        }
+        commandLineOptions.splitScreen = hasCmdLineOption(argv, argv + argc, "-split-screen");
+
         // -resize WxH[,WxH...]
         char *resize = getCmdLineOption(argv, argv + argc, "-resize");
         if (resize != nullptr) {
@@ -241,25 +255,21 @@ namespace Duel6 {
                 pos = end + 1;
             }
         }
-        char *resizeAfter = getCmdLineOption(argv, argv + argc, "-resize-after");
-        if (resizeAfter != nullptr) {
-            commandLineOptions.resizeAfter = atof(resizeAfter);
-        }
-        char *resizeInterval = getCmdLineOption(argv, argv + argc, "-resize-interval");
-        if (resizeInterval != nullptr) {
-            commandLineOptions.resizeInterval = atof(resizeInterval);
-        }
+        auto readSeconds = [&](const char *option, Float64 &target) {
+            char *value = getCmdLineOption(argv, argv + argc, option);
+            if (value != nullptr) {
+                target = atof(value);
+            }
+        };
+        readSeconds("-resize-after", commandLineOptions.resizeAfter);
+        readSeconds("-resize-interval", commandLineOptions.resizeInterval);
+        readSeconds("-fullscreen-after", commandLineOptions.fullscreenAfter);
+        readSeconds("-screenshot-after", commandLineOptions.screenshotAfter);
+        readSeconds("-quit-after", commandLineOptions.quitAfter);
+        commandLineOptions.printFps = hasCmdLineOption(argv, argv + argc, "-print-fps");
         char *screenshot = getCmdLineOption(argv, argv + argc, "-screenshot");
         if (screenshot != nullptr) {
             commandLineOptions.screenshotPath = screenshot;
-        }
-        char *screenshotAfter = getCmdLineOption(argv, argv + argc, "-screenshot-after");
-        if (screenshotAfter != nullptr) {
-            commandLineOptions.screenshotAfter = atof(screenshotAfter);
-        }
-        char *quitAfter = getCmdLineOption(argv, argv + argc, "-quit-after");
-        if (quitAfter != nullptr) {
-            commandLineOptions.quitAfter = atof(quitAfter);
         }
 
         if(hasCmdLineOption(argv, argv + argc, "-publish")){
@@ -447,6 +457,7 @@ namespace Duel6 {
             performance::traceEvent t("update");
             while (accumulatedTime > updateTime) {
                 context.update(Float32(updateTime));
+                automationTick++;
                 accumulatedTime -= updateTime;
                 video->think(updateTime);
                 networkFlushCommands();
@@ -460,9 +471,13 @@ namespace Duel6 {
             context.render();
             {
                 performance::traceEvent t("screenUpdate");
-                video->screenUpdate(console, *font);
+                Image capture;
+                bool wantCapture = automationWantsScreenshot();
+                video->screenUpdate(console, *font, wantCapture ? &capture : nullptr);
+                if (wantCapture) {
+                    saveAutomationScreenshot(capture);
+                }
             }
-
         }
 
         return elapsedTime;
@@ -480,28 +495,50 @@ namespace Duel6 {
         netClient->flush();
     }
 
+    namespace {
+        bool automationDue(Uint32 tick, Float64 seconds) {
+            return seconds >= 0 && tick >= static_cast<Uint32>(seconds * D6_UPDATE_FREQUENCY);
+        }
+    }
+
+    bool Application::automationWantsScreenshot() const {
+        return !automationScreenshotTaken && !commandLineOptions.screenshotPath.empty() &&
+               automationDue(automationTick, commandLineOptions.screenshotAfter);
+    }
+
+    void Application::saveAutomationScreenshot(const Image &image) {
+        automationScreenshotTaken = true;
+        video->logSizes(Format("screenshot at tick {0}") << automationTick);
+        image.save(commandLineOptions.screenshotPath);
+        console.printLine(Format("[automation] screenshot {0}x{1} saved to {2}")
+                          << image.getWidth() << image.getHeight() << commandLineOptions.screenshotPath);
+    }
+
     void Application::runAutomation() {
-        Float64 elapsed = (SDL_GetTicks() - automationStartTicks) * 0.001;
+        auto due = [this](Float64 seconds) {
+            return automationDue(automationTick, seconds);
+        };
 
         const auto &resizes = commandLineOptions.resizes;
         if (automationResizesDone < resizes.size() &&
-            elapsed >= commandLineOptions.resizeAfter + automationResizesDone * commandLineOptions.resizeInterval) {
+            due(commandLineOptions.resizeAfter + automationResizesDone * commandLineOptions.resizeInterval)) {
             const auto &size = resizes[automationResizesDone++];
             console.printLine(Format("[automation] resizing window to {0}x{1}") << size.first << size.second);
             video->setWindowSize(size.first, size.second);
         }
 
-        if (!automationScreenshotTaken && !commandLineOptions.screenshotPath.empty() &&
-            elapsed >= commandLineOptions.screenshotAfter) {
-            automationScreenshotTaken = true;
-            video->logSizes("screenshot");
-            Image image = video->getRenderer().makeScreenshot();
-            image.save(commandLineOptions.screenshotPath);
-            console.printLine(Format("[automation] screenshot {0}x{1} saved to {2}")
-                              << image.getWidth() << image.getHeight() << commandLineOptions.screenshotPath);
+        if (!automationFullscreenDone && due(commandLineOptions.fullscreenAfter)) {
+            automationFullscreenDone = true;
+            console.printLine("[automation] toggling fullscreen");
+            video->toggleFullscreen();
         }
 
-        if (commandLineOptions.quitAfter >= 0 && elapsed >= commandLineOptions.quitAfter) {
+        if (commandLineOptions.printFps && automationTick >= automationNextFpsTick) {
+            automationNextFpsTick = automationTick + D6_UPDATE_FREQUENCY;
+            console.printLine(Format("[automation] fps {0}") << video->getFps());
+        }
+
+        if (due(commandLineOptions.quitAfter)) {
             console.printLine("[automation] quit");
             requestClose = true;
         }
@@ -518,7 +555,16 @@ namespace Duel6 {
             menu->startDedicatedServer();
         }
 
-        automationStartTicks = SDL_GetTicks();
+        if (commandLineOptions.play) {
+            std::vector<std::string> levels = commandLineOptions.level.empty()
+                ? menu->listMaps()
+                : std::vector<std::string>{D6_FILE_LEVEL + commandLineOptions.level + D6_LEVEL_EXTENSION};
+            menu->play(levels, false, false);
+            if (commandLineOptions.splitScreen) {
+                game->getRound().switchScreenMode();
+            }
+        }
+
         while (Context::exists() && !requestClose) {
             Context &context = Context::getCurrent();
             if(publisher.wantsNewData()){

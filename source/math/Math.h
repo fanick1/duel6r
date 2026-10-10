@@ -107,6 +107,11 @@ namespace Duel6 {
             return std::min(diff, 360.0f - diff);
         }
 
+        // Reseed the shared engine, e.g. to make a test run reproducible
+        static void seed(Uint32 value) {
+            randomEngine.seed(value);
+        }
+
         static Int32 random(Int32 max);
 
         static Int32 random(Int32 min, Int32 max);

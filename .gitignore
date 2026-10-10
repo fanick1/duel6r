@@ -11,3 +11,8 @@ build-headless
 build_rpi_gles3
 build-gles3
 build-vulkan
+build-vulkan-rel
+build-cov
+.cache
+profile_0.json
+
