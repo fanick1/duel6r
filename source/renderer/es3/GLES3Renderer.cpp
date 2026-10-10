@@ -136,6 +136,8 @@ namespace Duel6 {
         auto width = dimensions[2];
         auto height = dimensions[3];
 
+        // The render target leaves its FBO bound for reading; the screenshot wants the screen
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
         Image image(width, height);
         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &image.at(0));
 

@@ -89,9 +89,21 @@ namespace Duel6 {
 #endif
     }
 
-    void Video::screenUpdate(Console &console, const Font &font) {
+    void Video::screenUpdate(Console &console, const Font &font, Image *capture) {
         renderConsole(console, font);
+#if defined(D6_RENDERER_VULKAN)
+        // The Vulkan renderer keeps a copy of the frame it presents
         swapBuffers();
+        if (capture != nullptr) {
+            *capture = renderer->makeScreenshot();
+        }
+#else
+        // OpenGL reads the back buffer, whose contents are undefined once it has been swapped
+        if (capture != nullptr) {
+            *capture = renderer->makeScreenshot();
+        }
+        swapBuffers();
+#endif
     }
 
     void Video::renderConsole(Console &console, const Font &font) {

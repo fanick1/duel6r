@@ -36,6 +36,8 @@
 #include "renderer/Renderer.h"
 
 namespace Duel6 {
+    class Image;
+
     class Video {
     public:
         enum class Mode {
@@ -62,7 +64,8 @@ namespace Duel6 {
 
         ~Video();
 
-        void screenUpdate(Console &console, const Font &font);
+        // Presents the frame. With capture set, the presented frame is also copied into it.
+        void screenUpdate(Console &console, const Font &font, Image *capture = nullptr);
 
         const ScreenParameters &getScreen() const {
             return screen;
