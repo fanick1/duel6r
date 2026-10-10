@@ -32,6 +32,7 @@
 #include <vector>
 #include <memory>
 #include "Context.h"
+#include "ApplicationListener.h"
 #include "AppService.h"
 #include "Menu.h"
 #include "Game.h"
@@ -57,21 +58,6 @@ namespace Duel6 {
             Uint16 gsiPort = 0;
             Int32 windowWidth;
             Int32 windowHeight;
-
-            // Automation for tests. Times are seconds since the main loop started, converted to
-            // game ticks, so two runs with the same seed render the same frame.
-            Uint32 seed = 0;                               // 0 = not seeded
-            bool play = false;                             // start a game instead of staying in the menu
-            std::string level;                             // level name for play, empty = all levels
-            bool splitScreen = false;
-            std::vector<std::pair<Int32, Int32>> resizes;  // applied one by one, resizeInterval apart
-            Float64 resizeAfter = 1.0;
-            Float64 resizeInterval = 0.5;
-            Float64 fullscreenAfter = -1.0;
-            std::string screenshotPath;
-            Float64 screenshotAfter = 3.0;
-            Float64 quitAfter = -1.0;
-            bool printFps = false;                         // log the frame rate once a second
         };
         CommandLineOptions commandLineOptions;
 
@@ -97,11 +83,7 @@ namespace Duel6 {
         std::unique_ptr<net::NetHost> netHost;
         std::unique_ptr<net::NetClient> netClient;
         bool requestClose;
-        Uint32 automationTick = 0;
-        size_t automationResizesDone = 0;
-        bool automationFullscreenDone = false;
-        bool automationScreenshotTaken = false;
-        Uint32 automationNextFpsTick = 0;
+        std::vector<std::unique_ptr<ApplicationListener>> listeners;
 
     public:
         Application(Int32 argc, char **argv);
@@ -133,10 +115,6 @@ namespace Duel6 {
         void parseCommandLineOptions(const CommandLine &commandLine);
 
         void networkFlushCommands();
-
-        void runAutomation();
-        bool automationWantsScreenshot() const;
-        void saveAutomationScreenshot(const Image &image);
 
         void networkRun(const Float64 elapsedTime);
     };

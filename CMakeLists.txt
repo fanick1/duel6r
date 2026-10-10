@@ -61,6 +61,7 @@ if(NOT DEFINED D6R_RENDERER)
 endif()
 set_property (CACHE D6R_RENDERER PROPERTY STRINGS ${D6R_RENDERERS})
 set(D6R_WITH_LUA ON)     # Enable/disable lua scripting
+option(D6R_AUTOMATION "Command-line driven test automation (tests/render_test.py)" OFF)
 
 #########################################################################
 #
@@ -151,6 +152,7 @@ set(D6R_SOURCES
         source/AnimationLooping.h
         source/Application.cpp
         source/Application.h
+        source/ApplicationListener.h
         source/AppService.h
         source/Block.cpp
         source/Block.h
@@ -644,6 +646,19 @@ if (D6R_WITH_LUA)
         )
 
 endif (D6R_WITH_LUA)
+
+if (D6R_AUTOMATION)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DD6_AUTOMATION")
+    set(D6R_SOURCES ${D6R_SOURCES}
+            source/automation/Automation.cpp
+            source/automation/Automation.h
+            source/automation/Timeline.cpp
+            source/automation/Timeline.h
+            )
+    set (D6R_UNITY_BUILD_SOURCES ${D6R_UNITY_BUILD_SOURCES}
+            source/automation/unity.cpp
+        )
+endif (D6R_AUTOMATION)
 
 if (WIN32)
     set(D6R_SOURCES ${D6R_SOURCES} source/duel6r.rc)

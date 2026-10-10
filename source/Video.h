@@ -36,8 +36,6 @@
 #include "renderer/Renderer.h"
 
 namespace Duel6 {
-    class Image;
-
     class Video {
     public:
         enum class Mode {
@@ -46,6 +44,7 @@ namespace Duel6 {
         };
 
         typedef std::function<void(Int32, Int32)> resizeCallback_t;
+        typedef std::function<void(const Image &)> FrameCallback;
 
     private:
         SDL_Window *window;
@@ -56,6 +55,7 @@ namespace Duel6 {
         std::unique_ptr<Renderer> renderer;
         std::vector<resizeCallback_t> resizeCallbacks;
         Console* console;
+        FrameCallback frameCapture;
 
         bool isMaximizing = false;
         float maximizingCooldown;
@@ -64,8 +64,10 @@ namespace Duel6 {
 
         ~Video();
 
-        // Presents the frame. With capture set, the presented frame is also copied into it.
-        void screenUpdate(Console &console, const Font &font, Image *capture = nullptr);
+        void screenUpdate(Console &console, const Font &font);
+
+        // Hands the next presented frame to the callback, once
+        void captureNextFrame(FrameCallback callback);
 
         const ScreenParameters &getScreen() const {
             return screen;
@@ -103,6 +105,8 @@ namespace Duel6 {
         void renderConsole(Console &console, const Font &font);
 
         void swapBuffers();
+
+        void deliverFrameCapture();
 
         void calculateFps();
 
